@@ -796,12 +796,12 @@ function saveOwned(){ try{ localStorage.setItem('sd_owned', JSON.stringify(owned
 function isOwned(i){ return !!ownedCars[i]; }
 // ---- performance upgrade kits (coin-funded, per-car, persisted) ----
 let carUpg=[];
-const KITS=[{key:'eng',name:'ENGINE',icon:'⚙'},{key:'tire',name:'TIRES',icon:'🛞'},{key:'nos',name:'NITROUS',icon:'🔥'}];
-const KIT_COST={ eng:[90,180,330], tire:[70,150,290], nos:[110,210,380] };   // cost to buy level 1/2/3 (reachable economy)
+const KITS=[{key:'eng',name:'ENGINE',icon:'⚙'},{key:'tire',name:'TIRES',icon:'🛞'},{key:'nos',name:'NITROUS',icon:'🔥'},{key:'brake',name:'BRAKES',icon:'🛑'},{key:'turbo',name:'TURBO',icon:'💨'}];
+const KIT_COST={ eng:[90,180,330], tire:[70,150,290], nos:[110,210,380], brake:[80,170,300], turbo:[120,240,420] };   // cost to buy level 1/2/3 (reachable economy)
 function loadUpg(){ try{ const u=JSON.parse(localStorage.getItem('sd_upg')); carUpg=Array.isArray(u)?u:[]; }catch(e){ carUpg=[]; }
   for(let i=0;i<CARS.length;i++){ const u=carUpg[i]||{}; carUpg[i]={eng:u.eng|0, tire:u.tire|0, nos:u.nos|0}; } }
 function saveUpg(){ try{ localStorage.setItem('sd_upg', JSON.stringify(carUpg)); }catch(e){} }
-function upgOf(i){ return carUpg[i]||{eng:0,tire:0,nos:0}; }
+function upgOf(i){ return carUpg[i]||{eng:0,tire:0,nos:0,brake:0,turbo:0}; }
 function carMul(i){ const c=CARS[i]||CARS[0], u=upgOf(i);
   return { spd:(0.86+(c.spd-70)/30*0.20)*(1+0.055*u.eng), grip:(0.85+(c.grip-60)/30*0.26)*(1+0.065*u.tire) }; }  // stock car notably SLOWER; each ENGINE level adds real speed (stock starter 0.86 -> maxed 1.00; fast cars scale higher)
 function renderShop(){                                   // menu car panel: name, stats, owned/unlock, RACE state
@@ -2480,6 +2480,16 @@ function attachUpgrades(rig, carIdx, forceU){
     for(const sx of xs){ const bot=add(new THREE.CylinderGeometry(0.09,0.09,blen,16), bm); bot.rotation.x=Math.PI/2; bot.position.set(sx*W*0.12, by, bz);
       for(const cz of [-1,1]){ const cap=dome(bm); cap.scale.setScalar(0.09); cap.rotation.x=cz>0?-Math.PI/2:Math.PI/2; cap.position.set(sx*W*0.12, by, bz+cz*blen/2); } }
   }
+  // BRAKES -> front splitter + dive-plane canards (the corner-entry aero kit), fitted to the real front
+  if(u.brake>0){ const b=u.brake, splZ=front-Lz*0.03;
+    const spl=add(rbox(W*0.9,0.045,0.26,0.04), carbon); spl.position.set(0, floorY+H*0.055, splZ); spl.rotation.x=0.06;   // low front splitter
+    if(b>=2) for(const sx of [-1,1]){ const can=add(rbox(0.26,0.028,0.17,0.02), carbon); can.position.set(sx*(x0*0.84), floorY+H*0.30, front-Lz*0.07); can.rotation.z=sx*-0.16; can.rotation.x=0.12; } }   // canards
+  // TURBO -> hood intake scoop + twin chrome exhaust tips (the top-speed kit), sat on the real hood/rear
+  if(u.turbo>0){ const x=u.turbo, scZ=front*0.34, scY=surfY(0, scZ, top*0.7);
+    const scoop=add(rbox(W*0.3,H*0.13,0.5,0.05), carbon); scoop.position.set(0, scY+H*0.045, scZ); scoop.rotation.x=-0.06;
+    const intake=add(new THREE.CylinderGeometry(0.085,0.11,0.12,10), carbon); intake.rotation.x=Math.PI/2; intake.position.set(0, scY+H*0.085, scZ+0.24);
+    if(x>=2){ const chrome=new THREE.MeshStandardMaterial({color:0xbfc4cc, metalness:0.9, roughness:0.25});
+      for(const sx of [-1,1]){ const tip=add(new THREE.CylinderGeometry(0.06,0.075,0.16,10), chrome); tip.rotation.x=Math.PI/2; tip.position.set(sx*W*0.2, floorY+H*0.13, rear-0.03); } } }
 }
 
 /* ---- real CC0 props (Quaternius / Kenney low-poly GLBs) instanced onto the terrain ---- */
@@ -2609,7 +2619,7 @@ function updateCar(c, inp, dt){
   if(inp.throttle && !inp.brake){ const launch=1+0.5*(c.engLvl||0)*clamp(1-speed/18,0,1);
     const accMul = c.isPlayer ? (c.spdMul||1) : aiAccel;                      // AI gets difficulty accel power (corner-exit punch) instead of upgrades
     c.vel.addScaledVector(_f, CONFIG.engineAccel*accMul*launch*dt); }
-  if(inp.brake){ const bm=inp.brakeMul||1;
+  if(inp.brake){ const bm=(inp.brakeMul||1)*(c.isPlayer?(1+0.16*(c.brakeLvl||0)):1);   // BRAKES kit: stronger braking -> brake later into the new tight corners
     if(fwdSpeed>0.6) c.vel.addScaledVector(_f, -CONFIG.brakeAccel*bm*dt);
     else c.vel.addScaledVector(_f, -CONFIG.reverseAccel*dt);
   }
@@ -2629,7 +2639,7 @@ function updateCar(c, inp, dt){
 
   // speed clamp ( AI boosting uses a tamer scale so a chasing AI matches — not laps — a boosting player )
   let _ms=c.maxScale||1; if(!c.isPlayer && c.boosting) _ms=Math.min(_ms, 1.36);
-  const maxSpd=(c.boosting?CONFIG.boostTopSpeed:CONFIG.topSpeed)*_ms*(c.spdMul||1);
+  const maxSpd=(c.boosting?CONFIG.boostTopSpeed:CONFIG.topSpeed)*_ms*(c.spdMul||1)*(c.isPlayer?(c.turboMul||1):1);   // TURBO kit: higher top speed
   const sp=c.vel.length(); if(sp>maxSpd) c.vel.multiplyScalar(maxSpd/sp);
 
   // ----- JUMPS: cresting a hill at speed launches the car into the air (skill air-time; reuses the rolling hills, all cars) -----
@@ -2957,9 +2967,9 @@ function startGame(){
   placeGrid();
   cars.forEach(c=>{ if(c.rig&&c.rig.group) c.rig.group.visible=true; });   // showcase hid the AI cars
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip;  // chosen car's handling
-  const nu=upgOf(selectedCar).nos, eu=upgOf(selectedCar).eng, tu=upgOf(selectedCar).tire;   // player-only upgrade fields (AI leave undefined -> ||default = stock)
+  const U=upgOf(selectedCar), nu=U.nos, eu=U.eng, tu=U.tire, bu=U.brake||0, xu=U.turbo||0;   // player-only upgrade fields (AI leave undefined -> ||default = stock)
   player.nosMax=1+0.15*nu; player.nosDrain=1-0.10*nu; player.nosForce=1+0.08*nu; player.nosFill=1+0.22*nu;
-  player.engLvl=eu; player.tireLvl=tu;
+  player.engLvl=eu; player.tireLvl=tu; player.brakeLvl=bu; player.turboMul=1+0.05*xu;   // BRAKES = stronger braking (corner entry); TURBO = higher top speed
   player.boost=CONFIG.boostMax*player.nosMax;                               // start the bigger tank full
   player._nosCue=player._gripCue=-9;                                        // upgrade-popup throttles
   bestLap=null; raceTime=0; countdown=3.0; goTimer=0; lastFlash=-1; lastBeepN=99; state='countdown';
@@ -3233,7 +3243,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   selectTrack(currentTrack);                                            // battle in the SELECTED environment (any track's world = the open arena)
   zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone();
   audio.start(); if(currentTheme) playMusic(currentTheme.theme);
-  const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1;
+  const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1; player.brakeLvl=0; player.turboMul=1;
   rockets.forEach(r=>{scene.remove(r.mesh); disposeGroup(r.mesh);}); rockets=[];   // reset combat systems
   explosions.forEach(e=>scene.remove(e.m)); explosions=[]; mflashes.forEach(e=>scene.remove(e.m)); mflashes=[];
   pickups.forEach(p=>{scene.remove(p.m); disposeGroup(p.m);}); pickups=[]; pickupTimer=0;
