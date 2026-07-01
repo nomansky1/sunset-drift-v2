@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--BUILD:v2.2-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -537,7 +538,20 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.2</b> — built with Three.js</div>
+<div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
+     background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
+<script>
+// ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
+(function(){ const BUILD='v2.2';
+  const chip=document.getElementById('updateChip');
+  chip.addEventListener('click', ()=>{ location.reload(true); });
+  async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
+      const head=await r.text();
+      const m=head.match(/BUILD:(v[\d.]+)/); if(m && m[1]!==BUILD) chip.style.display='block'; }catch(e){} }
+  setInterval(check, 60000); setTimeout(check, 6000);
+})();
+</script>
 
 <!-- Three.js loaded as a classic global script so this single file runs anywhere,
      including when opened directly on a phone (no JS-module / file:// restrictions). -->
@@ -611,7 +625,7 @@ let sampleElev = [], roadAmp = 0;        // road centerline elevation profile (3
 let sampleHW = [];                        // per-sample road half-width — narrows at corners too tight for the full width (kills the inner-edge fold glitch)
 function computeRoadElev(){
   sampleElev = new Array(SAMPLES).fill(0);
-  roadAmp = (terrainAmp<=0 || !terrainNoise) ? 0 : clamp(terrainAmp*0.78, 18, 42);   // scenic climbs, but tamer (less bounce)
+  roadAmp = (terrainAmp<=0 || !terrainNoise) ? 0 : clamp(terrainAmp*0.6, 14, 27);   // scenic climbs, tamed — towering roads read as floating dark slabs from below on folded tracks
   if(beachSea!=null) roadAmp = Math.min(roadAmp, 15);                                // seaside: gentle undulation only — must never dive under the ocean
   if(!roadAmp) return;
   const raw=samplePts.map(p=> terrainNoise(p.x*0.006+50, p.y*0.006+50));   // base noise along the centerline
@@ -890,7 +904,7 @@ const TRACKS=[
     ctrl:[[-150,-142],[145,-142],[184,-104],[182,-62],[140,-54],[150,-10],[178,46],[128,60],[176,104],[100,116],[-30,140],[-152,140],[-172,92],[-116,72],[-150,24],[-90,6],[-138,-46],[-186,-96]] },   // street GP: long main straight, T1 hairpin, right esses, top chicane, concave infield section
   { name:'OCEAN DRIVE', sub:'SUNSET COAST · PALM SWEEP', theme:'coast', groundHex:'#cdab6e', fog:0xffc890, water:-4,
     sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88],
-    ctrl:[[-182,-70],[-30,-120],[70,-96],[60,-40],[150,-30],[186,30],[130,58],[180,96],[40,120],[-70,150],[-150,150],[-176,70],[-150,10],[-186,-64]] },   // flowing coast: fast sweeps + a mid-lap kink + a tightening headland corner
+    ctrl:[[-182,-70],[-30,-120],[70,-96],[60,-40],[150,-36],[198,-5],[139,16],[182,78],[40,120],[-70,150],[-150,150],[-176,70],[-150,10],[-186,-64]] },   // flowing coast: fast sweeps + a mid-lap kink + a tightening headland corner (legs opened so barriers/sidewalks never pinch)
   { name:'THE DOCKS', sub:'INDUSTRIAL · CARGO CIRCUIT', theme:'docks', groundHex:'#2c2e34', fog:0xbcd6ea,
     sky:{top:0x2f7fd0,bot:0xd2e8f7,sun:0xfff4e0}, sun:[-0.5,0.34,-0.78],   // bright blue daytime sky + clouds (was industrial grey)
     ctrl:[[-172,-120],[150,-120],[150,-78],[130,-70],[-10,-64],[-8,10],[10,24],[168,24],[168,150],[44,150],[40,78],[-96,150],[-172,150],[-170,60],[-100,-30],[-172,-46]] },   // industrial: right-angle container-yard technical + inner keyhole spur
@@ -899,7 +913,7 @@ const TRACKS=[
     ctrl:[[-150,-170],[150,-170],[184,-140],[176,-104],[130,-96],[178,-40],[178,150],[110,150],[120,96],[-120,96],[-110,150],[-178,150],[-178,-40],[-130,-96],[-176,-104],[-184,-140]] },   // long beachfront straights bookended by two hairpin cut-ins
   { name:'PINE PASS', sub:'FOREST · MOUNTAIN TWISTS', theme:'forest', groundHex:'#3f5a34', fog:0x9ab0a0,
     sky:{top:0x2a6abf,bot:0xbfe0f0,sun:0xffffff}, sun:[-0.4,0.32,-0.7],
-    ctrl:[[-175,-110],[-60,-150],[30,-96],[-16,-44],[70,-70],[122,-40],[70,10],[150,30],[130,90],[186,120],[60,150],[-40,120],[-96,150],[-172,96],[-116,30],[-150,-30],[-186,-64]] },   // twisty forest serpentine: back-to-back esses + a chicane
+    ctrl:[[-175,-110],[-60,-150],[35,-105],[62,-30],[135,-60],[186,-6],[130,45],[170,105],[60,150],[-40,118],[-96,150],[-172,96],[-120,34],[-152,-30],[-186,-64]] },   // twisty forest serpentine — esses opened to raceable leg gaps (tight folds pinched the road to kart width)
   { name:'ALPINE', sub:'SNOW PEAKS · ICE PASS', theme:'snow', groundHex:'#e8eef5', fog:0xdfeaf2,
     sky:{top:0x4a6a9a,bot:0xdce8f4,sun:0xffffff}, sun:[0.2,0.34,-0.78],
     ctrl:[[-120,-172],[120,-172],[180,-120],[150,-90],[184,-40],[184,120],[130,168],[70,120],[96,60],[-96,60],[-70,120],[-130,168],[-184,120],[-184,-40],[-150,-90],[-180,-120]] },   // omega: long side straights into a tight U hairpin at the base
@@ -911,7 +925,7 @@ const TRACKS=[
     ctrl:[[-170,-110],[160,-110],[186,-50],[130,-30],[40,-40],[70,20],[150,30],[168,120],[30,140],[36,60],[-40,70],[-30,140],[-160,120],[-186,20],[-120,-20],[-176,-60]] },   // midnight street: twin infield keyhole loops off a long straight
   { name:'RED CANYON', sub:'DESERT · CANYON SWEEP', theme:'desert', groundHex:'#b5763e', fog:0xe0985a,
     sky:{top:0x4a3a6a,bot:0xe88448,sun:0xffe4b0}, sun:[-0.4,0.16,-0.86],
-    ctrl:[[-186,-60],[-70,-120],[10,-70],[-30,-20],[80,-60],[160,-30],[110,30],[180,70],[70,90],[110,150],[-40,130],[-90,150],[-170,100],[-110,20],[-160,-30]] },   // canyon: a continuous run of interlocking S-bends (most technical)
+    ctrl:[[-186,-60],[-70,-120],[20,-78],[-14,-8],[92,-44],[170,-36],[128,28],[186,84],[86,86],[112,150],[-40,126],[-96,150],[-172,98],[-112,22],[-160,-34]] },   // canyon: interlocking S-bends, legs opened to raceable gaps (most technical)
   { name:'TIDE LINE', sub:'BEACH · SHORELINE ARC', theme:'beach', groundHex:'#ecd8a8', fog:0xc2e4ec, water:-6,
     sky:{top:0x2a95dc,bot:0xd6f0ff,sun:0xfff6d6}, sun:[0.34,0.18,-0.9],
     ctrl:[[-180,-70],[180,-70],[186,40],[150,60],[180,96],[110,140],[40,96],[-40,96],[-110,140],[-180,96],[-150,60],[-186,40]] },   // shoreline: long top straight into a scalloped chicane run along the tide
@@ -1222,6 +1236,37 @@ function buildTrackTables(CTRL){
   const curve = new THREE.CatmullRomCurve3(v3, true, 'centripetal', 0.5);   // centripetal = NO overshoot/self-intersection loops at sharp corners (uniform 'catmullrom' overshoots -> barrier crossings)
   const pts = curve.getSpacedPoints(SAMPLES); // SAMPLES+1, last≈first
   samplePts=[]; for(let i=0;i<SAMPLES;i++) samplePts.push(new THREE.Vector2(pts[i].x, pts[i].z));
+  // ROUND ultra-tight apexes: any corner with local turn radius < R_MIN folds roadside geometry
+  // (sidewalks/curbs sit up to ~17.5 from the centerline -> radius below that = the ribbon inverts into a LOOP).
+  // Laplacian-smooth only the offending arcs until every corner radius >= R_MIN. Track shapes stay; pretzels die.
+  // EXCISE SELF-LOOPS: the spline can pinch a tiny loop where control points double back — that loop IS the
+  // "road does a loop-de-loop" glitch (smoothing alone only shrinks a loop, never opens it). Find any short-arc
+  // self-intersection of the centerline and replace the looped span with a straight blend.
+  { const segX=(p1,p2,p3,p4)=>{ const d=(p2.x-p1.x)*(p4.y-p3.y)-(p2.y-p1.y)*(p4.x-p3.x); if(Math.abs(d)<1e-9) return false;
+      const t=((p3.x-p1.x)*(p4.y-p3.y)-(p3.y-p1.y)*(p4.x-p3.x))/d, u=((p3.x-p1.x)*(p2.y-p1.y)-(p3.y-p1.y)*(p2.x-p1.x))/d;
+      return t>0.001&&t<0.999&&u>0.001&&u<0.999; };
+    for(let pass=0; pass<8; pass++){ let fixed=false;
+      for(let i=0;i<SAMPLES && !fixed;i++){ for(let span=4; span<=60; span++){ const j=(i+span)%SAMPLES;
+          if(segX(samplePts[i], samplePts[(i+1)%SAMPLES], samplePts[j], samplePts[(j+1)%SAMPLES])){
+            const A=samplePts[i], B=samplePts[(j+1)%SAMPLES];                    // bridge straight across the loop
+            for(let k=1;k<=span;k++){ const f=k/(span+1), p=samplePts[(i+k)%SAMPLES]; p.x=A.x+(B.x-A.x)*f; p.y=A.y+(B.y-A.y)*f; }
+            fixed=true; break; } } }
+      if(!fixed) break; } }
+  { const R_MIN=18;
+    const circR=(i,w)=>{ const a=samplePts[(i-w+SAMPLES)%SAMPLES], b=samplePts[i], c=samplePts[(i+w)%SAMPLES];
+      const abx=b.x-a.x, aby=b.y-a.y, acx=c.x-a.x, acy=c.y-a.y;
+      const ab=Math.hypot(abx,aby), bc=Math.hypot(c.x-b.x,c.y-b.y), ca=Math.hypot(acx,acy);
+      const area2=Math.abs(abx*acy-aby*acx); return area2>1e-6 ? (ab*bc*ca)/(2*area2) : 9999; };
+    for(let pass=0; pass<400; pass++){ const hot=new Array(SAMPLES).fill(false); let any=false;
+      for(let i=0;i<SAMPLES;i++){ if(Math.min(circR(i,2), circR(i,4)) < R_MIN){ any=true;   // w<=4 = pure local curvature (w=7 spans both legs of a hairpin -> flags legit folds forever)
+        for(let k=-6;k<=6;k++) hot[((i+k)%SAMPLES+SAMPLES)%SAMPLES]=true; } }   // smooth the apex + a wide shoulder
+      if(!any) break;
+      const nx=samplePts.map(p=>p.x), ny=samplePts.map(p=>p.y);
+      for(let j=0;j<SAMPLES;j++){ if(!hot[j]) continue;
+        const p0=samplePts[(j-1+SAMPLES)%SAMPLES], p2=samplePts[(j+1)%SAMPLES];
+        nx[j]=samplePts[j].x*0.4+(p0.x+p2.x)*0.3; ny[j]=samplePts[j].y*0.4+(p0.y+p2.y)*0.3; }
+      for(let i=0;i<SAMPLES;i++){ samplePts[i].x=nx[i]; samplePts[i].y=ny[i]; }
+    } }
   sampleTan=[]; sampleNorm=[]; sampleCum=[]; let cum=0;
   for(let i=0;i<SAMPLES;i++){
     const a=samplePts[(i-1+SAMPLES)%SAMPLES], b=samplePts[(i+1)%SAMPLES];
@@ -1304,30 +1349,49 @@ function buildKerbs(){
       g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.setIndex(idx); g.computeVertexNormals();
       const m=new THREE.Mesh(g,mat); m.receiveShadow=true; scene.add(m); } });
 }
-// two side strips (annulus) and a vertical curb face — used for raised sidewalks
-function buildSideStrips(inner, outer, y, material){
+// two side strips (annulus) and a vertical curb face — used for raised sidewalks.
+// offsets follow the PER-SAMPLE road edge (like the road/barrier) so they can never invert into loops at tight corners.
+function buildSideStrips(innerPad, outerPad, y, material){
   [1,-1].forEach(side=>{
     const pos=[], idx=[], uv=[]; let cum=0;
-    for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j];
+    for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j], hw=(sampleHW[j]||CONFIG.roadHalfWidth);
       if(i>0) cum+=samplePts[j].distanceTo(samplePts[(i-1+SAMPLES)%SAMPLES]);
-      pos.push(p.x+n.x*inner*side, y, p.y+n.y*inner*side); uv.push(0, cum*0.12);
-      pos.push(p.x+n.x*outer*side, y, p.y+n.y*outer*side); uv.push(1, cum*0.12); }
+      pos.push(p.x+n.x*(hw+innerPad)*side, y, p.y+n.y*(hw+innerPad)*side); uv.push(0, cum*0.12);
+      pos.push(p.x+n.x*(hw+outerPad)*side, y, p.y+n.y*(hw+outerPad)*side); uv.push(1, cum*0.12); }
     for(let i=0;i<SAMPLES;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
     g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals();
     const mesh=new THREE.Mesh(g, material); mesh.receiveShadow=true; scene.add(mesh);
   });
 }
-function buildCurbFace(at, yLow, yHigh, material){
+function buildCurbFace(pad, yLow, yHigh, material){
   [1,-1].forEach(side=>{
     const pos=[], idx=[];
-    for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j];
+    for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j], at=(sampleHW[j]||CONFIG.roadHalfWidth)+pad;
       pos.push(p.x+n.x*at*side, yLow, p.y+n.y*at*side);
       pos.push(p.x+n.x*at*side, yHigh, p.y+n.y*at*side); }
     for(let i=0;i<SAMPLES;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
     g.setIndex(idx); g.computeVertexNormals();
     const mesh=new THREE.Mesh(g, material); mesh.receiveShadow=true; scene.add(mesh);
+  });
+}
+// EMBANKMENT: vertical earth faces from the road edge down to the terrain on elevated themes.
+// Without these, a road riding high terrain is a bottomless ribbon — from beside/below it reads as a giant floating dark wall.
+function buildRoadSkirts(){
+  if(terrainAmp<=0 || !sampleElev.length) return;
+  const th=currentTheme?currentTheme.theme:'city';
+  const dirt=new THREE.MeshStandardMaterial({ color: th==='snow'?0x8d99a8 : th==='forest'?0x4e4434 : 0x77604a, roughness:1, metalness:0 });
+  [1,-1].forEach(side=>{
+    const pos=[], idx=[];
+    for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j], hw=(sampleHW[j]||CONFIG.roadHalfWidth)+0.3;
+      const x=p.x+n.x*hw*side, z=p.y+n.y*hw*side, top=0.06+(sampleElev[j]||0);
+      const bot=Math.min(top-0.2, terrainHeight(x,z)-0.8);          // reach below the local terrain so the face always closes the gap
+      pos.push(x, top, z,  x, bot, z); }
+    for(let i=0;i<SAMPLES;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    const m=new THREE.Mesh(g, dirt); m.material.side=THREE.DoubleSide; m.receiveShadow=true; scene.add(m);
   });
 }
 function buildTrackMeshes(){
@@ -1365,14 +1429,15 @@ function buildTrackMeshes(){
   }
 
   scene.add(buildRibbon(CONFIG.roadHalfWidth, 0.07, null, null, null, 1, null, roadMat, true)); // textured road (per-sample width -> no corner fold)
+  buildRoadSkirts();                                    // embankment sides on elevated roads -> a solid causeway, never a floating slab seen from below
   buildEdgeLines();                                     // crisp painted edge lines hugging the road edge
   buildKerbs();                                         // red/white rumble-strip kerbs on the outside of corners
   // GTA-style raised sidewalks + curb on both sides (the curb is also our barrier)
   if(terrainAmp<=0){                                     // raised city sidewalks only on flat themes
     const curbMat=new THREE.MeshStandardMaterial({color:0x9a9da3, roughness:0.85});
     const walkMat=new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95});
-    buildCurbFace(CONFIG.roadHalfWidth, 0.06, 0.28, curbMat);
-    buildSideStrips(CONFIG.roadHalfWidth, CONFIG.roadHalfWidth+4.5, 0.28, walkMat);
+    buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
+    buildSideStrips(0, 4.5, 0.28, walkMat);             // sidewalk = road edge .. edge+4.5 (never inverts at corners)
   }
   buildBarriers();                                       // continuous visible barrier on EVERY track
 
@@ -1862,11 +1927,11 @@ let birdFlock=null;
 // flying bird flock that circles high above the track (animated in the render loop)
 function buildBirds(rng){
   birdFlock=new THREE.Group(); const birds=[];
-  const wMat=new THREE.MeshStandardMaterial({color:0x2e2e36, roughness:0.95, flatShading:true});
-  const wGeo=new THREE.BoxGeometry(2.6,0.1,0.7); wGeo.translate(1.3,0,0);   // a wing pivoting at the body
-  for(let i=0;i<13;i++){ const b=new THREE.Group();
+  const wMat=new THREE.MeshStandardMaterial({color:0x4a4650, roughness:0.95, flatShading:true});
+  const wGeo=new THREE.BoxGeometry(1.0,0.05,0.32); wGeo.translate(0.5,0,0);   // a wing pivoting at the body — SMALL, so distant birds read as birds (car-sized dark slabs looked like floating glitch objects on the horizon)
+  for(let i=0;i<9;i++){ const b=new THREE.Group();
     const lw=new THREE.Mesh(wGeo,wMat), rw=new THREE.Mesh(wGeo,wMat); rw.scale.x=-1;
-    b.add(lw,rw); b.userData={ph:rng()*6.28, lw, rw, sp:0.7+rng()*0.7, rad:70+rng()*120, h:48+rng()*42, a0:rng()*6.28, dir:rng()>0.5?1:-1};
+    b.add(lw,rw); b.userData={ph:rng()*6.28, lw, rw, sp:0.7+rng()*0.7, rad:70+rng()*120, h:58+rng()*40, a0:rng()*6.28, dir:rng()>0.5?1:-1};
     birdFlock.add(b); birds.push(b); }
   birdFlock.userData={birds}; scene.add(birdFlock);
 }
@@ -2713,6 +2778,15 @@ function updateCar(c, inp, dt){
     }
   }
 
+  // OFF-ROAD RESCUE (race modes): if a car somehow ends up stranded off the road (any bug, any track), snap it back after 2.5s — nobody is EVER stuck in the void
+  if(!brActive){
+    if(c.trackDist > (sampleHW[c.trackIdx]||CONFIG.roadHalfWidth)+9){ c._lostT=(c._lostT||0)+dt;
+      if(c._lostT>2.5){ const p=samplePts[c.trackIdx], t=sampleTan[c.trackIdx];
+        c.pos.set(p.x,p.y); c.heading=Math.atan2(t.x,t.y); c.vel.set(t.x*9,t.y*9); c.air=0; c._airV=0; c._lostT=0;
+        if(c.isPlayer){ _scy=null; camShake=Math.min(camShake+0.25,0.8); flash('↩ BACK ON TRACK','good'); } }
+    } else c._lostT=0;
+  }
+
   // lap / checkpoint progress
   updateProgress(c, prev);
 
@@ -2859,10 +2933,10 @@ function updateCamera(dt){
   wantDist=Math.max(1.6,wantDist);
   _camDist = (_camDist==null||!isFinite(_camDist)) ? wantDist : _camDist + (wantDist-_camDist)*(1-Math.exp(-(wantDist<_camDist?26:7)*dt));   // pull IN fast (no clip), ease OUT slow (no snap)
   _cd.set(c.pos.x - _f.x*_camDist + sx, V.height + _scy + (c.boosting?-0.4:0), c.pos.y - _f.y*_camDist + sz);
-  if(brActive){ const gc=terrainHeight(_cd.x, _cd.z); if(_cd.y < gc+1.6) _cd.y = gc+1.6; }   // never let the battle camera target sink below the ground
+  { const gc=terrainHeight(_cd.x, _cd.z); if(_cd.y < gc+1.6) _cd.y = gc+1.6; }   // never let the camera target sink below the ground (ANY mode — race dips included)
   const k=1-Math.exp(-CONFIG.camLerp*dt);
   camera.position.lerp(_cd, k);
-  if(brActive){ const gc=terrainHeight(camera.position.x, camera.position.z); if(camera.position.y < gc+1.6) camera.position.y = gc+1.6; }   // + hard clamp the ACTUAL position (lerp can lag below a fast-rising hill)
+  { const gc=terrainHeight(camera.position.x, camera.position.z); if(camera.position.y < gc+1.6) camera.position.y = gc+1.6; }   // + hard clamp the ACTUAL position (lerp can lag below a fast-rising hill)
   _cl.set(c.pos.x + _f.x*V.look, 1.2+_scy, c.pos.y + _f.y*V.look);
   camera.lookAt(_cl);
   let targetFov=(c.boosting?V.fov+12:V.fov) + Math.min(player.vel.length()/CONFIG.topSpeed,1)*13;   // stronger FOV creep with speed
@@ -3412,7 +3486,9 @@ function update(dt){
     for(let i=1;i<cars.length;i++){ cars[i].rig.group.visible=false; if(cars[i].shadowMesh) cars[i].shadowMesh.visible=false; }   // only the player's car (+ its shadow) on display
     player.rig.group.visible=true; syncCarMesh(player);
     const cx=player.pos.x, cz=player.pos.y, ang=menuT*0.32, cy=player.visY||0;
-    camera.position.set(cx + Math.sin(ang)*8.2, 2.5+cy, cz + Math.cos(ang)*8.2);
+    const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*Math.max(camera.aspect,0.3));      // horizontal FOV
+    const dist=Math.max(8.2, 3.4/Math.tan(hf/2)+3.4);                                        // pull back on narrow (portrait) screens so the WHOLE car + kit parts fit the frame
+    camera.position.set(cx + Math.sin(ang)*dist, 2.5+cy+(dist-8.2)*0.12, cz + Math.cos(ang)*dist);
     camera.lookAt(cx, 1.05+cy, cz);
   }
   for(let i=0;i<cars.length;i++) updateAntenna(cars[i], dt);   // antenna-flag sway + flutter on every car
