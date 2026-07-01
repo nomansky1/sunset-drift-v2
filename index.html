@@ -2553,10 +2553,10 @@ function placeGrid(){
     c._nmT=-9; c._rivAhead=undefined;                      // reset near-miss timestamp + rival side so they work on race 2+
     if(!c.isPlayer){
       const rampT=(TRACKS.length>1 ? currentTrack/(TRACKS.length-1) : 0);        // 0 (easiest track) .. 1 (hardest track) — difficulty RAMPS along the unlock ladder
-      const dLift=(difficulty==='easy'?-0.06:difficulty==='hard'?0.22:0.07);     // the easy/normal/hard toggle shifts the whole ramp
-      const pw=clamp(rampT*0.62 + dLift + (champ.active?0.04*champ.round:0), 0, 0.95);   // combined AI power
-      aiAccel=1 + pw*0.78; aiCap=1.12 + pw*0.5; aiAggro=0.95 + pw*0.4;           // grip-carry/accel, rubber-band ceiling, corner aggression
-      c.aiBase=(0.95+((i*0.0185)%0.06)) * (1 + pw*0.36);                          // top-speed baseline
+      const dLift=(difficulty==='easy'?-0.14:difficulty==='hard'?0.30:0.05);     // the easy/normal/hard toggle shifts the whole ramp — wider spread so the toggle is meaningful (easy = winnable by newcomers, hard = pushes a skilled player)
+      const pw=clamp(rampT*0.44 + 0.16 + dLift + (champ.active?0.04*champ.round:0), 0, 0.86);   // combined AI power — RAISED FLOOR (early tracks no longer a walkover for a strong player) + kept a high ceiling, gentler slope so no trivial->wall cliff
+      aiAccel=1 + pw*0.72; aiCap=1.12 + pw*0.46; aiAggro=0.96 + pw*0.38;         // strong top-end (challenges a skilled human) but a firmer floor
+      c.aiBase=(0.95+((i*0.0185)%0.06)) * (1 + pw*0.33);                          // top-speed baseline
       c.aiMiss=clamp(0.055 - pw*0.05, 0.004, 0.055); }                           // fewer corner errors as it gets harder
     syncCarMesh(c);
   }
