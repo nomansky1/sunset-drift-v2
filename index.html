@@ -1217,22 +1217,23 @@ function buildTrackTables(CTRL){
     sampleTan.push(t); sampleNorm.push(new THREE.Vector2(-t.y, t.x));
     if(i>0) cum += samplePts[i].distanceTo(samplePts[i-1]); sampleCum.push(cum);
   }
-  // per-sample road half-width: corners tighter than the road's half-width fold the inner edge -> narrow them gracefully
+  // per-sample road half-width. TWO safety constraints so BARRIERS NEVER CROSS on any track:
   sampleHW=new Array(SAMPLES); const avgSp=(cum+samplePts[SAMPLES-1].distanceTo(samplePts[0]))/SAMPLES;
+  const radHW=new Array(SAMPLES);
   for(let i=0;i<SAMPLES;i++){ const t0=sampleTan[(i-3+SAMPLES)%SAMPLES], t1=sampleTan[(i+3)%SAMPLES];
     const dot=clamp(t0.x*t1.x+t0.y*t1.y,-1,1), ang=Math.acos(dot);
     const radius = ang>0.002 ? (6*avgSp)/ang : 9999;
-    sampleHW[i]=Math.min(CONFIG.roadHalfWidth, Math.max(6, radius*0.7)); }   // inner edge must stay inside the turn radius
-  const tmp=sampleHW.slice();                                    // light taper so the width transitions (without un-narrowing the apex)
-  for(let i=0;i<SAMPLES;i++){ let s=0; for(let k=-2;k<=2;k++) s+=tmp[((i+k)%SAMPLES+SAMPLES)%SAMPLES]; sampleHW[i]=s/5; }
-  // SELF-PROXIMITY narrowing: where the track passes close to a DIFFERENT leg of itself, pull the road+barrier in so the two legs' barriers can never overlap/cross (kills the "barriers crossing" on tight folds — for every track, present or future)
+    radHW[i]=Math.min(CONFIG.roadHalfWidth, Math.max(3.2, Math.min(radius*0.72, radius-1.1))); }   // (a) RADIUS: inner barrier (hw+0.3) must stay INSIDE the turn radius -> no self-cross at a tight apex (removed the max(6) floor that forced the barrier past the radius)
+  // (b) SELF-PROXIMITY: nearest DIFFERENT leg (skip only the tight local stretch d<18 so hairpin folds ARE caught), cap so both legs' barriers fit inside the gap
   const cap=new Array(SAMPLES).fill(999);
   for(let i=0;i<SAMPLES;i++){ let nearSq=Infinity;
-    for(let k=0;k<SAMPLES;k++){ const id=Math.abs(i-k), d=Math.min(id, SAMPLES-id); if(d<40) continue;   // skip the same continuous stretch
+    for(let k=0;k<SAMPLES;k++){ const id=Math.abs(i-k), d=Math.min(id, SAMPLES-id); if(d<18) continue;
       const q=samplePts[i].distanceToSquared(samplePts[k]); if(q<nearSq) nearSq=q; }
-    if(nearSq<Infinity) cap[i]=Math.sqrt(nearSq)*0.5 - 2.0; }                       // each leg's barrier (hw+0.75) must fit inside half the gap
-  const capW=cap.slice(); for(let i=0;i<SAMPLES;i++){ let m=999; for(let k=-4;k<=4;k++){ const v=capW[((i+k)%SAMPLES+SAMPLES)%SAMPLES]; if(v<m)m=v; } cap[i]=m; }   // min-filter widens the narrow zone (smooth taper) WITHOUT averaging the minimum back up
-  for(let i=0;i<SAMPLES;i++) sampleHW[i]=Math.max(3.2, Math.min(sampleHW[i], cap[i]));
+    if(nearSq<Infinity) cap[i]=Math.sqrt(nearSq)*0.5 - 1.0; }
+  const capW=cap.slice(); for(let i=0;i<SAMPLES;i++){ let m=999; for(let k=-5;k<=5;k++){ const v=capW[((i+k)%SAMPLES+SAMPLES)%SAMPLES]; if(v<m)m=v; } cap[i]=m; }   // min-filter widens the narrow zone (smooth taper) without averaging the minimum back up
+  for(let i=0;i<SAMPLES;i++) sampleHW[i]=Math.max(3.0, Math.min(radHW[i], cap[i]));
+  const pre=sampleHW.slice();                                    // taper DOWN only -> smooths the narrow zone outward, NEVER un-narrows a safe apex
+  for(let i=0;i<SAMPLES;i++){ let s=0; for(let k=-2;k<=2;k++) s+=pre[((i+k)%SAMPLES+SAMPLES)%SAMPLES]; sampleHW[i]=Math.min(pre[i], s/5); }
   // centroid + radius for camera/shadow bounds
   trackCentroid.set(0,0); samplePts.forEach(p=>trackCentroid.add(p)); trackCentroid.multiplyScalar(1/SAMPLES);
   trackRadius=0; samplePts.forEach(p=> trackRadius=Math.max(trackRadius, p.distanceTo(trackCentroid)));
@@ -3654,6 +3655,7 @@ function init(){
   // cars
   cars=[]; player=makeCar(CONFIG.colors.player, true); cars.push(player);
   for(let i=0;i<CONFIG.aiCount;i++) cars.push(makeCar(CONFIG.colors.ai[i%CONFIG.colors.ai.length], false));
+  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.glb($|\?)/i.test(u) ? (u.split('?')[0]+'?v=4') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh car/prop GLBs (fixes stale/partial cache -> "car models gone")
   loadCarModels();   // upgrades the box placeholders to the realistic GLB when it loads
   loadPropModels();  // swaps procedural trees/rocks/palms for real CC0 GLBs when they load
 
