@@ -78,8 +78,14 @@
             -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   .hidden{ display:none !important; }
   /* Horizon-Chase-style menu: car showcase in the center, UI top + bottom */
-  #menu{ justify-content:space-between; padding:14px 14px; backdrop-filter:none; -webkit-backdrop-filter:none;
-         background:linear-gradient(180deg, rgba(8,5,14,.96) 0%, rgba(10,6,18,.5) 22%, rgba(10,6,18,0) 40%, rgba(10,6,18,0) 56%, rgba(10,6,18,.55) 72%, rgba(8,5,14,.97) 100%); }
+  #menu{ justify-content:space-between; padding:14px 14px; -webkit-backdrop-filter:blur(3px) saturate(1.08); backdrop-filter:blur(3px) saturate(1.08);
+         background:
+           radial-gradient(125% 80% at 50% 60%, rgba(255,142,72,.11) 0%, rgba(10,6,18,0) 33%, rgba(5,3,10,.74) 100%),
+           linear-gradient(180deg, rgba(6,4,11,.98) 0%, rgba(9,5,16,.58) 19%, rgba(9,5,16,.12) 41%, rgba(9,5,16,.18) 58%, rgba(9,5,16,.66) 74%, rgba(5,3,10,.99) 100%); }
+  #menu[data-tab="garage"]{ -webkit-backdrop-filter:none; backdrop-filter:none;   /* GARAGE: keep the showcased car crisp (no depth-of-field blur) */
+         background:
+           radial-gradient(120% 74% at 50% 52%, rgba(255,142,72,.12) 0%, rgba(10,6,18,0) 36%, rgba(5,3,10,.66) 100%),
+           linear-gradient(180deg, rgba(6,4,11,.97) 0%, rgba(9,5,16,.44) 18%, rgba(9,5,16,.03) 42%, rgba(9,5,16,.06) 58%, rgba(9,5,16,.5) 74%, rgba(5,3,10,.99) 100%); }
   .menuTop,.menuBot{ display:flex; flex-direction:column; align-items:center; width:100%; }
   .menuBot{ gap:9px; }
   #carShow{ display:flex; gap:14px; align-items:center; justify-content:center; }
@@ -144,8 +150,8 @@
   #dailyCard .dcL{ display:flex; align-items:center; gap:6px; color:#ffe2b0; letter-spacing:.4px; } #dailyCard .dcL b{ color:#fff; } #dailyCard #dcTrack{ opacity:.85; }
   #dailyCard .dcR{ display:flex; align-items:center; gap:10px; } #dailyCard #dcStreak{ color:#ffd23b; font-weight:900; white-space:nowrap; }
   #dailyCard .dcPlay{ padding:5px 13px; border-radius:9px; background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#1a0f08; font-weight:900; letter-spacing:.5px; box-shadow:0 3px 10px rgba(255,90,40,.4); }
-  .trackBtn{ pointer-events:auto; padding:9px 11px 8px; border-radius:16px; border:1px solid rgba(255,255,255,.09);
-             background:linear-gradient(168deg, rgba(var(--accent-rgb,150,110,190),.20), rgba(11,8,17,.85) 62%); -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
+  .trackBtn{ pointer-events:auto; padding:9px 11px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.10);
+             background:linear-gradient(168deg, rgba(38,26,52,.55), rgba(10,7,15,.78) 66%); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
              display:flex; flex-direction:column; align-items:center; min-width:98px; cursor:pointer; position:relative; overflow:hidden;
              transition:transform .18s cubic-bezier(.34,1.25,.5,1), box-shadow .18s, border-color .18s;
              box-shadow:0 7px 20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1); }
@@ -162,9 +168,9 @@
   .trackBtn:hover{ transform:translateY(-3px); }
   .trackBtn.locked{ opacity:.4; filter:grayscale(.75); }
   .trackBtn .clock{ position:absolute; top:5px; right:7px; font-size:15px; z-index:3; text-shadow:0 1px 3px #000; }
-  .trackBtn.sel{ border-color:rgba(var(--accent-rgb,255,210,90),.9);
-                 background:linear-gradient(168deg, rgba(var(--accent-rgb,255,120,60),.44), rgba(13,9,17,.82) 72%);
-                 box-shadow:0 13px 34px rgba(var(--accent-rgb,255,90,60),.5), inset 0 0 0 1px rgba(var(--accent-rgb,255,210,90),.4); transform:translateY(-5px) scale(1.05); z-index:2; }
+  .trackBtn.sel{ border-color:rgba(var(--accent-rgb,255,210,90),.95);
+                 background:linear-gradient(168deg, rgba(var(--accent-rgb,255,120,60),.40), rgba(13,9,17,.82) 74%);
+                 transform:translateY(-6px) scale(1.06); z-index:2; animation:selGlow 2.4s ease-in-out infinite; }
   .trackBtn.sel::before{ opacity:1; height:4px; box-shadow:0 0 12px var(--accent,#ff8a3c); }
   .carArrow{ pointer-events:auto; width:46px; height:46px; border-radius:7px; display:flex; align-items:center; justify-content:center;
              font-size:18px; background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.24); cursor:pointer; transition:.14s; }
@@ -179,9 +185,13 @@
   #volSlider,#musSlider{ pointer-events:auto; width:min(28vw,120px); accent-color:#ff8a3c; cursor:pointer; }
   #musSlider{ accent-color:#7cc0ff; }
   .cta{ margin-top:6px; font-size:min(6.5vw,30px); font-weight:900; letter-spacing:1px; padding:15px 56px; border-radius:6px;
-        background:linear-gradient(100deg,#ff5423,#ff8a2e 48%,#ffc23b); color:#160c06; cursor:pointer;
+        background:linear-gradient(100deg,#ff5423,#ff8a2e 48%,#ffc23b); color:#160c06; cursor:pointer; position:relative; overflow:hidden;
         box-shadow:0 10px 30px rgba(255,90,40,.42), inset 0 1px 0 rgba(255,255,255,.4), inset 0 -2px 0 rgba(120,40,10,.35); animation:bob 1.6s ease-in-out infinite; }
+  .cta::after{ content:''; position:absolute; top:0; bottom:0; left:-60%; width:45%; pointer-events:none;
+        background:linear-gradient(105deg, transparent, rgba(255,255,255,.55), transparent); transform:skewX(-18deg); animation:shine 3.6s ease-in-out infinite; }
+  @keyframes shine{ 0%,62%{ left:-60%; } 84%,100%{ left:130%; } }
   @keyframes bob{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-6px) } }
+  @keyframes selGlow{ 0%,100%{ box-shadow:0 13px 30px rgba(255,90,40,.42), inset 0 0 0 1px rgba(255,210,90,.45); } 50%{ box-shadow:0 14px 40px rgba(255,110,50,.62), inset 0 0 0 1px rgba(255,220,120,.7); } }
   .keys{ margin-top:26px; font-size:min(3.6vw,15px); opacity:.82; line-height:1.9; font-weight:normal; max-width:520px; }
   .keys b{ color:var(--accent2); }
   #results,#champ{ justify-content:safe center; overflow-y:auto; -webkit-overflow-scrolling:touch; }  /* never crop the buttons on a short screen */
@@ -3655,7 +3665,7 @@ function init(){
   // cars
   cars=[]; player=makeCar(CONFIG.colors.player, true); cars.push(player);
   for(let i=0;i<CONFIG.aiCount;i++) cars.push(makeCar(CONFIG.colors.ai[i%CONFIG.colors.ai.length], false));
-  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.glb($|\?)/i.test(u) ? (u.split('?')[0]+'?v=4') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh car/prop GLBs (fixes stale/partial cache -> "car models gone")
+  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=5') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
   loadCarModels();   // upgrades the box placeholders to the realistic GLB when it loads
   loadPropModels();  // swaps procedural trees/rocks/palms for real CC0 GLBs when they load
 
@@ -3669,6 +3679,7 @@ function init(){
   bindKeys(); bindTouch();
   document.querySelectorAll('#tabStrip .tab').forEach(t=> t.addEventListener('click', e=>{ e.stopPropagation();
     const id=t.dataset.tab;
+    document.getElementById('menu').dataset.tab=id;   // lets CSS drop the backdrop-blur in the garage so the showcased car stays sharp
     document.querySelectorAll('#tabStrip .tab').forEach(x=>x.classList.toggle('on', x===t));
     document.querySelectorAll('#mPanels .mPanel').forEach(p=>p.classList.toggle('on', p.id==='panel-'+id)); }));
   document.getElementById('startBtn').addEventListener('click', e=>{ e.stopPropagation(); champ.active=false; startGame(); });
