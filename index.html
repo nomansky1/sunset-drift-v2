@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v2.2-->
+<!--BUILD:v2.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -538,12 +538,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.2</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.3</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v2.2';
+(function(){ const BUILD='v2.3';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1381,18 +1381,21 @@ function buildCurbFace(pad, yLow, yHigh, material){
 function buildRoadSkirts(){
   if(terrainAmp<=0 || !sampleElev.length) return;
   const th=currentTheme?currentTheme.theme:'city';
-  const dirt=new THREE.MeshStandardMaterial({ color: th==='snow'?0x8d99a8 : th==='forest'?0x4e4434 : 0x77604a, roughness:1, metalness:0 });
+  const dirt=new THREE.MeshStandardMaterial({ color: th==='snow'?0x9aa5b2 : th==='forest'?0x5c5142 : 0x8a705a, roughness:1, metalness:0, side:THREE.DoubleSide });
   [1,-1].forEach(side=>{
     const pos=[], idx=[];
     for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j], hw=(sampleHW[j]||CONFIG.roadHalfWidth)+0.3;
       const x=p.x+n.x*hw*side, z=p.y+n.y*hw*side, top=0.06+(sampleElev[j]||0);
-      const bot=Math.min(top-0.2, terrainHeight(x,z)-0.8);          // reach below the local terrain so the face always closes the gap
+      // solid embankment when the ground is close; a shallow DECK FASCIA when the road spans high
+      // (a full-depth curtain walled off underpasses into a pitch-black canopy)
+      const bot=Math.max( Math.min(top-0.2, terrainHeight(x,z)-0.8), top-4.5 );
       pos.push(x, top, z,  x, bot, z); }
     for(let i=0;i<SAMPLES;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
     g.setIndex(idx); g.computeVertexNormals();
-    const m=new THREE.Mesh(g, dirt); m.material.side=THREE.DoubleSide; m.receiveShadow=true; scene.add(m);
+    const m=new THREE.Mesh(g, dirt); m.receiveShadow=true; scene.add(m);
   });
+  scene.add(buildRibbon(CONFIG.roadHalfWidth, -1.0, null, null, null, 1, null, dirt, true));   // thin underside deck -> the road has real thickness seen from below (no paper edge)
 }
 function buildTrackMeshes(){
   const loader=new THREE.TextureLoader();
@@ -2937,6 +2940,7 @@ function updateCamera(dt){
   const k=1-Math.exp(-CONFIG.camLerp*dt);
   camera.position.lerp(_cd, k);
   { const gc=terrainHeight(camera.position.x, camera.position.z); if(camera.position.y < gc+1.6) camera.position.y = gc+1.6; }   // + hard clamp the ACTUAL position (lerp can lag below a fast-rising hill)
+  if(!brActive){ const rs=(c.visY||0)+1.05; if(camera.position.y < rs) camera.position.y = rs; }   // never sink below the car's ROAD surface either — on crests the lagging camera dipped under the roadbed and stared into the dark skirt ("black canopy under a bridge")
   _cl.set(c.pos.x + _f.x*V.look, 1.2+_scy, c.pos.y + _f.y*V.look);
   camera.lookAt(_cl);
   let targetFov=(c.boosting?V.fov+12:V.fov) + Math.min(player.vel.length()/CONFIG.topSpeed,1)*13;   // stronger FOV creep with speed
