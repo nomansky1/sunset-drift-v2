@@ -871,6 +871,7 @@ function buyKit(i,key){ const lv=upgOf(i)[key]||0; if(lv>=3) return; const cost=
 function loadSelCar(){ try{ selectedCar=Math.min(CARS.length-1, Math.max(0, parseInt(localStorage.getItem('sd_car'))||0)); }catch(e){ selectedCar=0; } }
 function saveSelCar(){ try{ localStorage.setItem('sd_car', selectedCar); }catch(e){} }
 let WORLD=null, currentTrack=0, currentTheme=null;                 // selectable themed tracks (rebuildable world)
+let camColliders=[];                                               // tall obstacles {x,z,r,top} the chase-cam must never clip THROUGH (rebuilt per world)
 let terrainNoise=null, terrainAmp=0, terrainBiome='flat';         // procedural terrain (elevated nature themes)
 const TERRAIN={ coast:{amp:15,biome:'coast'}, desert:{amp:44,biome:'desert'}, forest:{amp:66,biome:'forest'}, beach:{amp:34,biome:'beach'}, snow:{amp:58,biome:'snow'} };
 const TRACKS=[
@@ -1659,6 +1660,7 @@ function buildCity(rng){
     const baseMtx=new THREE.Matrix4().compose(new THREE.Vector3(x,0,z), qb, new THREE.Vector3(fw,baseH,fd)); stores[si].push({mtx:baseMtx,tint});
     sidewalks.push({x,z,fw,fd,qb});                                  // raised concrete sidewalk slab around the building base
     const towerMtx=new THREE.Matrix4().compose(new THREE.Vector3(x,baseH,z), qb, new THREE.Vector3(fw*0.97,towerH,fd*0.97)); towers[fi].push({mtx:towerMtx,tint});
+    if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth+55) camColliders.push({x,z,r:Math.hypot(fw,fd)*0.5+1, top:baseH+towerH});   // roadside building -> chase-cam must not clip through it
     if(towerH>14) roofs.push({x,z,top:baseH+towerH,fw:fw*0.97,fd:fd*0.97,ang,tall:towerH>30,rk:rng()});   // rooftops -> greebles (breaks the boxy skyline)
     if(towerH>26 && rng()>0.55) waterTowers.push({x,z,top:baseH+towerH});
     if(rng()>0.86) billboards.push({x,z,y:baseH+Math.min(towerH,30)*0.7,fw,fd});
@@ -2814,7 +2816,7 @@ let camView=0;
 function loadCamView(){ try{ camView=Math.min(CAM_VIEWS.length-1, Math.max(0, parseInt(localStorage.getItem('sd_cam'))||0)); }catch(e){ camView=0; } }
 function cycleCam(){ camView=(camView+1)%CAM_VIEWS.length; try{ localStorage.setItem('sd_cam',camView); }catch(e){}
   popup('📷 '+CAM_VIEWS[camView].name+' VIEW', '#7ce0ff'); }
-let _scy=null;   // smoothed camera elevation -> no pitch-snap over hill crests
+let _scy=null, _camDist=null;   // smoothed camera elevation + smoothed collision-pulled distance
 function updateCamera(dt){
   const V=CAM_VIEWS[camView]||CAM_VIEWS[0];
   const c=player; _f.set(Math.sin(c.heading), Math.cos(c.heading));
@@ -2822,7 +2824,15 @@ function updateCamera(dt){
   const sx=amt?(Math.random()-.5)*amt:0, sz=amt?(Math.random()-.5)*amt:0;
   const cy=c.visY||0;                                          // follow the road elevation
   _scy = (_scy==null) ? cy : _scy + (cy-_scy)*(1-Math.exp(-8*dt));   // smooth the vertical follow so crests/dips don't jerk the view
-  _cd.set(c.pos.x - _f.x*V.dist + sx, V.height + _scy + (c.boosting?-0.4:0), c.pos.y - _f.y*V.dist + sz);
+  // CAMERA COLLISION: never let the chase-cam sit inside/behind a roadside building (no obstacle "bleed" through the view)
+  let wantDist=V.dist;
+  if(V.dist>0 && camColliders.length){ const bx=-_f.x, bz=-_f.y, camH=V.height+_scy;   // bx,bz = unit vector from car toward the camera
+    for(let ci=0;ci<camColliders.length;ci++){ const o=camColliders[ci]; if(camH>o.top+1.5) continue;   // cam rides above it -> can't clip
+      const rx=o.x-c.pos.x, rz=o.z-c.pos.y, along=rx*bx+rz*bz; if(along<=0 || along>V.dist+o.r) continue;   // building is in front, or past the cam
+      if(Math.abs(rx*(-bz)+rz*bx) < o.r){ const d=along-o.r-0.5; if(d<wantDist) wantDist=d; } } }   // building crosses the cam ray -> cap the distance to just before it
+  wantDist=Math.max(1.6,wantDist);
+  _camDist = (_camDist==null||!isFinite(_camDist)) ? wantDist : _camDist + (wantDist-_camDist)*(1-Math.exp(-(wantDist<_camDist?26:7)*dt));   // pull IN fast (no clip), ease OUT slow (no snap)
+  _cd.set(c.pos.x - _f.x*_camDist + sx, V.height + _scy + (c.boosting?-0.4:0), c.pos.y - _f.y*_camDist + sz);
   if(brActive){ const gc=terrainHeight(_cd.x, _cd.z); if(_cd.y < gc+1.6) _cd.y = gc+1.6; }   // never let the battle camera target sink below the ground
   const k=1-Math.exp(-CONFIG.camLerp*dt);
   camera.position.lerp(_cd, k);
@@ -3534,7 +3544,7 @@ function buildWorld(idx){
     }
   }
   if(WORLD){ scene.remove(WORLD); disposeGroup(WORLD); }
-  WORLD=new THREE.Group(); scene.add(WORLD);
+  WORLD=new THREE.Group(); scene.add(WORLD); camColliders=[];   // reset chase-cam obstacle list for the new world
   // fog = the SAME colour the sky shader fades to at the horizon (mix(sky.bot, white, 0.16)) -> distant geo dissolves INTO the sky
   let fogCol = nightMode ? new THREE.Color(0x161d33)
                          : new THREE.Color(currentTheme.sky.bot).lerp(new THREE.Color(0xffffff), 0.16);
