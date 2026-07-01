@@ -876,34 +876,34 @@ const TERRAIN={ coast:{amp:15,biome:'coast'}, desert:{amp:44,biome:'desert'}, fo
 const TRACKS=[
   { name:'GOLDEN MILE', sub:'DOWNTOWN · GOLDEN HOUR', theme:'city', groundHex:'#33363d', fog:0xe6885f,
     sky:{top:0x3a2160,bot:0xff9a5a,sun:0xfff2c0}, sun:[-0.5,0.12,-0.85],
-    ctrl:[[-185,-88],[-45,-92],[55,-66],[120,-92],[185,-80],[188,80],[55,118],[-95,110],[-190,70]] },   // street GP: long straights + a chicane
+    ctrl:[[-150,-142],[145,-142],[184,-104],[182,-62],[140,-54],[150,-10],[178,46],[128,60],[176,104],[100,116],[-30,140],[-152,140],[-172,92],[-116,72],[-150,24],[-90,6],[-138,-46],[-186,-96]] },   // street GP: long main straight, T1 hairpin, right esses, top chicane, concave infield section
   { name:'OCEAN DRIVE', sub:'SUNSET COAST · PALM SWEEP', theme:'coast', groundHex:'#cdab6e', fog:0xffc890, water:-4,
     sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88],
-    ctrl:[[-182,-64],[-30,-120],[110,-88],[188,20],[86,96],[-70,128],[-172,66]] },   // flowing coastal sweeps (fast)
+    ctrl:[[-182,-70],[-30,-120],[70,-96],[60,-40],[150,-30],[186,30],[130,58],[180,96],[40,120],[-70,150],[-150,150],[-176,70],[-150,10],[-186,-64]] },   // flowing coast: fast sweeps + a mid-lap kink + a tightening headland corner
   { name:'THE DOCKS', sub:'INDUSTRIAL · CARGO CIRCUIT', theme:'docks', groundHex:'#2c2e34', fog:0xbcd6ea,
     sky:{top:0x2f7fd0,bot:0xd2e8f7,sun:0xfff4e0}, sun:[-0.5,0.34,-0.78],   // bright blue daytime sky + clouds (was industrial grey)
-    ctrl:[[-185,-90],[5,-95],[15,-25],[185,-20],[185,92],[-45,96],[-55,25],[-185,18]] },   // Z / L technical: two 90-ish sweeps
+    ctrl:[[-172,-120],[150,-120],[150,-78],[130,-70],[-10,-64],[-8,10],[10,24],[168,24],[168,150],[44,150],[40,78],[-96,150],[-172,150],[-170,60],[-100,-30],[-172,-46]] },   // industrial: right-angle container-yard technical + inner keyhole spur
   { name:'SUNSET BEACH', sub:'GOLDEN SANDS · OCEAN', theme:'beach', groundHex:'#e8d2a0', fog:0xbfe0e8, water:-6,
     sky:{top:0x2a8fd8,bot:0xcfeeff,sun:0xfff4d0}, sun:[0.3,0.18,-0.9],
-    ctrl:[[-60,-186],[60,-186],[176,-42],[118,122],[-118,122],[-176,-42]] },   // wide open hexagon w/ a flat start straight
+    ctrl:[[-150,-170],[150,-170],[184,-140],[176,-104],[130,-96],[178,-40],[178,150],[110,150],[120,96],[-120,96],[-110,150],[-178,150],[-178,-40],[-130,-96],[-176,-104],[-184,-140]] },   // long beachfront straights bookended by two hairpin cut-ins
   { name:'PINE PASS', sub:'FOREST · MOUNTAIN TWISTS', theme:'forest', groundHex:'#3f5a34', fog:0x9ab0a0,
     sky:{top:0x2a6abf,bot:0xbfe0f0,sun:0xffffff}, sun:[-0.4,0.32,-0.7],
-    ctrl:[[-185,-60],[-50,-116],[92,-76],[192,-8],[128,82],[-8,112],[-140,140],[-196,46]] },   // twisty serpentine (technical)
+    ctrl:[[-175,-110],[-60,-150],[30,-96],[-16,-44],[70,-70],[122,-40],[70,10],[150,30],[130,90],[186,120],[60,150],[-40,120],[-96,150],[-172,96],[-116,30],[-150,-30],[-186,-64]] },   // twisty forest serpentine: back-to-back esses + a chicane
   { name:'ALPINE', sub:'SNOW PEAKS · ICE PASS', theme:'snow', groundHex:'#e8eef5', fog:0xdfeaf2,
     sky:{top:0x4a6a9a,bot:0xdce8f4,sun:0xffffff}, sun:[0.2,0.34,-0.78],
-    ctrl:[[-95,-180],[95,-180],[180,-30],[180,30],[95,180],[-95,180],[-180,30],[-180,-30]] },   // tall stadium: long side straights + smooth ends
+    ctrl:[[-120,-172],[120,-172],[180,-120],[150,-90],[184,-40],[184,120],[130,168],[70,120],[96,60],[-96,60],[-70,120],[-130,168],[-184,120],[-184,-40],[-150,-90],[-180,-120]] },   // omega: long side straights into a tight U hairpin at the base
   { name:'DUST DEVIL', sub:'DESERT · CANYON RUN', theme:'desert', groundHex:'#c89a5a', fog:0xe8b878,
     sky:{top:0x3a4a86,bot:0xf0a860,sun:0xfff0c0}, sun:[0.4,0.16,-0.85],
-    ctrl:[[-184,-96],[184,-96],[196,-40],[74,122],[-74,122],[-196,-40]] },   // fast triangle: one long back straight
+    ctrl:[[-186,-90],[186,-90],[150,-40],[176,10],[110,44],[150,90],[40,120],[46,150],[-70,150],[-60,90],[-150,110],[-120,40],[-186,-30]] },   // desert: one long back straight into a jagged run of chicanes
   { name:'NEON CROSS', sub:'CITY · MIDNIGHT LOOP', theme:'city', groundHex:'#2b2e37', fog:0xc26a8a,
     sky:{top:0x241a4a,bot:0xc25a80,sun:0xffd8ea}, sun:[0.5,0.12,-0.85],
-    ctrl:[[-185,-95],[80,-98],[188,-32],[188,90],[-40,122],[-185,68]] },   // L-bend street loop
+    ctrl:[[-170,-110],[160,-110],[186,-50],[130,-30],[40,-40],[70,20],[150,30],[168,120],[30,140],[36,60],[-40,70],[-30,140],[-160,120],[-186,20],[-120,-20],[-176,-60]] },   // midnight street: twin infield keyhole loops off a long straight
   { name:'RED CANYON', sub:'DESERT · CANYON SWEEP', theme:'desert', groundHex:'#b5763e', fog:0xe0985a,
     sky:{top:0x4a3a6a,bot:0xe88448,sun:0xffe4b0}, sun:[-0.4,0.16,-0.86],
-    ctrl:[[-186,-42],[-58,-122],[92,-98],[192,22],[80,112],[-92,132],[-186,58]] },   // flowing canyon sweeps
+    ctrl:[[-186,-60],[-70,-120],[10,-70],[-30,-20],[80,-60],[160,-30],[110,30],[180,70],[70,90],[110,150],[-40,130],[-90,150],[-170,100],[-110,20],[-160,-30]] },   // canyon: a continuous run of interlocking S-bends (most technical)
   { name:'TIDE LINE', sub:'BEACH · SHORELINE ARC', theme:'beach', groundHex:'#ecd8a8', fog:0xc2e4ec, water:-6,
     sky:{top:0x2a95dc,bot:0xd6f0ff,sun:0xfff6d6}, sun:[0.34,0.18,-0.9],
-    ctrl:[[-190,-52],[190,-52],[150,92],[0,132],[-150,92]] },   // wide shoreline arch
+    ctrl:[[-180,-70],[180,-70],[186,40],[150,60],[180,96],[110,140],[40,96],[-40,96],[-110,140],[-180,96],[-150,60],[-186,40]] },   // shoreline: long top straight into a scalloped chicane run along the tide
 ];
 let state = 'menu';           // menu | countdown | race | finished | paused
 let countdown = 0, goTimer = 0, raceTime = 0, lastBeepN = 99, menuT = 0;
