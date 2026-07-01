@@ -3046,7 +3046,7 @@ function updateDebris(dt){ for(let i=debris.length-1;i>=0;i--){ const d=debris[i
 const BR={ cars:6, maxHP:160, dmg:2.3, range:54, gunCd:0.24, zoneDps:9, shrink:1.5, zoneMin:46, orbit:28,
   rkDmg:52, rkSplash:10, rkSpeed:56, rkTurn:2.0, rkLife:3.4, rkCd:2.4, rkAmmo:3 };   // GATLING: fast/low-dmg hitscan. ROCKETS: slow homing (rkTurn=dodge knob) + splash + knockback, limited ammo
 let brActive=false, brAlive=0, brWon=false, zoneR=300, zoneCX=0, zoneCZ=0, zoneMesh=null, brTracers=[];
-let rockets=[], explosions=[], pickups=[], hpBars=[], mflashes=[], pickupTimer=0;
+let rockets=[], explosions=[], pickups=[], hpBars=[], mflashes=[], pickupTimer=0, brSupplyT=9;   // brSupplyT = supply-drop countdown
 // GLOBAL weapon upgrades (persist; apply to the player in battle) — the "gun upgrades" arsenal
 let warsenal={gat:0,rkt:0,arm:0};
 function loadArsenal(){ try{ const w=JSON.parse(localStorage.getItem('sd_arsenal')); if(w&&typeof w==='object') warsenal={gat:w.gat|0,rkt:w.rkt|0,arm:w.arm|0}; }catch(e){} }
@@ -3141,23 +3141,33 @@ function muzzleFlash(x,y,z){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.3
 function updateMuzzle(dt){ for(let i=mflashes.length-1;i>=0;i--){ const e=mflashes[i]; e.t+=dt; e.m.scale.setScalar(1+e.t*9); e.m.material.opacity=Math.max(0,0.95*(1-e.t/0.06));
     if(e.t>=0.06){ scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose(); mflashes.splice(i,1); } } }
 /* ---- ARENA PICKUPS: contested repair + rocket-ammo crates (respawn to keep the field stocked) ---- */
-function buildPickupMesh(type){ const g=new THREE.Group(); const heal=type==='heal';
+function buildPickupMesh(type){ const g=new THREE.Group();
+  if(type==='supply'){                                                    // SUPPLY DROP: big gold crate + a light beam (visible arena-wide; everyone rushes it)
+    const crate=new THREE.Mesh(new THREE.BoxGeometry(2.3,2.1,2.3), new THREE.MeshStandardMaterial({color:0xffc23b, metalness:0.5, roughness:0.4, emissive:0x6f4a0e, emissiveIntensity:0.85})); crate.position.y=0.35; g.add(crate);
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.0,70,14,1,true), new THREE.MeshBasicMaterial({color:0xffd23b, transparent:true, opacity:0.14, side:THREE.DoubleSide, depthWrite:false})); beam.position.y=34; g.add(beam);
+    const mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.62), new THREE.MeshBasicMaterial({color:0xfff0c0})); mk.position.y=2.0; g.add(mk);
+    g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
+  const heal=type==='heal';
   const crate=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshStandardMaterial({color:heal?0x2fbf6a:0xff8a2e, metalness:0.35, roughness:0.55, emissive:heal?0x0f4f2a:0x5a2c08, emissiveIntensity:0.7}));
   g.add(crate); const mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.42), new THREE.MeshBasicMaterial({color:heal?0xbfffd6:0xffd9a6})); mk.position.y=1.35; g.add(mk);
   g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
-function spawnPickup(type){ const ang=Math.random()*6.283, rr=18+Math.random()*Math.max(24,zoneR*0.6);
+function spawnPickup(type){ const central=type==='supply', ang=Math.random()*6.283;
+  const rr= central ? Math.random()*Math.max(16,zoneR*0.32) : 18+Math.random()*Math.max(24,zoneR*0.6);   // supply near centre = contested
   const x=zoneCX+Math.cos(ang)*rr, z=zoneCZ+Math.sin(ang)*rr, y=(brActive?terrainHeight(x,z):0)+1.0;
   const m=buildPickupMesh(type); m.position.set(x,y,z); scene.add(m); pickups.push({m,type,x,z,base:y,spin:Math.random()*6}); }
 function updatePickups(dt){ pickupTimer-=dt;
   if(pickups.length<4 && pickupTimer<=0){ pickupTimer=3.5; spawnPickup(Math.random()<0.55?'heal':'rkt'); }
-  for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i]; p.spin+=dt; p.m.rotation.y=p.spin*1.5; p.m.position.y=p.base+Math.sin(p.spin*2.2)*0.2;
-    let taken=false; for(const c of cars){ if(!c.alive) continue; if(p.type==='rkt'&&!c.isPlayer) continue;   // only the player uses rocket crates
-      if(Math.hypot(c.pos.x-p.x, c.pos.y-p.z)<3.4){ collectPickup(p,c); taken=true; break; } }
-    if(taken){ scene.remove(p.m); disposeGroup(p.m); pickups.splice(i,1); pickupTimer=Math.min(pickupTimer,1.5); } } }
-function collectPickup(p,c){ if(p.type==='heal'){ c.hp=Math.min(c.hpMax||BR.maxHP, c.hp+55); if(c.isPlayer) updateBRHud(); }
+  brSupplyT-=dt; if(brSupplyT<=0 && !pickups.some(p=>p.type==='supply')){ brSupplyT=17; spawnPickup('supply'); if(brActive) flash('📦 SUPPLY DROP','good'); }   // periodic contested drop
+  for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i]; p.spin+=dt; p.m.rotation.y=p.spin*(p.type==='supply'?0.8:1.5); p.m.position.y=p.base+Math.sin(p.spin*2.2)*(p.type==='supply'?0.32:0.2);
+    let taken=false; for(const c of cars){ if(!c.alive) continue; if(p.type==='rkt'&&!c.isPlayer) continue;   // rocket crates player-only; heal + supply are for everyone
+      if(Math.hypot(c.pos.x-p.x, c.pos.y-p.z) < (p.type==='supply'?4.4:3.4)){ collectPickup(p,c); taken=true; break; } }
+    if(taken){ scene.remove(p.m); disposeGroup(p.m); pickups.splice(i,1); if(p.type!=='supply') pickupTimer=Math.min(pickupTimer,1.5); } } }
+function collectPickup(p,c){ if(p.type==='supply'){ c.hp=Math.min(c.hpMax||BR.maxHP, c.hp+90); if(c.isPlayer){ c.rkAmmo=(c.rkAmmo||0)+4; updateBRHud(); }
+    for(let i=0;i<20;i++) sparks.emit(p.x,p.base+0.6,p.z,(Math.random()-.5)*10,4+Math.random()*4,(Math.random()-.5)*10, 0.5, 9); }
+  else if(p.type==='heal'){ c.hp=Math.min(c.hpMax||BR.maxHP, c.hp+55); if(c.isPlayer) updateBRHud(); }
   else { c.rkAmmo=(c.rkAmmo||0)+2; if(c.isPlayer) updateBRHud(); }
   for(let i=0;i<10;i++) sparks.emit(p.x,p.base+0.4,p.z,(Math.random()-.5)*6,3+Math.random()*3,(Math.random()-.5)*6, 0.4, 6);
-  if(c.isPlayer){ flash(p.type==='heal'?'+55 HP':'+2 🚀','good'); if(navigator.vibrate){try{navigator.vibrate(14);}catch(e){}} } }
+  if(c.isPlayer){ flash(p.type==='supply'?'📦 SUPPLY! +90 HP · +4 🚀':(p.type==='heal'?'+55 HP':'+2 🚀'),'good'); if(navigator.vibrate){try{navigator.vibrate(p.type==='supply'?30:14);}catch(e){}} } }
 /* ---- ENEMY HP BARS: floating billboards (research #1 tension driver) ---- */
 function buildHpBars(){ clearHpBars(); for(let i=0;i<cars.length;i++){ const g=new THREE.Group();
     const bg=new THREE.Mesh(new THREE.PlaneGeometry(2.3,0.36), new THREE.MeshBasicMaterial({color:0x0c0e12, transparent:true, opacity:0.72, depthTest:false})); bg.renderOrder=997;
@@ -3254,7 +3264,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
     c.brName = c.isPlayer ? 'YOU' : (RACER_NAMES[1+((i-1)%(RACER_NAMES.length-1))]+' '+i);  // stable kill-feed name
     mountGun(c.rig);
     const a=(i/cars.length)*6.283, rr=trackRadius*0.5; c.pos.set(zoneCX+Math.cos(a)*rr, zoneCZ+Math.sin(a)*rr); c.heading=Math.atan2(zoneCX-c.pos.x, zoneCZ-c.pos.y); c.vel.set(0,0); c.air=0; c.trackIdx=i*47; syncCarMesh(c); });
-  buildHpBars(); for(let i=0;i<3;i++) spawnPickup(i%2?'rkt':'heal');   // seed the arena with crates
+  buildHpBars(); for(let i=0;i<3;i++) spawnPickup(i%2?'rkt':'heal'); brSupplyT=9;   // seed the arena with crates + arm the first supply drop
   brAlive=cars.length;
   raceTime=0; countdown=3.0; goTimer=0; lastBeepN=99; state='countdown';
   document.body.classList.remove('inmenu'); elMenu.classList.add('hidden'); elResults.classList.add('hidden');
