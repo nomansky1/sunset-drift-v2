@@ -1503,7 +1503,8 @@ function makeFacadeTexture(rng, type){
     x.fillRect(bx,by,ww,wh);
     x.strokeStyle='rgba(0,0,0,.34)'; x.lineWidth=1; x.strokeRect(bx,by,ww,wh);           // window frame
     if(glassy){ x.fillStyle='rgba(0,0,0,.22)'; x.fillRect(bx+ww*0.5, by, 1, wh); }        // vertical mullion
-    if(lit){ xe.fillStyle=(rng()>0.82?'#cfe4ff':'#ffcf8a'); xe.fillRect(bx+1,by+1,ww-2,wh-2); }   // only lit windows emit (mostly warm, a few cool)
+    if(lit){ const rr=rng(); xe.fillStyle = rr>0.965?'#8fe6d6' : rr>0.90?'#b8d8ff' : rr>0.855?'#ffb59a' : '#ffce88'; xe.fillRect(bx+1,by+1,ww-2,wh-2); }   // lit windows: mostly warm, a few cool/teal/amber accents -> livelier dusk skyline
+    if(lit && glassy && rng()>0.6){ xe.fillStyle='rgba(0,0,0,.35)'; xe.fillRect(bx+ww*0.5,by,1,wh); }   // keep the mullion dark through the glow (no solid neon slab)
   }
   const mk=cv=>{ const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; if('encoding' in t) t.encoding=THREE.sRGBEncoding; return t; };
   return {map:mk(c), emis:mk(e)};
@@ -1830,16 +1831,17 @@ function buildHeroCrane(x,y,z,ang){
 // real-racetrack furniture from the CC0 Kenney Racing Kit (grandstands / pit garages / start gantry / banner towers)
 function buildTrackFurniture(rng){
   if(!propsReady) return;
+  const circuit = currentTheme.theme==='city' || currentTheme.theme==='docks' || currentTheme.theme==='coast';   // grandstands/pits/banners suit street CIRCUITS; scenic rally stages (forest/desert/beach/snow) stay natural (also kills the white-prop "wall" bleed on nature tracks)
   const straights=[]; for(let i=0;i<SAMPLES;i+=2){ const a=sampleTan[(i-4+SAMPLES)%SAMPLES], b=sampleTan[(i+4)%SAMPLES]; if((1-(a.x*b.x+a.y*b.y))<0.02) straights.push(i); }
-  if(propModels.gantry){ const p=samplePts[0], t=sampleTan[0]; instProp(propModels.gantry, [propMat(p.x,p.y, 32, Math.atan2(t.x,t.y), 0)]); }   // start/finish gantry over the road
-  if(propModels.grandstand && straights.length){ const xf=[], step=Math.max(8,Math.floor(straights.length/9));   // grandstands on the outside of straights, facing the track
+  if(propModels.gantry){ const p=samplePts[0], t=sampleTan[0]; instProp(propModels.gantry, [propMat(p.x,p.y, 32, Math.atan2(t.x,t.y), 0)]); }   // start/finish gantry over the road — every race has one
+  if(circuit && propModels.grandstand && straights.length){ const xf=[], step=Math.max(8,Math.floor(straights.length/9));   // grandstands on the outside of straights, facing the track
     for(let k=0;k<straights.length;k+=step){ const i=straights[k], p=samplePts[i], n=sampleNorm[i], side=(k%2)?1:-1, off=CONFIG.roadHalfWidth+11;
       xf.push(propMat(p.x+n.x*off*side, p.y+n.y*off*side, 12, Math.atan2(-n.x*side,-n.y*side), 0)); }
     instProp(propModels.grandstand, xf); }
-  if(propModels.pitgarage){ const xf=[]; for(let g=0;g<6;g++){ const i=(10+g*5)%SAMPLES, p=samplePts[i], n=sampleNorm[i], off=CONFIG.roadHalfWidth+8;   // pit-lane garages near the start
+  if(circuit && propModels.pitgarage){ const xf=[]; for(let g=0;g<6;g++){ const i=(10+g*5)%SAMPLES, p=samplePts[i], n=sampleNorm[i], off=CONFIG.roadHalfWidth+8;   // pit-lane garages near the start
     xf.push(propMat(p.x+n.x*off, p.y+n.y*off, 8, Math.atan2(-n.x,-n.y), 0)); }
     instProp(propModels.pitgarage, xf); }
-  if(propModels.bannertower){ const xf=[]; for(let k=0;k<6;k++){ const i=Math.floor(k/6*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=k%2?1:-1, off=CONFIG.roadHalfWidth+5;
+  if(circuit && propModels.bannertower){ const xf=[]; for(let k=0;k<6;k++){ const i=Math.floor(k/6*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=k%2?1:-1, off=CONFIG.roadHalfWidth+9;
     xf.push(propMat(p.x+n.x*off*side, p.y+n.y*off*side, 9, rng()*6.28, 0)); }
     instProp(propModels.bannertower, xf); }
 }
@@ -2053,9 +2055,10 @@ function buildForest(rng){
     trees.forEach((t,k)=>{ _m.compose(pv.set(t.x,terrainHeight(t.x,t.z),t.z), q, sv.set(t.sc,t.sc,t.sc)); trunk.setMatrixAt(k,_m); pine.setMatrixAt(k,_m); });
     trunk.instanceMatrix.needsUpdate=pine.instanceMatrix.needsUpdate=true; trunk.castShadow=pine.castShadow=!isTouch; scene.add(trunk); scene.add(pine);
   }
-  const rrocks=[]; for(let k=0;k<16;k++){ const a=rng()*6.283, rad=trackRadius+18+rng()*200, x=trackCentroid.x+Math.cos(a)*rad, z=trackCentroid.y+Math.sin(a)*rad; if(distToTrackApprox(x,z)<18) continue; rrocks.push({x,z,r:2.5+rng()*4}); }
-  if(propsReady && propModels.rock){                         // Kenney flat mossy rocks on the forest floor
-    instProp(propModels.rock, rrocks.map(b=> propMat(b.x,b.z, b.r*1.6, rng()*6.283, 0, true)));   // tilt to slope
+  const rrocks=[]; for(let k=0;k<16;k++){ const a=rng()*6.283, rad=trackRadius+26+rng()*190, x=trackCentroid.x+Math.cos(a)*rad, z=trackCentroid.y+Math.sin(a)*rad; if(distToTrackApprox(x,z)<26) continue; rrocks.push({x,z,r:1.8+rng()*2.4}); }
+  if(propsReady && propModels.rock){                         // Kenney mossy rocks on the forest floor
+    propModels.rock.forEach(p=>{ if(p.material&&!p.material.map){ p.material.color.setHex(0x5c5f52); p.material.roughness=1; p.material.metalness=0; } });   // rock.glb shipped an untextured near-WHITE material -> force mossy grey (kills the white-slab "wall" bleeding into view)
+    instProp(propModels.rock, rrocks.map(b=> propMat(b.x,b.z, b.r*0.9, rng()*6.283, 0, true)));   // small floor rocks (was oversized -> read as a wall), tilted to slope
   } else {
     const bmesh=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0), new THREE.MeshStandardMaterial({color:0x6a6a64,flatShading:true,roughness:1}), rrocks.length);
     rrocks.forEach((b,k)=>{ _m.compose(pv.set(b.x,terrainHeight(b.x,b.z)+b.r*0.4,b.z), q, sv.set(b.r,b.r*0.8,b.r)); bmesh.setMatrixAt(k,_m); });
