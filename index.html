@@ -1209,6 +1209,8 @@ function nearest(pos, prev){
   let best=prev, bd=Infinity; const R=46;
   for(let k=-R;k<=R;k++){ const i=((prev+k)%SAMPLES+SAMPLES)%SAMPLES; const p=samplePts[i];
     const dx=p.x-pos.x, dz=p.y-pos.y, d=dx*dx+dz*dz; if(d<bd){ bd=d; best=i; } }
+  if(bd > 784){                                          // windowed search missed (car >28u from any nearby sample -> off-road near a DIFFERENT leg of a folded track, or a big desert jump); FULL re-sync so trackIdx never locks onto the wrong leg -> the curb clamp always pulls you back to the REAL road
+    for(let i=0;i<SAMPLES;i++){ const p=samplePts[i]; const dx=p.x-pos.x, dz=p.y-pos.y, d=dx*dx+dz*dz; if(d<bd){ bd=d; best=i; } } }
   return { idx:best, dist:Math.sqrt(bd) };
 }
 
