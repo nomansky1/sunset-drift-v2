@@ -2852,7 +2852,9 @@ function updateCamera(dt){
   if(brActive){ const gc=terrainHeight(camera.position.x, camera.position.z); if(camera.position.y < gc+1.6) camera.position.y = gc+1.6; }   // + hard clamp the ACTUAL position (lerp can lag below a fast-rising hill)
   _cl.set(c.pos.x + _f.x*V.look, 1.2+_scy, c.pos.y + _f.y*V.look);
   camera.lookAt(_cl);
-  const targetFov=(c.boosting?V.fov+12:V.fov) + Math.min(player.vel.length()/CONFIG.topSpeed,1)*13;   // stronger FOV creep with speed
+  let targetFov=(c.boosting?V.fov+12:V.fov) + Math.min(player.vel.length()/CONFIG.topSpeed,1)*13;   // stronger FOV creep with speed
+  const maxV=2*Math.atan(Math.tan((102*Math.PI/180)/2)/Math.max(camera.aspect,0.5))*180/Math.PI;   // cap so the HORIZONTAL fov <= ~102deg -> landscape isn't a fisheye (portrait is unaffected)
+  targetFov=Math.min(targetFov, maxV);
   camera.fov=lerp(camera.fov,targetFov,0.08); camera.updateProjectionMatrix();
   if(cinePass){ const sr=Math.min(player.vel.length()/CONFIG.topSpeed,1.4);   // speed-driven motion blur + speed lines (engage earlier)
     const tgt=Math.min(Math.max(0,sr-0.22)*1.15 + (c.boosting?0.5:0), 1.4);
@@ -3475,6 +3477,7 @@ function buildComposer(){
   }catch(e){ composer=null; }
 }
 function animate(){ requestAnimationFrame(animate);
+  if(Math.abs(camera.aspect - innerWidth/Math.max(1,innerHeight)) > 0.02) onResize();   // self-heal a missed resize (mobile URL-bar / orientation) so the composer never renders at a stale aspect
   const dt=Math.min(clock.getDelta(),0.05); update(dt);
   if(skyMat) skyMat.uniforms.uTime.value=clock.getElapsedTime();   // living sky: drift clouds + breathe sun
   if(waterMat) waterMat.uniforms.uTime.value=clock.getElapsedTime();   // rolling ocean waves
@@ -3745,7 +3748,11 @@ function init(){
 }
 function onResize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setPixelRatio(lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2)); renderer.setSize(innerWidth, innerHeight);
-  if(composer) composer.setSize(innerWidth, innerHeight); checkOrient(); }
+  if(composer){ composer.setSize(innerWidth, innerHeight);
+    // REBUILD the composer on a big aspect change (portrait<->landscape): UnrealBloomPass keeps a stale-aspect blur target through setSize, which corrupts the landscape frame into BLACK BANDS
+    if(onResize._a==null || Math.abs(onResize._a - camera.aspect) > 0.2){ try{ if(composer.dispose) composer.dispose(); }catch(e){} buildComposer(); } }
+  onResize._a = camera.aspect;
+  checkOrient(); }
 function checkOrient(){ document.body.classList.toggle('portrait', isTouch && innerHeight>innerWidth); }
 
 init();
