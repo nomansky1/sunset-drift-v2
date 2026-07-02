@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v3.5-->
+<!--BUILD:v3.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -431,6 +431,27 @@
     #resReward{ font-size:15px; margin-top:4px; } #resBtnRow{ margin-top:8px; }
     #nextBtn{ margin-top:6px; } #champRound{ margin:4px 0 8px; } #champTable{ gap:4px; } .champRow{ padding:6px 12px; }
   }
+
+  /* ---------- v3.6 menu FX: beat EQ + embers + brand shine + 3D map + car slider ---------- */
+  #menuFx{ position:absolute; inset:0; z-index:0; pointer-events:none; }
+  #menu>*{ position:relative; z-index:1; }
+  .brand{ position:relative; overflow:hidden; }
+  .brand::after{ content:''; position:absolute; top:0; bottom:0; left:-60%; width:34%;
+    background:linear-gradient(105deg, transparent, rgba(255,240,200,.55), transparent);
+    transform:skewX(-18deg); animation:brandShine 4.2s ease-in-out infinite; pointer-events:none; }
+  @keyframes brandShine{ 0%,55%{ left:-60%; } 85%,100%{ left:130%; } }
+  #map3d{ display:block; width:min(46%,210px); height:104px; margin:8px auto 2px; border-radius:12px;
+    background:rgba(10,7,16,.55); border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 0 26px rgba(255,120,50,.08); }
+  #carSlider{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding:6px 40%;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:4px 0 2px; pointer-events:auto; }
+  #carSlider::-webkit-scrollbar{ display:none; }
+  .csChip{ scroll-snap-align:center; flex:0 0 auto; min-width:86px; text-align:center; padding:7px 10px;
+    border-radius:10px; background:rgba(30,22,40,.72); border:1px solid rgba(255,255,255,.12);
+    font-weight:800; font-size:11px; letter-spacing:.4px; color:#cfc8dd; transition:transform .15s, background .15s; }
+  .csChip.sel{ background:linear-gradient(140deg,#ff5a2c,#a13bff); color:#fff; transform:scale(1.12);
+    box-shadow:0 4px 16px rgba(255,90,44,.45); }
+  .csChip img{ height:11px; vertical-align:-1px; margin-right:4px; border-radius:2px; }
 </style>
 </head>
 <body>
@@ -471,6 +492,7 @@
 <div id="hitMark">✕</div>
 <div id="killFeed"></div>
 <div id="menu" class="overlay">
+  <canvas id="menuFx"></canvas>
   <div id="coinBadge">🪙 0</div>
   <div id="topBar">
     <div class="brand">SUNSET<span>DRIFT</span></div>
@@ -483,6 +505,7 @@
   <div id="mPanels">
     <div class="mPanel on" id="panel-race">
       <div class="sub" id="trackSub">DOWNTOWN · GOLDEN HOUR</div>
+      <canvas id="map3d" width="420" height="208"></canvas>
       <div id="dailyCard"><div class="dcL">🔥 <b>DAILY</b> <span id="dcTrack">—</span></div><div class="dcR"><span id="dcStreak"></span><span class="dcPlay" id="dcPlay">PLAY&nbsp;▸</span></div></div>
       <div id="trackPick">
         <div class="trackBtn sel" data-i="0"><div class="ic">🌇</div><b>GOLDEN MILE</b><span>Golden Hour</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
@@ -501,6 +524,7 @@
     <div class="mPanel" id="panel-garage">
       <div id="garL" class="garPanel">
         <div id="carName">🏎 DRIFTER</div>
+        <div id="carSlider"></div>
         <div id="carStats">
           <div class="stat"><label>SPD</label><div class="bar"><i id="statSpd"></i></div></div>
           <div class="stat"><label>GRIP</label><div class="bar"><i id="statGrip"></i></div></div>
@@ -573,12 +597,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.5</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.6</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v3.5';
+(function(){ const BUILD='v3.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2869,8 +2893,9 @@ function placeGrid(){
     c._nmT=-9; c._rivAhead=undefined;                      // reset near-miss timestamp + rival side so they work on race 2+
     if(!c.isPlayer){
       const rampT=(TRACKS.length>1 ? currentTrack/(TRACKS.length-1) : 0);        // 0 (easiest track) .. 1 (hardest track) — difficulty RAMPS along the unlock ladder
-      const dLift=(difficulty==='easy'?-0.14:difficulty==='hard'?0.40:0.12);     // the easy/normal/hard toggle shifts the whole ramp — wider spread so the toggle is meaningful (easy = winnable by newcomers, hard = pushes a skilled player)
-      const pw=clamp(rampT*0.40 + 0.26 + dLift + (champ.active?0.04*champ.round:0), 0, 0.92);   // floor RAISED again (user beat every track regardless) — track 1 on normal now races like old mid-ladder
+      const dLift=(difficulty==='easy'?-0.14:difficulty==='hard'?0.48:0.18);     // the easy/normal/hard toggle shifts the whole ramp — wider spread so the toggle is meaningful (easy = winnable by newcomers, hard = pushes a skilled player)
+      let adapt=0; try{ adapt=parseFloat(localStorage.getItem('sd_adapt')||'0')||0; }catch(e){}
+      const pw=clamp(rampT*0.40 + 0.26 + dLift + adapt + (champ.active?0.04*champ.round:0), 0, 0.98);   // + ADAPTIVE win-streak pressure
       aiAccel=1 + pw*0.72; aiCap=1.12 + pw*0.46; aiAggro=0.96 + pw*0.38;         // strong top-end (challenges a skilled human) but a firmer floor
       c.aiBase=(0.95+((i*0.0185)%0.06)) * (1 + pw*0.33);                          // top-speed baseline
       c.aiMiss=clamp(0.055 - pw*0.05, 0.004, 0.055); }                           // fewer corner errors as it gets harder
@@ -2937,14 +2962,14 @@ function updateCar(c, inp, dt){
   if((inp.boost || c._padBoost>0) && c.boost>2 && fwdSpeed>-1){
     c.vel.addScaledVector(_f, CONFIG.boostForce*(c.isPlayer?(c.nosForce||1):aiAccel)*dt); c.boost-=CONFIG.boostDrain*(c.nosDrain||1)*dt; c.boosting=true;   // NITROUS: stronger + slower drain (AI uses its difficulty power)
   } else {
-    c.boost += (c.drifting?CONFIG.boostDriftRefill*(c.nosFill||1):CONFIG.boostRefill)*dt;   // NITROUS: drift fills the bar faster
+    c.boost += (c.drifting?CONFIG.boostDriftRefill*(c.nosFill||1):CONFIG.boostRefill*(c.isPlayer?1:2.6))*dt;   // NITROUS: drift fills faster; AI can't drift-chain so their idle refill compensates
   }
   c.boost=clamp(c.boost,0,CONFIG.boostMax*(c.nosMax||1));
   if(c.boosting && !c.wasBoost && c.isPlayer){ audio && audio.boost();
     if((c.nosMax||1)>1 && raceTime-(c._nosCue||-9)>1.5){ c._nosCue=raceTime; popup('🔥 NOS','#7ce0ff'); } } c.wasBoost=c.boosting;
 
   // speed clamp ( AI boosting uses a tamer scale so a chasing AI matches — not laps — a boosting player )
-  let _ms=c.maxScale||1; if(!c.isPlayer && c.boosting) _ms=Math.min(_ms, 1.36);
+  let _ms=c.maxScale||1; if(!c.isPlayer && c.boosting) _ms=Math.min(_ms, 1.52);   // was 1.36: a drift-chaining player at 80 walked away from every boosting AI
   const maxSpd=(c.boosting?CONFIG.boostTopSpeed:CONFIG.topSpeed)*_ms*(c.spdMul||1)*(c.isPlayer?(c.turboMul||1):1);   // TURBO kit: higher top speed
   const sp=c.vel.length(); if(sp>maxSpd) c.vel.multiplyScalar(maxSpd/sp);
 
@@ -3662,6 +3687,13 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
 function finishRace(){
   player.finished=true; state='finished'; hidePauseUI();
   const r=rankOf(player), won=r===1;
+  // ADAPTIVE AI: every win permanently sharpens the field (+0.07 power, cap +0.35);
+  // finishing 3rd+ relaxes it. Beating everyone stops being possible to do on autopilot.
+  try{ let ad=parseFloat(localStorage.getItem('sd_adapt')||'0')||0;
+    ad = won ? Math.min(ad+0.07, 0.35) : (r>=3 ? Math.max(ad-0.10, 0) : ad);
+    localStorage.setItem('sd_adapt', ad.toFixed(2));
+    if(won && ad>=0.14) popup("⚠️ RIVALS ADAPTING — getting faster", "#ff9a5a");
+  }catch(e){}
   let prevGhostT=null; try{ const g=JSON.parse(localStorage.getItem('sd_ghost_'+currentTrack)||'null'); if(g) prevGhostT=g.time; }catch(e){}   // GHOST: time to beat (before we overwrite)
   if(ghostMesh) ghostMesh.visible=false; ghostActive=false; saveGhostIfBest();
   const wasDaily=dailyActive; dailyActive=false;                                  // DAILY: update the streak on completion
@@ -4104,7 +4136,7 @@ function init(){
   try{ const a=localStorage.getItem('sd_auto'); autoDrive = a===null ? true : a==='1'; }catch(_){ autoDrive=true; }
   document.body.classList.toggle('autodrive', autoDrive);
   document.getElementById('togAuto').classList.toggle('on', autoDrive);
-  const swapCar=(d)=>{ selectedCar=(selectedCar+d+CARS.length)%CARS.length; renderShop(); saveSelCar(); upgradeCars(); };
+  const swapCar=(d)=>{ selectedCar=(selectedCar+d+CARS.length)%CARS.length; renderShop(); saveSelCar(); upgradeCars(); if(window.syncCarSlider) syncCarSlider(); };
   document.getElementById('carPrev').addEventListener('click', e=>{ e.stopPropagation(); swapCar(-1); });
   document.getElementById('carNext').addEventListener('click', e=>{ e.stopPropagation(); swapCar(1); });
   renderShop(); renderTrackStars(); paintTrackThumbs(); renderDaily();
@@ -4136,6 +4168,122 @@ function onResize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjecti
 function checkOrient(){ document.body.classList.toggle('portrait', isTouch && innerHeight>innerWidth); }
 
 init();
+</script>
+
+<script>
+/* ============ v3.6 UI layer: beat FX + 3D map preview + car slider + monetize stub ============ */
+const MONETIZE={ enabled:false, rewardedX2:false, premiumCars:false };   // foundation flags (see monetization plan)
+
+// menu FX: beat-synced EQ + rising embers (simulated 95bpm beat clock - the GCS music files have
+// no CORS headers, so a REAL WebAudio analyser would mute playback through the graph)
+(function(){
+  const cv=document.getElementById('menuFx'); if(!cv) return;
+  const brand=document.querySelector('.brand');
+  const c2=cv.getContext('2d');
+  const embers=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),s:0.6+Math.random()*1.6,v:0.05+Math.random()*0.16,w:Math.random()*6.3}));
+  let last=0;
+  function beatT(){ try{ if(typeof bgMusic!=='undefined'&&bgMusic&&!bgMusic.paused) return bgMusic.currentTime; }catch(e){} return performance.now()/1000; }
+  function frame(ts){
+    requestAnimationFrame(frame);
+    const menu=document.getElementById('menu');
+    if(!menu || menu.classList.contains('hidden')) return;
+    if(ts-last<33) return; last=ts;
+    const W=cv.clientWidth|0,H=cv.clientHeight|0;
+    if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+    c2.clearRect(0,0,W,H);
+    const t=beatT(), bpm=95, ph=(t*bpm/60)%1;
+    const bass=Math.pow(Math.max(0,Math.cos(ph*6.283))*0.5+0.5,3);
+    const N=26,bw=W/N;
+    for(let i=0;i<N;i++){
+      const n=Math.sin(i*1.7+t*2.2)*0.5+0.5;
+      const h=(6+bass*34*Math.pow(1-Math.abs(i-N/2)/(N/2),0.6)+n*16)*(H/540*1.6);
+      const g=c2.createLinearGradient(0,H,0,H-h);
+      g.addColorStop(0,'rgba(255,90,44,0.50)'); g.addColorStop(1,'rgba(161,59,255,0.06)');
+      c2.fillStyle=g; c2.fillRect(i*bw+1,H-h,bw-2,h);
+    }
+    for(const e of embers){
+      e.y-=e.v*0.016; e.w+=0.016; if(e.y<-0.05){ e.y=1.05; e.x=Math.random(); }
+      const ex=(e.x+Math.sin(e.w)*0.012)*W, ey=e.y*H;
+      c2.fillStyle='rgba(255,'+(150+((e.s*60)|0))+',80,'+(0.10+bass*0.16)+')';
+      c2.beginPath(); c2.arc(ex,ey,e.s*(1+bass*0.5),0,6.283); c2.fill();
+    }
+    if(brand) brand.style.transform='scale('+(1+bass*0.028)+')';
+  }
+  requestAnimationFrame(frame);
+})();
+
+// 3D rotating track preview (2D projection - no extra GL context to lose)
+(function(){
+  const cv=document.getElementById('map3d'); if(!cv) return;
+  const c2=cv.getContext('2d');
+  let pts=null, spin=0, builtFor=-1;
+  function rebuild(){
+    try{
+      const T=TRACKS[currentTrack]; if(!T) return;
+      const ctrl=T.ctrl, n=ctrl.length, N=180, out=[];
+      let mnx=1e9,mxx=-1e9,mnz=1e9,mxz=-1e9;
+      for(let i=0;i<N;i++){ const u=i/N*n, seg=Math.floor(u)%n, tt=u-Math.floor(u);
+        const p0=ctrl[(seg-1+n)%n],p1=ctrl[seg],p2=ctrl[(seg+1)%n],p3=ctrl[(seg+2)%n];
+        const t2=tt*tt,t3=t2*tt;
+        const x=0.5*((2*p1[0])+(-p0[0]+p2[0])*tt+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3);
+        const z=0.5*((2*p1[1])+(-p0[1]+p2[1])*tt+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3);
+        out.push([x,z]); mnx=Math.min(mnx,x);mxx=Math.max(mxx,x);mnz=Math.min(mnz,z);mxz=Math.max(mxz,z); }
+      const cx=(mnx+mxx)/2, cz=(mnz+mxz)/2, sc=1.55/Math.max(mxx-mnx,mxz-mnz);
+      pts=out.map(pt=>[(pt[0]-cx)*sc,(pt[1]-cz)*sc]); builtFor=currentTrack;
+    }catch(e){ pts=null; }
+  }
+  window.rebuildMap3d=rebuild;
+  function frame(){
+    requestAnimationFrame(frame);
+    const menu=document.getElementById('menu');
+    if(!menu||menu.classList.contains('hidden')) return;
+    if(builtFor!==currentTrack||!pts) rebuild();
+    if(!pts) return;
+    spin+=0.008;
+    const W=cv.width,H=cv.height; c2.clearRect(0,0,W,H);
+    const ca=Math.cos(spin), sa=Math.sin(spin), tilt=0.52;
+    const P=pts.map(pt=>{ const rx=pt[0]*ca-pt[1]*sa, rz=pt[0]*sa+pt[1]*ca;
+      return [W/2+rx*W*0.44, H*0.55+rz*H*0.44*tilt, rz]; });
+    c2.lineJoin='round'; c2.lineCap='round';
+    for(const pass of [0,1]){
+      let started=false; c2.beginPath();
+      for(let i=0;i<=P.length;i++){ const q=P[i%P.length]; const back=q[2]>0;
+        if((pass===0)!==back){ started=false; continue; }
+        if(!started){ c2.moveTo(q[0],q[1]); started=true; } else c2.lineTo(q[0],q[1]); }
+      c2.strokeStyle=pass===0?'rgba(120,80,160,0.5)':'rgba(255,150,70,0.95)';
+      c2.lineWidth=pass===0?4:6; c2.stroke();
+    }
+    c2.fillStyle='#fff'; c2.beginPath(); c2.arc(P[0][0],P[0][1],3.4,0,6.283); c2.fill();
+  }
+  rebuild(); requestAnimationFrame(frame);
+})();
+
+// car slider: swipe + snap picks the car; stays in sync with the arrows
+(function(){
+  const row=document.getElementById('carSlider'); if(!row) return;
+  function build(){
+    row.innerHTML='';
+    CARS.forEach((c,i)=>{ const co=COUNTRIES[i%COUNTRIES.length];
+      const d=document.createElement('div'); d.className='csChip'+(i===selectedCar?' sel':''); d.dataset.i=i;
+      d.innerHTML='<img src="'+flagURL(co.key)+'">'+c.name;
+      d.onclick=()=>{ selectedCar=i; sync(); renderShop(); saveSelCar(); upgradeCars(); };
+      row.appendChild(d); });
+    requestAnimationFrame(()=>sync(true));
+  }
+  function sync(instant){
+    Array.prototype.forEach.call(row.children, ch=>ch.classList.toggle('sel', +ch.dataset.i===selectedCar));
+    const el=row.children[selectedCar];
+    if(el) el.scrollIntoView({behavior:instant?'auto':'smooth', inline:'center', block:'nearest'});
+  }
+  let deb=null;
+  row.addEventListener('scroll',()=>{ clearTimeout(deb); deb=setTimeout(()=>{
+    const mid=row.scrollLeft+row.clientWidth/2; let best=0,bd=1e9;
+    Array.prototype.forEach.call(row.children, ch=>{ const c=ch.offsetLeft+ch.offsetWidth/2, d=Math.abs(c-mid); if(d<bd){bd=d;best=+ch.dataset.i;} });
+    if(best!==selectedCar){ selectedCar=best; sync(); renderShop(); saveSelCar(); upgradeCars(); }
+  },140); },{passive:true});
+  window.rebuildCarSlider=build; window.syncCarSlider=sync;
+  build();
+})();
 </script>
 </body>
 </html>
