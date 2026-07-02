@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v3.2-->
+<!--BUILD:v3.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -573,12 +573,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.2</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.3</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v3.2';
+(function(){ const BUILD='v3.3';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1909,6 +1909,53 @@ function buildStreetFurniture(rng){
     bushPos.forEach((b,k)=>{ _t.compose(_tp.set(b.x,terrainHeight(b.x,b.z)+0.5,b.z),_tq,_ts.set(1,0.8,1)); bush.setMatrixAt(k,_t); });
     bush.instanceMatrix.needsUpdate=true; bush.castShadow=!isTouch; scene.add(bush); }
 }
+// roadside BUSINESSES for the non-city biomes: every environment gets its own storefront strip
+// (surf shacks on the beach, diners in the desert, lodges in the snow…) built with the same lit
+// signage system the city uses — so every track has street life, not just downtown
+const THEME_BIZ={
+  beach:  [{name:'SURF SHACK',sign:'#0f8a9a',wall:'#d9c49a',awn1:'#0f8a9a',awn2:'#f4f4f4',text:'#fff'},
+           {name:'TIKI BAR',sign:'#c0392b',wall:'#8a6a4a',awn1:'#c0392b',awn2:'#f4d49a',text:'#ffd98a'},
+           {name:'GELATO BEACH',sign:'#d35a9a',wall:'#e8d9c0',awn1:'#d35a9a',awn2:'#ffffff',text:'#fff'},
+           {name:'LIFEGUARD HQ',sign:'#c0392b',wall:'#e0e0d8',awn1:'#c0392b',awn2:'#ffffff',text:'#fff'}],
+  coast:  [{name:'BOARDWALK CAFE',sign:'#1f6f3f',wall:'#d9c49a',awn1:'#1f6f3f',awn2:'#f4f4f4',text:'#fff'},
+           {name:'MARINA SUPPLY',sign:'#114a8a',wall:'#9aa0a8',awn1:'#114a8a',awn2:'#cdd6e0',text:'#fff'},
+           {name:'OYSTER BAR',sign:'#7a1f5a',wall:'#8a7a6a',awn1:'#7a1f5a',awn2:'#e0c4d4',text:'#ffd98a'}],
+  desert: [{name:'LAST STOP GAS',sign:'#d35400',wall:'#a87a4a',awn1:'#d35400',awn2:'#f4f4f4',text:'#fff'},
+           {name:'ROUTE DINER',sign:'#c0392b',wall:'#b89a6a',awn1:'#c0392b',awn2:'#f4f4f4',text:'#fff'},
+           {name:'CACTUS MOTEL',sign:'#1f8a4a',wall:'#c4a06a',awn1:'#1f8a4a',awn2:'#f4e4c0',text:'#fff'}],
+  forest: [{name:'RANGER STATION',sign:'#1f6f3f',wall:'#5a4a3a',awn1:'#1f6f3f',awn2:'#c4d4b0',text:'#fff'},
+           {name:'PINE LODGE',sign:'#7a4a1f',wall:'#6b4a3a',awn1:'#7a4a1f',awn2:'#e0d0b0',text:'#ffd98a'},
+           {name:'TRAIL OUTFITTERS',sign:'#b06a1f',wall:'#4a3a2a',awn1:'#b06a1f',awn2:'#f4e4c0',text:'#fff'}],
+  snow:   [{name:'SKI LODGE',sign:'#114a8a',wall:'#6b5a4a',awn1:'#114a8a',awn2:'#e8f0f8',text:'#fff'},
+           {name:'COCOA CABIN',sign:'#7a4a1f',wall:'#5a4636',awn1:'#7a4a1f',awn2:'#f4e4d0',text:'#ffd98a'},
+           {name:'ALPINE RENTALS',sign:'#0f7a8a',wall:'#8a8a92',awn1:'#0f7a8a',awn2:'#ffffff',text:'#fff'}],
+  docks:  [{name:'FISH MARKET',sign:'#0f7a8a',wall:'#5a6068',awn1:'#0f7a8a',awn2:'#cdd6e0',text:'#fff'},
+           {name:'HARBOR CANTEEN',sign:'#d35400',wall:'#4a5058',awn1:'#d35400',awn2:'#f4f4f4',text:'#fff'},
+           {name:'CARGO OFFICE',sign:'#114a8a',wall:'#6a7078',awn1:'#114a8a',awn2:'#aab4c0',text:'#fff'}],
+};
+function buildRoadsideBusinesses(rng){
+  const th=currentTheme?currentTheme.theme:'city';
+  const biz=THEME_BIZ[th]; if(!biz) return;                          // city builds its own dense storefront blocks
+  const boxG=new THREE.BoxGeometry(1,1,1); boxG.translate(0,0.5,0);
+  const placed=[]; let made=0;
+  for(let tries=0; tries<60 && made<6; tries++){
+    const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1;
+    const fw=13+rng()*7, fd=10+rng()*5, off=(sampleHW[i]||CONFIG.roadHalfWidth)+11+rng()*5;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
+    if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth + Math.hypot(fw,fd)*0.5 + 5.5) continue;   // never near ANY leg
+    if(placed.some(q=>Math.hypot(q.x-x,q.z-z)<34)) continue;                                     // spread them out
+    const b=biz[made%biz.length];
+    const tex=makeStorefrontTexture(rng,b);
+    const mat=new THREE.MeshStandardMaterial({map:tex, emissiveMap:tex, emissive:0xffffff, emissiveIntensity:0.3, roughness:0.72, metalness:0.05});
+    const m=new THREE.Mesh(boxG, mat);
+    const y=terrainHeight(x,z);
+    m.position.set(x, y-0.15, z); m.scale.set(fw, 5.2, fd);
+    m.rotation.y=Math.atan2(p.x-x, p.y-z);                                                       // storefront FACES the road
+    m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m);   // scene.add routes into WORLD during build -> disposed on rebuild
+    camColliders.push({x, z, r:Math.hypot(fw,fd)*0.5+1, top:y+5.2});                             // chase-cam never clips through it
+    placed.push({x,z}); made++;
+  }
+}
 function scatterProps(){ const rng=mulberry32(7777);
   const th=currentTheme?currentTheme.theme:'city';
   if(th==='coast') buildCoast(rng);
@@ -1917,6 +1964,7 @@ function scatterProps(){ const rng=mulberry32(7777);
   else if(th==='desert') buildDesert(rng);
   else if(th==='forest' || th==='snow') buildForest(rng);   // snow reuses the pine scatter (white ground)
   else { buildCity(rng); buildStreetFurniture(rng); }
+  buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
   if(th==='city'||th==='docks'||th==='coast'||th==='beach') buildParkedCars(rng);   // parked cars = street life
@@ -3058,14 +3106,16 @@ function aiInput(c){
   const farI=(c.trackIdx+Math.round(aim*1.6)+8)%SAMPLES, f=samplePts[farI];
   const curve=Math.max(bend, Math.abs(angleDiff(Math.atan2(f.x-tx, f.y-tz), desired)));
   // brake toward a corner-appropriate speed (sharper corner -> slower) instead of a single threshold
-  const gripCarry = c.isPlayer ? (0.9+0.12*(c.gripMul||1)+0.03*(c.tireLvl||0)) : (1.02+0.45*(aiAccel-1));   // GRIP/TIRES let a car carry more corner speed; AI corner-carry scales with difficulty to match a maxed player
+  const gripCarry = c.isPlayer ? (0.9+0.12*(c.gripMul||1)+0.03*(c.tireLvl||0)) : (1.07+0.45*(aiAccel-1));   // GRIP/TIRES let a car carry more corner speed; AI corner-carry scales with difficulty to match a maxed player
   const targetSpd=clamp((64 - curve*70)*aiAggro*gripCarry, 17, 80);                            // aggression: carry MORE corner speed (brake later) on hard
   let brake = speed > targetSpd+3;
   if(curve>0.5 && !c._inCorner){ c._inCorner=true; c._missThis = !window.__auto && Math.random()<((c.aiMiss||0)*(c.isRival?0.25:1)); }   // decide the miss ONCE per corner; the RIVAL barely errs
   else if(curve<0.28) c._inCorner=false;
   const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.6 : 1);   // miss = brake soft (wide line); very sharp = brake hard so it actually makes the turn
   const boostHard = (c.isRival ? 14 : 20) / aiAggro;                                          // aggression: deploy NITROUS readily (lower threshold) on hard
-  return { throttle:!brake, brake, brakeMul, steer, drift: curve>0.62 && speed>30, boost: !brake && c.boost>boostHard };   // boost whenever not braking for a corner (the !brake gate already keeps it out of hard turns) — matches how a player nitros
+  // drift ONLY on genuine hairpins — 0.62 made the AI handbrake-slide every medium corner
+  // (slow exits + sloppy look); gripped corners carry more exit speed = competitive
+  return { throttle:!brake, brake, brakeMul, steer, drift: curve>0.88 && speed>36, boost: !brake && c.boost>boostHard };
 }
 
 /* =========================================================================
