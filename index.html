@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v2.8-->
+<!--BUILD:v2.9-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -93,6 +93,9 @@
   #panel-garage{ pointer-events:none; }
   .garPanel{ pointer-events:auto; display:flex; flex-direction:column; gap:7px; }
   .garHead{ font-size:11px; font-weight:900; letter-spacing:1.4px; color:#ffb45a; opacity:.92; text-align:left; margin-top:3px; }
+  #nextCarBtn{ pointer-events:auto; cursor:pointer; margin:9px auto 0; padding:9px 22px; border-radius:6px; font-size:min(3.8vw,14px); font-weight:900; letter-spacing:.8px;
+    background:linear-gradient(160deg,rgba(40,28,18,.9),rgba(22,15,12,.85)); color:#ffce7a; border:1.5px solid rgba(255,196,88,.55); box-shadow:0 6px 18px rgba(0,0,0,.4); width:fit-content; }
+  #nextCarBtn:active{ transform:scale(.96); }
   #kitRow,#weaponRow{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
   @media (orientation:landscape){
     #garL,#garR{ position:absolute; top:50%; transform:translateY(-50%); width:min(30vw,254px); max-height:96%; overflow:hidden;   /* NO scrolling — everything fits */
@@ -493,6 +496,7 @@
         <div class="trackBtn" data-i="8"><div class="ic">🏜️</div><b>RED CANYON</b><span>Canyon Sweep</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
         <div class="trackBtn" data-i="9"><div class="ic">🌊</div><b>TIDE LINE</b><span>Shoreline Arc</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
       </div>
+      <div id="nextCarBtn">NEXT · CHOOSE CAR &nbsp;▸</div>
     </div>
     <div class="mPanel" id="panel-garage">
       <div id="garL" class="garPanel">
@@ -569,12 +573,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.8</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.9</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v2.8';
+(function(){ const BUILD='v2.9';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2467,8 +2471,21 @@ function upgradeCars(){
     paintCar(rig, paintJobs[liveryIdx], CARS[liveryIdx].raw||'doge');        // custom paint job (recolours the body, keeps glass)
     if(paintStyles[liveryIdx]) finishCar(rig, paintStyles[liveryIdx]);       // custom finish/style (matte/metallic/chrome/pearl)
     if(rig.flames) rig.flames.forEach(f=>rig.group.add(f));   // re-attach exhaust flames (group was wiped above)
+    calibrateGround(rig);                                     // EVERY car (stock or upgraded) rests its wheels exactly on the road
     if(isTouch && !c.isPlayer) rig.group.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   });
+}
+// signed ground offset per car: some GLB models rest ABOVE the group origin (they FLOATED — firetruck/hauler),
+// upgraded fat tires dip BELOW it (they SANK). Measure the true lowest wheel point in group-local space and cancel it.
+function calibrateGround(rig){
+  try{
+    rig.group.updateWorldMatrix(true,true);
+    const inv=new THREE.Matrix4().copy(rig.group.matrixWorld).invert(); const bb=new THREE.Box3();
+    let low=1e9;
+    if(rig.wheels && rig.wheels.length){ rig.wheels.forEach(w=>{ bb.setFromObject(w); bb.applyMatrix4(inv); if(bb.min.y<low) low=bb.min.y; }); }
+    if(low>=1e8 && rig.chassis){ bb.setFromObject(rig.chassis); bb.applyMatrix4(inv); low=bb.min.y; }
+    rig.lift = (low<1e8) ? clamp(-low, -1.2, 1.2) : 0;
+  }catch(e){ rig.lift=0; }
 }
 // MeshStandard -> MeshPhysical with an automotive CLEAR COAT: a glossy reflective layer over the paint = premium showroom look
 function carPaint(src){
@@ -2607,8 +2624,7 @@ function attachUpgrades(rig, carIdx, forceU){
   }
   // TIRES -> fat rubber tires w/ TREAD texture + matched rims, mounted INTO the spinning wheels; ride height lifts so wheels stay grounded
   if(u.tire>0){ const t=u.tire;
-    if(rig.wheels) rig.wheels.forEach(w=> w.scale.set(1+0.12*t, 1+0.04*t, 1+0.12*t));
-    // find the 4 ACTUAL wheel centers by clustering the wheel-mesh verts (kit-local) -> parts align to the real tires, not a guess
+    // 1) cluster the UNSCALED wheel-mesh verts (kit-local) -> TRUE wheel centers, before any growth
     const wb={}, pv=new THREE.Vector3();
     const eat=(o,ob)=>{ if(!o.isMesh||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position) return;
       const pa=o.geometry.attributes.position; o.updateWorldMatrix(true,false);
@@ -2620,43 +2636,51 @@ function attachUpgrades(rig, carIdx, forceU){
     if(rig.wheels) rig.wheels.forEach(wg=> wg.traverse(o=>eat(o,false)));                                  // DRIFTER: real wheel groups
     let exact=Object.keys(wb).length>=4;
     if(!exact){ for(const k in wb) delete wb[k]; rig.chassis.traverse(o=>{ if(o.isMesh) eat(o,true); }); }   // COUPE/HATCH/SUV: cluster outboard body verts
-    const RADMAX=Math.min(H*0.5, Lz*0.13);                              // a wheel can never be taller than half the car -> kills the wagon-wheel bug on karts
+    const RADMAX=Math.min(H*0.5, Lz*0.13);                              // a wheel can never be taller than half the car
     let wheels = Object.keys(wb).length>=4
       ? Object.keys(wb).map(k=>{ const b=wb[k], cy=b.y/b.n; return exact
           ? {x:b.x/b.n, y:cy, z:b.z/b.n, rad:clamp(Math.max(0.18, cy-b.minY), H*0.12, RADMAX), outerX:b.maxAX}
           : {x:b.x/b.n, y:Lz*0.085, z:b.z/b.n, rad:clamp(Lz*0.085, H*0.12, RADMAX), outerX:b.maxAX}; })
       : [[-1,-1],[-1,1],[1,-1],[1,1]].map(([sx,sz])=>({x:sx*x0*0.9, y:Lz*0.086, z:sz*Lz*0.32, rad:clamp(Lz*0.09, H*0.12, RADMAX), outerX:x0*0.98}));
+    // 2) TRUE min wheel-to-wheel gap from CLUSTERED centers (wheel-object pivots lie about their position on GLB cars)
+    let minGapT=9e9; for(let a=0;a<wheels.length;a++) for(let b=a+1;b<wheels.length;b++){
+      const d=Math.hypot(wheels[a].x-wheels[b].x, wheels[a].y-wheels[b].y, wheels[a].z-wheels[b].z); if(d<minGapT) minGapT=d; }
+    // 3) match wheel objects + measure STOCK radius, then cap the growth so scaled tires can never touch
+    const _wp=new THREE.Vector3(), _kq=new THREE.Quaternion(), _wq=new THREE.Quaternion(), _bb=new THREE.Box3(), _bs=new THREE.Vector3();
+    const matchWheel=(w)=>{ let wo=null, wd=9e9; (rig.wheels||[]).forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
+      const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} }); return (wo&&wd<1.6)?wo:null; };
+    let stockR=0; (rig.wheels||[]).forEach(wo=>{ _bb.setFromObject(wo); _bb.getSize(_bs); stockR=Math.max(stockR, Math.max(_bs.y,_bs.z)/2); });   // measured straight off every wheel object — no matching required
+    const kartish=/^kart/.test((CARS[carIdx]&&CARS[carIdx].raw)||'');       // kart-class: wheels are already oversized cartoon items with a tiny wheelbase
+    let sXZ = kartish ? 1 : 1+0.12*t, sYc = kartish ? 1 : 1+0.04*t;         // karts keep STOCK wheels (growth made them clash into balloons)
+    if(!kartish && stockR>1e-4){ const pg=(function(){ const cs=(rig.wheels||[]).map(w=>{ const p=new THREE.Vector3(); w.getWorldPosition(p); return p; });
+        let m=9e9; for(let a2=0;a2<cs.length;a2++)for(let b2=a2+1;b2<cs.length;b2++){ const d=cs[a2].distanceTo(cs[b2]); if(d<m)m=d; } return m; })();
+      const gap=Math.max(pg, minGapT);                                      // pivots and clusters both lie on some models — trust the larger (stock wheels can't physically overlap)
+      if(gap<9e8) sXZ=clamp(Math.min(sXZ, (gap-0.08)/(2*stockR)), 1, sXZ); }
+    sYc=Math.min(sYc,sXZ);
+    if(rig.wheels) rig.wheels.forEach(w=> w.scale.set(sXZ, sYc, sXZ));
+    // 4) tire ring + rim per wheel — sized from the POST-scale wheel, and NEVER larger than the tire itself (added parts cannot create clash)
     const rimMat=new THREE.MeshPhysicalMaterial({color:0xc8cdd6, metalness:0.95, roughness:0.2, envMapIntensity:1.5, clearcoat:0.5});
     const tireMat=new THREE.MeshStandardMaterial({color:0x212328, roughness:0.95, metalness:0.02, bumpMap:treadTex(), bumpScale:0.02});   // real RUBBER w/ tread relief
     const rgeo=kitPartGeo.rim||null; let rsz=null; if(rgeo){ if(!rgeo.boundingBox) rgeo.computeBoundingBox(); rsz=new THREE.Vector3(); rgeo.boundingBox.getSize(rsz); }
-    const _wp=new THREE.Vector3(), _kq=new THREE.Quaternion(), _wq=new THREE.Quaternion(), _bb=new THREE.Box3(), _bs=new THREE.Vector3();
-    let liftSum=0, liftN=0;
     wheels.forEach(w=>{
-      let wo=null, wd=9e9; (rig.wheels||[]).forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
-        const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} });
-      if(!wo || wd>=1.6) return;                                        // no real wheel matched -> add NOTHING (a mis-sized static overlay looks worse than none)
+      if(kartish) return;                                               // kart wheels already read as fat tires — no overlay needed
+      const wo=matchWheel(w); if(!wo) return;                           // no real wheel matched -> add NOTHING
       kit.updateWorldMatrix(true,false); wo.updateWorldMatrix(true,false);
       _bb.setFromObject(wo); _bb.getSize(_bs);
-      const wr=clamp(Math.max(_bs.y,_bs.z)/2, H*0.12, RADMAX);          // TRUE tire radius, measured from the actual (scaled) wheel
-      liftSum += wr*(0.12*t)/(1+0.12*t); liftN++;
+      const wr=clamp(Math.max(_bs.y,_bs.z)/2, H*0.10, RADMAX);          // TRUE post-scale tire radius
       kit.getWorldQuaternion(_kq); wo.getWorldQuaternion(_wq); const q=_wq.clone().invert().multiply(_kq);
       const inv=1/Math.max(wo.scale.x||1,1e-4);
       const mount=(mesh,kx)=>{ const p=new THREE.Vector3(kx, w.y, w.z); kit.localToWorld(p); wo.worldToLocal(p);
         mesh.position.copy(p); mesh.quaternion.copy(q); if(w.x<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
-      const tire=new THREE.Mesh(new THREE.TorusGeometry(wr*0.74, wr*0.30, 10, 20), tireMat); tire.geometry.rotateY(Math.PI/2);
+      const tire=new THREE.Mesh(new THREE.TorusGeometry(wr*0.70, wr*0.28, 10, 20), tireMat); tire.geometry.rotateY(Math.PI/2);   // outer edge 0.98*wr <= the tire itself
       tire.scale.setScalar(inv); mount(tire, Math.sign(w.x)*(w.outerX-wr*0.16));       // rubber ring wrapping the tire shoulder
-      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((wr*1.15)/(rsz.y||1)*inv);
-        mount(rm, Math.sign(w.x)*(w.outerX+0.02)); }                                    // rim face sized to THIS wheel (was a blind 1.6x of a guessed radius)
+      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((wr*1.05)/(rsz.y||1)*inv);
+        mount(rm, Math.sign(w.x)*(w.outerX+0.02)); }                                    // rim face sized to THIS wheel
     });
-    { // GROUND GUARANTEE: lowest wheel point measured in GROUP-LOCAL space (local y=0 = the ground contact plane),
-      // so the lift is exact on every model and never feeds back on itself across rebuilds
-      g.updateWorldMatrix(true,true); const inv=new THREE.Matrix4().copy(g.matrixWorld).invert();
-      let low=1e9; (rig.wheels||[]).forEach(w=>{ const gb=new THREE.Box3().setFromObject(w); gb.applyMatrix4(inv); if(gb.min.y<low) low=gb.min.y; });
-      rig.lift = (low<1e8) ? clamp(-low, 0, Math.max(0.6, H*0.2)) : (liftN?Math.min(0.3,liftSum/liftN):0); }
-    wheels.forEach(w=>{ const arch=add(new THREE.TorusGeometry(w.rad*1.06, w.rad*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
+    wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
       arch.rotation.y=Math.PI/2; arch.position.set(Math.sign(w.x)*(w.outerX-0.06), w.y, w.z); });
     if(t>=3) for(const sx of [-1,1]){ const can=add(rbox(0.3,0.03,0.16,0.012), carbon); can.position.set(sx*x0*0.74, floorY+H*0.18, front-Lz*0.05); can.rotation.x=0.2; }
-  } else rig.lift=0;
+  }
   // NITROUS -> rounded bottles with domed caps, half-sunk into the rear deck + a molded cradle
   if(u.nos>0){ const n=u.nos, bz=rear*0.62, blen=0.44+0.14*n, deckY=surfY(0, bz, top*0.45), by=deckY+0.1;   // on the real deck, not floating
     const bm=new THREE.MeshStandardMaterial({color:0x1a6cff, emissive:0x1f7cff, emissiveIntensity:n>=3?1.1:0.7, roughness:0.4, metalness:0.3});
@@ -3905,6 +3929,8 @@ function init(){
     document.getElementById('menu').dataset.tab=id;   // lets CSS drop the backdrop-blur in the garage so the showcased car stays sharp
     document.querySelectorAll('#tabStrip .tab').forEach(x=>x.classList.toggle('on', x===t));
     document.querySelectorAll('#mPanels .mPanel').forEach(p=>p.classList.toggle('on', p.id==='panel-'+id)); }));
+  const ncb=document.getElementById('nextCarBtn');   // track picked -> NEXT steps you into car selection (garage), where RACE launches
+  if(ncb) ncb.addEventListener('click', e=>{ e.stopPropagation(); const gt=document.querySelector('#tabStrip .tab[data-tab="garage"]'); if(gt) gt.click(); });
   document.getElementById('startBtn').addEventListener('click', e=>{ e.stopPropagation(); champ.active=false; startGame(); });
   document.getElementById('champBtn').addEventListener('click', e=>{ e.stopPropagation(); startChampionship(); });
   document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); startBattle(); });
