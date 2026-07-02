@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v3.7-->
+<!--BUILD:v4.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -443,8 +443,10 @@
   #map3d{ display:block; width:min(46%,210px); height:104px; margin:8px auto 2px; border-radius:12px;
     background:rgba(10,7,16,.55); border:1px solid rgba(255,255,255,.12);
     box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 0 26px rgba(255,120,50,.08); }
-  #carSlider{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding:6px 40%;
-    -webkit-overflow-scrolling:touch; scrollbar-width:none; margin:4px 0 2px; pointer-events:auto; }
+  #carSlider{ display:none; position:fixed; top:88px; left:6%; right:6%; z-index:6; gap:8px; overflow-x:auto;
+    scroll-snap-type:x proximity; padding:6px 12px; box-sizing:border-box; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; margin:0; pointer-events:auto; justify-content:flex-start; }
+  body:has(#panel-garage.on) #menu:not(.hidden) #carSlider{ display:flex; }
   #carSlider::-webkit-scrollbar{ display:none; }
   .csChip{ scroll-snap-align:center; flex:0 0 auto; min-width:86px; text-align:center; padding:7px 10px;
     border-radius:10px; background:rgba(30,22,40,.72); border:1px solid rgba(255,255,255,.12);
@@ -453,16 +455,82 @@
     box-shadow:0 4px 16px rgba(255,90,44,.45); }
   .csChip img{ height:11px; vertical-align:-1px; margin-right:4px; border-radius:2px; }
 
-  /* v3.7 landscape fixes: map3d out-of-flow (it pushed the track list off-screen), slider clear of CTA */
+  /* ---------- v3.8 LANDSCAPE RE-LAYOUT: strict rows, everything on screen, car visible ---------- */
   @media (orientation:landscape) and (max-height:700px){
-    #map3d{ position:absolute; left:calc(env(safe-area-inset-left,0px) + 12px); bottom:96px;
-      width:172px; height:92px; margin:0; z-index:2; }
-    #carSlider{ position:absolute; top:40px; left:16%; right:16%; margin:0; z-index:3; padding:6px 30%; }
+    #menu{ display:flex; flex-direction:column; justify-content:flex-start; padding:2px 8px; }
+    #topBar{ position:absolute; left:10px; top:4px; padding:0; z-index:2; }
+    .brand{ font-size:17px; }
+    #coinBadge{ top:4px; right:10px; padding:3px 10px; font-size:12px; }
+    #tabStrip{ margin:2px auto 0; }
+    .tab{ padding:4px 12px; font-size:11px; }
+    #mPanels{ flex:1 1 auto; min-height:0; overflow:hidden; }
+    .mPanel{ padding:2px 6px; }
+    .sub{ display:none; }                                     /* reclaim vertical space */
+    #dailyCard{ margin:2px auto 0; padding:3px 10px; width:min(64%,430px); border-radius:9px; }
+    #dailyCard .dcPlay{ padding:3px 10px; }
+    #trackPick{ flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory;
+      justify-content:flex-start; margin:4px auto 0; max-width:min(88%,660px); padding-bottom:2px; }
+    .trackBtn{ flex:0 0 auto; scroll-snap-align:center; min-width:84px; padding:4px 8px 3px; }
+    .trackBtn .ic{ font-size:13px; margin-bottom:0; }
+    .trackBtn .ic.map{ padding:3px 6px; }
+    .trackBtn b{ font-size:9.5px; } .trackBtn span{ font-size:8px; }
+    .trackBtn .dots{ margin-top:2px; } .trackBtn .dots i{ width:4px; height:4px; }
+    .cstars{ font-size:8px; margin-top:1px; }
+    #nextCarBtn{ margin:3px auto 0; padding:4px 14px; font-size:11px; }
+    #ctaRow{ margin:2px 0 2px; gap:6px; }
+    .cta{ padding:6px 20px; font-size:14px; border-radius:9px; }
+    .cta.cta2{ padding:6px 14px; font-size:12px; }
+    .credit{ display:none; }
+    /* 3D map lives in the dead space under the brand — never in the flow */
+    #map3d{ position:absolute; left:10px; top:34px; width:146px; height:80px; margin:0; z-index:1; }
+    /* GARAGE: side panels guaranteed inside the viewport, car visible between them */
+    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); top:auto; bottom:60px;
+      transform:none; padding:5px 8px; font-size:11px; overflow-y:auto; overflow-x:hidden; }
+    #garL{ left:calc(env(safe-area-inset-left,0px) + 6px); }
+    #garR{ right:calc(env(safe-area-inset-right,0px) + 6px); }
+    #carName{ font-size:13px; }
+    #carStats{ gap:2px; } .stat .bar{ height:5px; } .stat label{ font-size:8.5px; }
+    #kitRow .kit,#weaponRow .kit{ padding:3px 7px; font-size:9px; }
+    .garHead{ font-size:9px; }
+    #carStatus{ font-size:10px; }
+    .paintSw{ width:16px; height:16px; } .styleSw{ font-size:8px; padding:2px 6px; }
+    #carSlider{ top:32px; left:24%; right:24%; }
+    .csChip{ min-width:70px; padding:4px 8px; font-size:9.5px; }
+    #carPrev{ left:calc(env(safe-area-inset-left,0px) + min(24vw,212px) + 10px); }
+    #carNext{ right:calc(env(safe-area-inset-right,0px) + min(24vw,212px) + 10px); }
+    .carArrow{ width:32px; height:32px; font-size:12px; }
   }
-  @media (max-height:440px){
-    #map3d{ width:138px; height:74px; bottom:78px; }
-    #carSlider{ top:34px; }
-    .csChip{ min-width:72px; padding:5px 8px; font-size:10px; }
+  @media (orientation:landscape) and (max-height:400px){
+    #map3d{ width:120px; height:64px; }
+    #trackPick{ max-width:min(84%,600px); }
+    #garL,#garR{ max-height:calc(100vh - 130px); }
+  }
+  /* ---------- ONLINE multiplayer ---------- */
+  #netModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
+  #netModal.hidden{ display:none; }
+  #netCard{ width:min(86vw,340px); max-height:92vh; overflow:auto; background:linear-gradient(160deg,#1d1428,#120c1c);
+    border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; text-align:center;
+    box-shadow:0 14px 44px rgba(0,0,0,.6); }
+  #netTitle{ font-weight:900; letter-spacing:1px; font-size:16px; margin-bottom:8px; }
+  #netName,#netCode{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); border-radius:8px;
+    color:#fff; font-weight:800; letter-spacing:1px; padding:7px 10px; text-align:center; text-transform:uppercase;
+    width:70%; margin:4px auto; display:block; font-size:13px; outline:none; }
+  .netRow{ display:flex; gap:8px; justify-content:center; align-items:center; margin-top:6px; }
+  .netRow #netCode{ width:88px; margin:0; }
+  .netBtn{ background:linear-gradient(140deg,#ff5a2c,#a13bff); color:#fff; font-weight:900; letter-spacing:.6px;
+    border-radius:9px; padding:8px 16px; margin:6px auto; cursor:pointer; display:inline-block; font-size:13px; }
+  .netBtn.ghostBtn{ background:rgba(255,255,255,.10); }
+  .netBtn.hidden,#netLobby.hidden,#netHome.hidden,#netWait.hidden{ display:none; }
+  #netRoomCode{ font-size:26px; font-weight:900; letter-spacing:6px; color:#ffb45a; margin:6px 0 2px; }
+  #netPlayers{ font-size:12px; font-weight:700; color:#cfc8dd; margin:6px 0; line-height:1.7; }
+  #netStatus{ font-size:10.5px; color:#9a90ae; min-height:14px; margin-top:4px; }
+  #netWait{ font-size:11px; color:#cfc8dd; }
+  #netStand{ position:fixed; top:6px; left:50%; transform:translateX(-50%); z-index:30; pointer-events:none;
+    background:rgba(10,7,16,.6); border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:3px 12px;
+    font-size:11px; font-weight:800; letter-spacing:.5px; color:#fff; white-space:nowrap; }
+  #netStand.hidden{ display:none; }
+  @media (orientation:landscape) and (max-height:700px){
+    .cta.online{ padding:6px 12px; font-size:11px; }
   }
 </style>
 </head>
@@ -576,7 +644,7 @@
       </div>
     </div>
   </div>
-  <div id="ctaRow"><div class="cta" id="startBtn">▶&nbsp; RACE</div><div class="cta cta2 champ" id="champBtn">🏆&nbsp; CUP</div><div class="cta cta2 battle" id="battleBtn">💥&nbsp; BATTLE</div></div>
+  <div id="ctaRow"><div class="cta" id="startBtn">▶&nbsp; RACE</div><div class="cta cta2 champ" id="champBtn">🏆&nbsp; CUP</div><div class="cta cta2 battle" id="battleBtn">💥&nbsp; BATTLE</div><div class="cta cta2 online" id="onlineBtn">🌐&nbsp; ONLINE</div></div>
 </div>
 
 <!-- results -->
@@ -609,12 +677,31 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.7</b> — built with Three.js</div>
+<div id="netModal" class="hidden">
+  <div id="netCard">
+    <div id="netTitle">🌐 ONLINE RACE</div>
+    <input id="netName" maxlength="10" placeholder="YOUR NAME">
+    <div id="netHome">
+      <div class="netBtn" id="netHostBtn">HOST A RACE</div>
+      <div class="netRow"><input id="netCode" maxlength="4" placeholder="CODE"><div class="netBtn" id="netJoinBtn">JOIN</div></div>
+    </div>
+    <div id="netLobby" class="hidden">
+      <div id="netRoomCode"></div>
+      <div id="netPlayers"></div>
+      <div class="netBtn hidden" id="netStartBtn">▶ START RACE</div>
+      <div id="netWait" class="hidden">waiting for host to start…</div>
+    </div>
+    <div id="netStatus"></div>
+    <div class="netBtn ghostBtn" id="netCloseBtn">CLOSE</div>
+  </div>
+</div>
+<div id="netStand" class="hidden"></div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.0</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v3.7';
+(function(){ const BUILD='v4.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3011,7 +3098,7 @@ function updateCar(c, inp, dt){
   _f.set(Math.sin(c.heading), Math.cos(c.heading));
   const fd=c.vel.dot(_f);
   _l.copy(c.vel).addScaledVector(_f, -fd);          // lateral component
-  const gripMul = c.isPlayer ? (c.gripMul||1) : (1.15+(aiAccel-1)*1.1);   // AI grip RAISED: they were physically sliding wide in corners (read as constant drifting + slow exits); planted grip = fast clean curves
+  const gripMul = c.isPlayer ? (c.gripMul||1) : (1.30+(aiAccel-1)*1.1);   // AI grip RAISED: they were physically sliding wide in corners (read as constant drifting + slow exits); planted grip = fast clean curves
   const grip=(c.drifting?CONFIG.gripDrift*(1+0.18*tire):CONFIG.gripNormal)*gripMul;   // TIRES: snappier drift exit
   _l.multiplyScalar(Math.exp(-grip*dt));            // frame-rate independent
   c.vel.copy(_f).multiplyScalar(fd).add(_l);
@@ -3162,11 +3249,11 @@ function aiInput(c){
   const curve=Math.max(bend, Math.abs(angleDiff(Math.atan2(f.x-tx, f.y-tz), desired)));
   // brake toward a corner-appropriate speed (sharper corner -> slower) instead of a single threshold
   const gripCarry = c.isPlayer ? (0.9+0.12*(c.gripMul||1)+0.03*(c.tireLvl||0)) : (1.07+0.45*(aiAccel-1));   // GRIP/TIRES let a car carry more corner speed; AI corner-carry scales with difficulty to match a maxed player
-  const targetSpd=clamp((64 - curve*70)*aiAggro*gripCarry, 17, 80);                            // aggression: carry MORE corner speed (brake later) on hard
-  let brake = speed > targetSpd+3;
+  const targetSpd=clamp((64 - curve*58)*aiAggro*gripCarry, 21, 80);                            // aggression: carry MORE corner speed (brake later) on hard
+  let brake = speed > targetSpd+4.5;
   if(curve>0.5 && !c._inCorner){ c._inCorner=true; c._missThis = !window.__auto && Math.random()<((c.aiMiss||0)*(c.isRival?0.25:1)); }   // decide the miss ONCE per corner; the RIVAL barely errs
   else if(curve<0.28) c._inCorner=false;
-  const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.6 : 1);   // miss = brake soft (wide line); very sharp = brake hard so it actually makes the turn
+  const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.3 : 0.85);   // miss = brake soft (wide line); very sharp = brake hard so it actually makes the turn
   const boostHard = (c.isRival ? 14 : 20) / aiAggro;                                          // aggression: deploy NITROUS readily (lower threshold) on hard
   // drift ONLY on genuine hairpins — 0.62 made the AI handbrake-slide every medium corner
   // (slow exits + sloppy look); gripped corners carry more exit speed = competitive
@@ -3334,6 +3421,7 @@ function startGame(){
   if(currentTheme) playMusic(currentTheme.theme);
   placeGrid();
   cars.forEach(c=>{ if(c.rig&&c.rig.group) c.rig.group.visible=true; });   // showcase hid the AI cars
+  if(window.NETRACE) for(let i=1;i<cars.length;i++){ cars[i].rig.group.visible=false; if(cars[i].shadowMesh) cars[i].shadowMesh.visible=false; }
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip;  // chosen car's handling
   const U=upgOf(selectedCar), nu=U.nos, eu=U.eng, tu=U.tire, bu=U.brake||0, xu=U.turbo||0;   // player-only upgrade fields (AI leave undefined -> ||default = stock)
   player.nosMax=1+0.15*nu; player.nosDrain=1-0.10*nu; player.nosForce=1+0.08*nu; player.nosFill=1+0.22*nu;
@@ -3775,9 +3863,10 @@ function update(dt){
       steer: clamp((keys.left?1:0)-(keys.right?1:0) + joyX, -1, 1), drift: keys.space, boost: keys.shift };
     updateCar(player, inp, dt);
     for(let i=1;i<cars.length;i++){ const c=cars[i];
+      if(window.NETRACE) break;                    // ONLINE: no AI - the other cars are real players
       const gap=(prog(player)-prog(c))/SAMPLES;   // + = player ahead of this AI
       // NO holding back: leaders keep full pace (the old -0.04 band eased off when ahead of the player)
-      const band = gap>0 ? clamp(gap*3.6, 0, 0.6) : 0;
+      const band = gap>0 ? clamp(gap*4.6, 0, 0.75) : 0;
       c.maxScale=clamp((c.aiBase||1)+band, 0.95, c.isRival?(aiCap+0.06):aiCap);
       if(aiAccel>1.01) c.boost=Math.max(c.boost, CONFIG.boostMax*0.5);   // normal/hard: nitrous stays fed whether leading or chasing
       updateCar(c, aiInput(c), dt); }
@@ -3792,7 +3881,7 @@ function update(dt){
     if(brActive){ updateCamera(dt); }
     else { const inp={throttle:false,brake:true,steer:0,drift:false,boost:false};
     updateCar(player, inp, dt);
-    for(let i=1;i<cars.length;i++) updateCar(cars[i], aiInput(cars[i]), dt);
+    if(!window.NETRACE) for(let i=1;i<cars.length;i++) updateCar(cars[i], aiInput(cars[i]), dt);
     updateCamera(dt); updateHUD(); }
   } else if(state==='menu'){                                   // car showcase: slow orbit around the selected car
     menuT += dt;
@@ -4266,6 +4355,7 @@ const MONETIZE={ enabled:false, rewardedX2:false, premiumCars:false };   // foun
 // car slider: swipe + snap picks the car; stays in sync with the arrows
 (function(){
   const row=document.getElementById('carSlider'); if(!row) return;
+  const menuEl=document.getElementById('menu'); if(menuEl && row.parentNode!==menuEl) menuEl.appendChild(row);   // escape transformed ancestors (fixed-positioning trap)
   function build(){
     row.innerHTML='';
     CARS.forEach((c,i)=>{ const co=COUNTRIES[i%COUNTRIES.length];
@@ -4288,6 +4378,166 @@ const MONETIZE={ enabled:false, rewardedX2:false, premiumCars:false };   // foun
   },140); },{passive:true});
   window.rebuildCarSlider=build; window.syncCarSlider=sync;
   build();
+})();
+</script>
+
+<script>
+/* ============ ONLINE MULTIPLAYER (PeerJS - free public broker, then P2P WebRTC) ============
+   Star topology: host relays guest state to everyone. Online races have no AI cars -
+   remote rigs are pure visuals driven by 12Hz snapshots + exponential smoothing. */
+window.NETRACE=false;
+(function(){
+  const $=id=>document.getElementById(id);
+  const modal=$('netModal'), stand=$('netStand'), status=$('netStatus');
+  if(!modal) return;
+  const NET={ peer:null, host:false, conns:[], players:{}, remotes:{}, myId:null, code:'', running:false };
+  const say=t=>{ status.textContent=t; };
+  const nameBox=$('netName');
+  try{ nameBox.value=localStorage.getItem('sd_name')||''; }catch(e){}
+  const myName=()=>{ const v=(nameBox.value||'RACER').toUpperCase().slice(0,10); try{ localStorage.setItem('sd_name',v); }catch(e){} return v; };
+
+  let peerLib=null;
+  function loadPeer(){ return peerLib || (peerLib=new Promise((res,rej)=>{
+    const sc=document.createElement('script'); sc.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+    sc.onload=()=>res(); sc.onerror=()=>rej(new Error('network')); document.head.appendChild(sc); })); }
+
+  $('onlineBtn').addEventListener('click',()=>{ modal.classList.remove('hidden'); say(''); });
+  $('netCloseBtn').addEventListener('click',()=>{ modal.classList.add('hidden'); if(!NET.running) teardown(); });
+
+  function teardown(){ try{ NET.peer&&NET.peer.destroy(); }catch(e){}
+    NET.peer=null; NET.host=false; NET.conns=[]; NET.players={}; NET.running=false;
+    for(const id in NET.remotes) removeRemote(id);
+    $('netLobby').classList.add('hidden'); $('netHome').classList.remove('hidden');
+    $('netStartBtn').classList.add('hidden'); $('netWait').classList.add('hidden');
+    stand.classList.add('hidden'); window.NETRACE=false; }
+
+  function roster(){ const me={id:NET.myId,name:myName()};
+    const all=[me].concat(Object.keys(NET.players).map(id=>({id,name:NET.players[id].name})));
+    return all; }
+  function drawLobby(list){ $('netPlayers').innerHTML=list.map((p,i)=>(i===0?'\u2605 ':'')+p.name).join('<br>'); }
+
+  function bindConn(conn){
+    conn.on('data',d=>onMsg(conn,d));
+    conn.on('close',()=>{ dropPeer(conn.peer); });
+    conn.on('error',()=>{ dropPeer(conn.peer); });
+  }
+  function dropPeer(id){ delete NET.players[id]; NET.conns=NET.conns.filter(c=>c.peer!==id);
+    removeRemote(id); if(NET.host) broadcast({t:'roster',list:roster()}); drawLobby(roster()); }
+  function broadcast(m,except){ NET.conns.forEach(c=>{ if(c.open && c.peer!==except) c.send(m); }); }
+
+  // ---- host ----
+  $('netHostBtn').addEventListener('click',async()=>{
+    say('connecting\u2026');
+    try{ await loadPeer(); }catch(e){ say('no internet connection'); return; }
+    const code=Array.from({length:4},()=>'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*31)]).join('');
+    NET.code=code; NET.host=true;
+    NET.peer=new Peer('sundrift-v1-'+code);
+    NET.peer.on('open',id=>{ NET.myId=id; say('');
+      $('netHome').classList.add('hidden'); $('netLobby').classList.remove('hidden');
+      $('netRoomCode').textContent=code; $('netStartBtn').classList.remove('hidden'); drawLobby(roster()); });
+    NET.peer.on('connection',conn=>{ NET.conns.push(conn); bindConn(conn);
+      conn.on('open',()=>{ /* wait for hi */ }); });
+    NET.peer.on('error',e=>{ say('connection error ('+e.type+')'); });
+  });
+
+  // ---- guest ----
+  $('netJoinBtn').addEventListener('click',async()=>{
+    const code=($('netCode').value||'').toUpperCase().trim(); if(code.length!==4){ say('enter the 4-letter room code'); return; }
+    say('joining\u2026');
+    try{ await loadPeer(); }catch(e){ say('no internet connection'); return; }
+    NET.code=code; NET.host=false;
+    NET.peer=new Peer();
+    NET.peer.on('open',id=>{ NET.myId=id;
+      const conn=NET.peer.connect('sundrift-v1-'+code,{reliable:true});
+      NET.conns=[conn]; bindConn(conn);
+      conn.on('open',()=>{ conn.send({t:'hi',name:myName()}); say('');
+        $('netHome').classList.add('hidden'); $('netLobby').classList.remove('hidden');
+        $('netRoomCode').textContent=code; $('netWait').classList.remove('hidden'); });
+    });
+    NET.peer.on('error',e=>{ say(e.type==='peer-unavailable'?'room not found':'connection error'); });
+  });
+
+  // ---- messages ----
+  function onMsg(conn,d){
+    if(d.t==='hi'){ NET.players[conn.peer]={name:d.name}; broadcast({t:'roster',list:roster()}); drawLobby(roster());
+      conn.send({t:'roster',list:roster()}); }
+    else if(d.t==='roster'){ d.list.forEach(p=>{ if(p.id!==NET.myId) NET.players[p.id]={name:p.name}; }); drawLobby(d.list); }
+    else if(d.t==='start'){ beginNetRace(d.track); }
+    else if(d.t==='s'){ applyState(d.id||conn.peer,d);
+      if(NET.host) broadcast(Object.assign({},d,{id:conn.peer}),conn.peer); }
+  }
+
+  // ---- start (host) ----
+  $('netStartBtn').addEventListener('click',()=>{
+    broadcast({t:'start',track:currentTrack});
+    beginNetRace(currentTrack);
+  });
+
+  const REMOTE_COLORS=[0x3ba7ff,0x54e38a,0xffd23b,0xff6ad5,0xb08cff,0xff8b4a];
+  function makeRemote(id,ci){
+    const rc=makeCar(REMOTE_COLORS[ci%REMOTE_COLORS.length],false);
+    rc._tp=new THREE.Vector2(); rc._th=0; rc.lap=0; rc.air=0;
+    // floating name tag
+    const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const x=cv.getContext('2d');
+    x.font='900 34px system-ui'; x.textAlign='center'; x.fillStyle='#fff';
+    x.strokeStyle='rgba(0,0,0,.8)'; x.lineWidth=6;
+    const nm=(NET.players[id]&&NET.players[id].name)||'RACER';
+    x.strokeText(nm,128,42); x.fillText(nm,128,42);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
+    sp.scale.set(4.4,1.1,1); sp.position.y=2.9; rc.rig.group.add(sp);
+    NET.remotes[id]=rc; return rc;
+  }
+  function removeRemote(id){ const rc=NET.remotes[id]; if(!rc) return;
+    try{ scene.remove(rc.rig.group); if(rc.shadowMesh) scene.remove(rc.shadowMesh); }catch(e){}
+    delete NET.remotes[id]; }
+
+  function beginNetRace(track){
+    modal.classList.add('hidden'); NET.running=true; window.NETRACE=true;
+    if(track!==currentTrack){ currentTrack=track; selectTrack(track); }
+    startGame();
+    let ci=0; for(const id in NET.players){ if(!NET.remotes[id]) makeRemote(id,ci++); }
+    stand.classList.remove('hidden');
+  }
+
+  // ---- state pump: 12Hz out, smooth in ----
+  setInterval(()=>{
+    if(!NET.running) return;
+    if(state==='race'||state==='finished'){
+      const m={t:'s',x:+player.pos.x.toFixed(1),z:+player.pos.y.toFixed(1),h:+player.heading.toFixed(2),
+        idx:player.trackIdx,lap:player.lap,fin:player.finished?1:0,bo:player.boosting?1:0};
+      if(NET.host) broadcast(Object.assign({},m,{id:NET.myId}));
+      else if(NET.conns[0]&&NET.conns[0].open) NET.conns[0].send(m);
+    }
+  },83);
+  function applyState(id,d){
+    if(!NET.running) return;
+    const rc=NET.remotes[id]||makeRemote(id,Object.keys(NET.remotes).length);
+    rc._tp.set(d.x,d.z); rc._th=d.h; rc.trackIdx=d.idx; rc.lap=d.lap; rc._fin=d.fin; rc.boosting=!!d.bo;
+    if(!rc._init){ rc.pos.copy(rc._tp); rc.heading=d.h; rc._init=true; }
+  }
+  // render-side smoothing + standings
+  let standT=0;
+  setInterval(()=>{
+    if(!NET.running) return;
+    const dt=0.033;
+    for(const id in NET.remotes){ const rc=NET.remotes[id]; if(!rc._init) continue;
+      rc.pos.lerp(rc._tp, 1-Math.exp(-dt*9));
+      rc.heading+=angleDiff(rc._th,rc.heading)*(1-Math.exp(-dt*9));
+      syncCarMesh(rc);
+    }
+    if((standT++%8)===0 && (state==='race'||state==='finished')){
+      const rows=[{name:'YOU',pr:player.lap*SAMPLES+player.trackIdx,fin:player.finished}];
+      for(const id in NET.remotes){ const rc=NET.remotes[id];
+        rows.push({name:(NET.players[id]&&NET.players[id].name)||'RACER',pr:rc.lap*SAMPLES+rc.trackIdx,fin:rc._fin}); }
+      rows.sort((a,b)=>(b.fin?1e9+b.pr:b.pr)-(a.fin?1e9+a.pr:a.pr));
+      stand.innerHTML=rows.map((r,i)=>'P'+(i+1)+' '+r.name+(r.fin?' \u2714':'')).join(' &nbsp;\u2502&nbsp; ');
+    }
+    if(state==='menu' && window.NETRACE){ // race left -> back to lobby state
+      window.NETRACE=false; stand.classList.add('hidden');
+      for(const id in NET.remotes) removeRemote(id);
+      if(NET.peer && !NET.peer.destroyed){ modal.classList.remove('hidden'); }
+    }
+  },33);
 })();
 </script>
 </body>
