@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v2.6-->
+<!--BUILD:v2.7-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -89,8 +89,30 @@
            linear-gradient(180deg, rgba(6,4,11,.97) 0%, rgba(9,5,16,.44) 18%, rgba(9,5,16,.03) 42%, rgba(9,5,16,.06) 58%, rgba(9,5,16,.5) 74%, rgba(5,3,10,.99) 100%); }
   .menuTop,.menuBot{ display:flex; flex-direction:column; align-items:center; width:100%; }
   .menuBot{ gap:9px; }
-  #carShow{ display:flex; gap:14px; align-items:center; justify-content:center; }
-  #carInfo{ min-width:186px; }
+  /* GARAGE: car showcased in the middle; spec + upgrade GLASS PANELS on LEFT and RIGHT; stationary side arrows */
+  #panel-garage{ pointer-events:none; }
+  .garPanel{ pointer-events:auto; display:flex; flex-direction:column; gap:7px; }
+  .garHead{ font-size:11px; font-weight:900; letter-spacing:1.4px; color:#ffb45a; opacity:.92; text-align:left; margin-top:3px; }
+  #kitRow,#weaponRow{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  @media (orientation:landscape){
+    #garL,#garR{ position:absolute; top:50%; transform:translateY(-50%); width:min(30vw,254px); max-height:94%; overflow-y:auto;
+      background:linear-gradient(165deg, rgba(16,11,22,.80), rgba(9,6,14,.64)); border:1px solid rgba(255,255,255,.10); border-radius:10px; padding:10px 11px;
+      -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px); box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08); }
+    #garL{ left:calc(env(safe-area-inset-left,0px) + 8px); text-align:left; }
+    #garR{ right:calc(env(safe-area-inset-right,0px) + 8px); }
+    #kitRow,#weaponRow{ flex-direction:column; flex-wrap:nowrap; align-items:stretch; }
+    #kitRow .kit,#weaponRow .kit{ width:100%; justify-content:space-between; box-sizing:border-box; }
+    #carPrev{ position:absolute; left:calc(env(safe-area-inset-left,0px) + min(30vw,254px) + 14px); top:50%; transform:translateY(-50%); z-index:3; }
+    #carNext{ position:absolute; right:calc(env(safe-area-inset-right,0px) + min(30vw,254px) + 14px); top:50%; transform:translateY(-50%); z-index:3; }
+    #paintRow,#styleRow{ justify-content:flex-start; }
+  }
+  @media (orientation:portrait){
+    #panel-garage.mPanel{ justify-content:flex-start; }
+    .garPanel{ width:100%; align-items:center; }
+    #garR{ position:absolute; left:0; right:0; bottom:0; padding:0 14px; }
+    #carPrev,#carNext{ position:absolute; top:42%; z-index:3; }
+    #carPrev{ left:10px; } #carNext{ right:10px; }
+  }
   #carName{ font-size:min(5.2vw,23px); font-weight:900; letter-spacing:2px; color:#ffd23b; text-shadow:0 2px 12px rgba(0,0,0,.6); }
   #carStats{ display:flex; flex-direction:column; gap:5px; margin-top:7px; }
   .stat{ display:flex; align-items:center; gap:8px; }
@@ -466,22 +488,24 @@
       </div>
     </div>
     <div class="mPanel" id="panel-garage">
-      <div id="carShow">
-        <div class="carArrow" id="carPrev">◀</div>
-        <div id="carInfo">
-          <div id="carName">🏎 DRIFTER</div>
-          <div id="carStats">
-            <div class="stat"><label>SPD</label><div class="bar"><i id="statSpd"></i></div></div>
-            <div class="stat"><label>GRIP</label><div class="bar"><i id="statGrip"></i></div></div>
-          </div>
-          <div id="carStatus"></div>
-          <div id="kitRow"></div>
-          <div id="weaponRow"></div>
-          <div id="paintRow"></div>
-          <div id="styleRow"></div>
+      <div id="garL" class="garPanel">
+        <div id="carName">🏎 DRIFTER</div>
+        <div id="carStats">
+          <div class="stat"><label>SPD</label><div class="bar"><i id="statSpd"></i></div></div>
+          <div class="stat"><label>GRIP</label><div class="bar"><i id="statGrip"></i></div></div>
         </div>
-        <div class="carArrow" id="carNext">▶</div>
+        <div id="carStatus"></div>
+        <div id="paintRow"></div>
+        <div id="styleRow"></div>
       </div>
+      <div id="garR" class="garPanel">
+        <div class="garHead">⚙ UPGRADES</div>
+        <div id="kitRow"></div>
+        <div class="garHead">⚔ BATTLE</div>
+        <div id="weaponRow"></div>
+      </div>
+      <div class="carArrow" id="carPrev">◀</div>
+      <div class="carArrow" id="carNext">▶</div>
     </div>
     <div class="mPanel" id="panel-settings">
       <div id="settings">
@@ -538,12 +562,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.6</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.7</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v2.6';
+(function(){ const BUILD='v2.7';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -846,7 +870,7 @@ function renderShop(){                                   // menu car panel: name
 }
 function renderArsenal(){                                 // GLOBAL battle-royale weapon upgrades (apply to whichever car you fight in)
   const host=document.getElementById('weaponRow'); if(!host) return; host.style.display='flex';
-  host.innerHTML='<span class="paintLbl">⚔ BATTLE</span>';
+  host.innerHTML='';   // the garage panel has its own ⚔ BATTLE header
   WEAPONS.forEach(w=>{ const lv=warsenal[w.key]||0, max=lv>=3, cost=max?0:WEAP_COST[w.key][lv], afford=coins>=cost;
     const el=document.createElement('div'); el.className='kit'+(max?' max':(afford?' afford':' poor'));
     el.innerHTML='<span class="ki">'+w.icon+'</span><b>'+w.name+'</b>'+
@@ -1204,6 +1228,35 @@ class AudioEngine {
       const g=this.ctx.createGain(); g.gain.setValueAtTime(0,t+t0); g.gain.linearRampToValueAtTime(0.14,t+t0+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+t0+dur);
       a.connect(g); g.connect(o); a.start(t+t0); a.stop(t+t0+dur+0.02); };
     mk(1318,0,0.08); mk(1976,0.05,0.13);                  // bright B->E ding (coin pickup)
+  }catch(e){} }
+  boom(v){ if(!this.ok) return; v=clamp(v||0.7,0.15,1); try{ const t=this.ctx.currentTime, o=this.comp;
+    const so=this.ctx.createOscillator(); so.type='sine'; so.frequency.setValueAtTime(95,t); so.frequency.exponentialRampToValueAtTime(28,t+0.5);   // sub thump
+    const sg=this.ctx.createGain(); sg.gain.setValueAtTime(0.8*v,t); sg.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+    so.connect(sg); sg.connect(o); so.start(); so.stop(t+0.65);
+    const n=this.ctx.createBufferSource(); n.buffer=this.noiseBuf;                                    // body of the blast
+    const nf=this.ctx.createBiquadFilter(); nf.type='lowpass'; nf.frequency.setValueAtTime(3200,t); nf.frequency.exponentialRampToValueAtTime(240,t+0.55);
+    const ng=this.ctx.createGain(); ng.gain.setValueAtTime(0.75*v,t); ng.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+    n.connect(nf); nf.connect(ng); ng.connect(o); n.start(); n.stop(t+0.6);
+    const c2=this.ctx.createBufferSource(); c2.buffer=this.noiseBuf;                                  // initial CRACK
+    const cf=this.ctx.createBiquadFilter(); cf.type='highpass'; cf.frequency.value=1800;
+    const cg=this.ctx.createGain(); cg.gain.setValueAtTime(0.5*v,t); cg.gain.exponentialRampToValueAtTime(0.001,t+0.07);
+    c2.connect(cf); cf.connect(cg); cg.connect(o); c2.start(); c2.stop(t+0.09);
+  }catch(e){} }
+  launch(){ if(!this.ok) return; try{ const t=this.ctx.currentTime, o=this.comp;
+    const n=this.ctx.createBufferSource(); n.buffer=this.noiseBuf;                                    // rocket WHOOSH: band-swept air
+    const bf=this.ctx.createBiquadFilter(); bf.type='bandpass'; bf.Q.value=1.1;
+    bf.frequency.setValueAtTime(420,t); bf.frequency.exponentialRampToValueAtTime(2600,t+0.12); bf.frequency.exponentialRampToValueAtTime(700,t+0.5);
+    const g=this.ctx.createGain(); g.gain.setValueAtTime(0.0,t); g.gain.linearRampToValueAtTime(0.5,t+0.05); g.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+    n.connect(bf); bf.connect(g); g.connect(o); n.start(); n.stop(t+0.6);
+  }catch(e){} }
+  gat(){ if(!this.ok) return; try{ const t=this.ctx.currentTime, o=this.comp;                        // tight mechanical TICK (called every other round)
+    const n=this.ctx.createBufferSource(); n.buffer=this.noiseBuf;
+    const hf=this.ctx.createBiquadFilter(); hf.type='highpass'; hf.frequency.value=2400;
+    const g=this.ctx.createGain(); g.gain.setValueAtTime(0.16,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.045);
+    n.connect(hf); hf.connect(g); g.connect(o); n.start(); n.stop(t+0.05);
+    const p=this.ctx.createOscillator(); p.type='square'; p.frequency.value=210;
+    const pg=this.ctx.createGain(); pg.gain.setValueAtTime(0.10,t); pg.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+    p.connect(pg); pg.connect(o); p.start(); p.stop(t+0.06);
   }catch(e){} }
   resume(){ if(this.ok && this.ctx.state==='suspended') this.ctx.resume(); }
 }
@@ -2559,8 +2612,20 @@ function attachUpgrades(rig, carIdx, forceU){
       : [[-1,-1],[-1,1],[1,-1],[1,1]].map(([sx,sz])=>({x:sx*x0*0.9, y:Lz*0.086, z:sz*Lz*0.32, rad:Lz*0.09, outerX:x0*0.98}));
     if(kitPartGeo.rim){ const rimMat=new THREE.MeshPhysicalMaterial({color:0xc8cdd6, metalness:0.95, roughness:0.2, envMapIntensity:1.5, clearcoat:0.5});
       const rgeo=kitPartGeo.rim; if(!rgeo.boundingBox) rgeo.computeBoundingBox(); const rsz=new THREE.Vector3(); rgeo.boundingBox.getSize(rsz);
+      const _wp=new THREE.Vector3(), _kq=new THREE.Quaternion(), _wq=new THREE.Quaternion();
       wheels.forEach(w=>{ const rk=(w.rad*1.6)/(rsz.y||1); const rm=new THREE.Mesh(rgeo, rimMat); rm.castShadow=sh; rm.scale.setScalar(rk);
-        rm.position.set(Math.sign(w.x)*(w.outerX+0.02), w.y, w.z); if(w.x<0) rm.rotation.y=Math.PI; kit.add(rm); }); }   // bigger + layered ON the wheel face (covers the stock rim)
+        // parent the rim INTO the actual spinning wheel object (was bolted to the static kit -> rims looked frozen while the tires spun)
+        let wo=null, wd=9e9; (rig.wheels||[]).forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
+          const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} });
+        if(wo && wd<1.6){
+          kit.updateWorldMatrix(true,false); wo.updateWorldMatrix(true,false);
+          const p=new THREE.Vector3(Math.sign(w.x)*(w.outerX+0.02), w.y, w.z);
+          kit.localToWorld(p); wo.worldToLocal(p); rm.position.copy(p);
+          kit.getWorldQuaternion(_kq); wo.getWorldQuaternion(_wq);
+          rm.quaternion.copy(_wq.invert().multiply(_kq)); if(w.x<0) rm.rotateY(Math.PI);
+          const inv=1/Math.max(wo.scale.x||1,1e-4); rm.scale.setScalar(rk*inv);   // cancel the fat-tire wheel scale so the rim keeps its intended size
+          wo.add(rm);
+        } else { rm.position.set(Math.sign(w.x)*(w.outerX+0.02), w.y, w.z); if(w.x<0) rm.rotation.y=Math.PI; kit.add(rm); } }); }   // fallback: static overlay if no wheel object matched
     wheels.forEach(w=>{ const arch=add(new THREE.TorusGeometry(w.rad*1.06, w.rad*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel (not a square panel)
       arch.rotation.y=Math.PI/2; arch.position.set(Math.sign(w.x)*(w.outerX-0.06), w.y, w.z); });
     if(t>=3) for(const sx of [-1,1]){ const can=add(rbox(0.3,0.03,0.16,0.012), carbon); can.position.set(sx*x0*0.74, floorY+H*0.18, front-Lz*0.05); can.rotation.x=0.2; }
@@ -3229,6 +3294,7 @@ function fireRocket(c){ if(!c.rig||!c.rig.rocketMuz||!c.rig.rocketMuz.length||(c
   const mesh=buildRocketMesh(); mesh.position.copy(from); scene.add(mesh);
   rockets.push({ mesh, owner:c, vel:fwd.clone().multiplyScalar(BR.rkSpeed), life:BR.rkLife, target:c._brTarget||null, trail:0 });
   sparks.emit(from.x,from.y,from.z, fwd.x*7,fwd.y*7+2,fwd.z*7, 0.16, 6);                 // launch puff
+  if(audio&&audio.launch && (c.isPlayer || Math.hypot(c.pos.x-player.pos.x,c.pos.y-player.pos.y)<60)) audio.launch();
   if(c.isPlayer){ camShake=Math.min(camShake+0.24,0.9); if(navigator.vibrate){try{navigator.vibrate(18);}catch(e){}} } }
 function updateRockets(dt){ for(let i=rockets.length-1;i>=0;i--){ const r=rockets[i]; r.life-=dt;
     let tgt=r.target; if(tgt && !tgt.alive){ tgt=r.target=null; }
@@ -3238,7 +3304,8 @@ function updateRockets(dt){ for(let i=rockets.length-1;i>=0;i--){ const r=rocket
         r.vel.copy(cur.multiplyScalar(BR.rkSpeed)); } }
     r.mesh.position.addScaledVector(r.vel, dt);
     r.mesh.lookAt(r.mesh.position.x+r.vel.x, r.mesh.position.y+r.vel.y, r.mesh.position.z+r.vel.z);   // nose (-z) faces travel
-    r.trail-=dt; if(r.trail<=0){ r.trail=0.018; sparks.emit(r.mesh.position.x, r.mesh.position.y, r.mesh.position.z, 0,0.4,0, 0.24, 2); }
+    r.trail-=dt; if(r.trail<=0){ r.trail=0.018; sparks.emit(r.mesh.position.x, r.mesh.position.y, r.mesh.position.z, 0,0.4,0, 0.24, 2);
+      tireSmoke.emit(r.mesh.position.x, r.mesh.position.y, r.mesh.position.z, -r.vel.x*0.04, 0.5, -r.vel.z*0.04, 0.34, 2); }   // smoke contrail -> the rocket reads in flight
     let hit=null; for(const o of cars){ if(!o.alive||o===r.owner) continue; const dx=o.pos.x-r.mesh.position.x, dy=(o.visY||0)+1-r.mesh.position.y, dz=o.pos.y-r.mesh.position.z; if(dx*dx+dy*dy+dz*dz<9){ hit=o; break; } }
     const gy=brActive?terrainHeight(r.mesh.position.x, r.mesh.position.z):0;
     if(hit || r.mesh.position.y<=gy+0.3 || r.life<=0){ detonateRocket(r); scene.remove(r.mesh); disposeGroup(r.mesh); rockets.splice(i,1); } } }
@@ -3248,11 +3315,22 @@ function detonateRocket(r){ const p=r.mesh.position.clone();
   for(const o of cars){ if(!o.alive) continue; const dx=o.pos.x-p.x, dz=o.pos.y-p.z, dd=Math.hypot(dx,dz);
     if(dd<BR.rkSplash){ const fall=1-dd/BR.rkSplash; damageCar(o, BR.rkDmg*fall*(o===r.owner?0.2:1), r.owner);
       if(o.alive){ const kb=fall*8; o.vel.x+=(dx/(dd||1))*kb; o.vel.y+=(dz/(dd||1))*kb; } } }   // knockback shove
-  const pd=Math.hypot(p.x-player.pos.x, p.z-player.pos.y); if(pd<26) camShake=Math.min(camShake+(1-pd/26)*0.7, 1.1); }
-function addExplosion(p){ const m=new THREE.Mesh(new THREE.SphereGeometry(1,12,10), new THREE.MeshBasicMaterial({color:0xffa838, transparent:true, opacity:0.9, depthWrite:false}));
-  m.position.copy(p); scene.add(m); explosions.push({m,t:0}); }
-function updateExplosions(dt){ for(let i=explosions.length-1;i>=0;i--){ const e=explosions[i]; e.t+=dt; e.m.scale.setScalar(1+e.t*30); e.m.material.opacity=Math.max(0,0.9*(1-e.t/0.34));
-    if(e.t>=0.34){ scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose(); explosions.splice(i,1); } } }
+  const pd=Math.hypot(p.x-player.pos.x, p.z-player.pos.y); if(pd<26) camShake=Math.min(camShake+(1-pd/26)*0.7, 1.1);
+  if(audio&&audio.boom) audio.boom(clamp(1-pd/70, 0.15, 1)); }   // distance-weighted blast
+function addExplosion(p){   // layered FIREBALL: white-hot core + orange shell + expanding ground shockwave ring
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,12,10), new THREE.MeshBasicMaterial({color:0xfff3c8, transparent:true, opacity:1, depthWrite:false}));
+  core.position.copy(p); scene.add(core); explosions.push({m:core,t:0,kind:'core'});
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,12,10), new THREE.MeshBasicMaterial({color:0xff7a2a, transparent:true, opacity:0.85, depthWrite:false}));
+  shell.position.copy(p); scene.add(shell); explosions.push({m:shell,t:-0.04,kind:'shell'});
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1,0.15,6,26), new THREE.MeshBasicMaterial({color:0xffc46a, transparent:true, opacity:0.8, depthWrite:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.copy(p); ring.position.y=Math.max(0.4, p.y-0.6); scene.add(ring); explosions.push({m:ring,t:0,kind:'ring'});
+}
+function updateExplosions(dt){ for(let i=explosions.length-1;i>=0;i--){ const e=explosions[i]; e.t+=dt; if(e.t<0){ e.m.scale.setScalar(0.01); continue; }
+    const life = e.kind==='core'?0.20 : e.kind==='ring'?0.30 : 0.36;
+    const grow = e.kind==='core'?20   : e.kind==='ring'?55   : 30;
+    e.m.scale.setScalar(1+e.t*grow); if(e.kind==='ring') e.m.scale.y=1;
+    e.m.material.opacity=Math.max(0,(e.kind==='core'?1:0.85)*(1-e.t/life));
+    if(e.t>=life){ scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose(); explosions.splice(i,1); } } }
 function muzzleFlash(x,y,z){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,6), new THREE.MeshBasicMaterial({color:0xfff0a8, transparent:true, opacity:0.95, depthWrite:false})); m.position.set(x,y,z); scene.add(m); mflashes.push({m,t:0}); }
 function updateMuzzle(dt){ for(let i=mflashes.length-1;i>=0;i--){ const e=mflashes[i]; e.t+=dt; e.m.scale.setScalar(1+e.t*9); e.m.material.opacity=Math.max(0,0.95*(1-e.t/0.06));
     if(e.t>=0.06){ scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose(); mflashes.splice(i,1); } } }
@@ -3317,6 +3395,7 @@ function damageCar(c, amt, by){ if(!c.alive) return;
     tireSmoke.emit(c.pos.x,(c.visY||0)+0.6,c.pos.y,0,1.2,0,1.0,22);
     spawnDebris(c.pos.x,(c.visY||0)+0.5,c.pos.y, 13, 10, c.bodyColor, c.visY||0);   // the car BREAKS APART into flying pieces
     addExplosion(new THREE.Vector3(c.pos.x,(c.visY||0)+0.9,c.pos.y));               // kill flash
+    if(audio&&audio.boom) audio.boom(0.95);
     killFeed(by, c);
     if(navigator.vibrate){ try{navigator.vibrate(40);}catch(e){} }
     c.rig.group.visible=false; if(c.shadowMesh) c.shadowMesh.visible=false;
@@ -3344,6 +3423,7 @@ function battleFrame(dt){ raceTime+=dt;
     if(c._brTarget && c._gunT<=0){ c._gunT=BR.gunCd; c._spin=46; c._trTog=!c._trTog;
       const mz=new THREE.Vector3(); (c.rig.muzzle||c.rig.group).getWorldPosition(mz);
       muzzleFlash(mz.x,mz.y,mz.z);                                                                              // crisp muzzle flash (better shooting fx)
+      if(audio&&audio.gat && c._trTog && (c.isPlayer || Math.hypot(c.pos.x-player.pos.x,c.pos.y-player.pos.y)<45)) audio.gat();   // mechanical fire tick
       if(c._trTog) addTracer(mz.clone(), new THREE.Vector3(c._brTarget.pos.x,(c._brTarget.visY||0)+1,c._brTarget.pos.y));   // tracer every other round (rapid gatling fire)
       sparks.emit(c._brTarget.pos.x,(c._brTarget.visY||0)+1,c._brTarget.pos.y,(Math.random()-.5)*3,1.5,(Math.random()-.5)*3,0.16,4);   // impact sparks
       if(c.isPlayer) camShake=Math.min(camShake+0.04,0.4);
@@ -3513,8 +3593,9 @@ function update(dt){
     for(let i=1;i<cars.length;i++){ cars[i].rig.group.visible=false; if(cars[i].shadowMesh) cars[i].shadowMesh.visible=false; }   // only the player's car (+ its shadow) on display
     player.rig.group.visible=true; syncCarMesh(player);
     const cx=player.pos.x, cz=player.pos.y, ang=menuT*0.32, cy=player.visY||0;
-    const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*Math.max(camera.aspect,0.3));      // horizontal FOV
-    const dist=Math.max(8.2, 3.4/Math.tan(hf/2)+3.4);                                        // pull back on narrow (portrait) screens so the WHOLE car + kit parts fit the frame
+    const aspEff=Math.min(Math.max(camera.aspect,0.3), 0.62);                                // landscape garage shows the car between the two SIDE PANELS -> fit the middle gap, not the full width
+    const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*aspEff);                           // horizontal FOV of the visible middle
+    const dist=Math.max(8.2, 3.4/Math.tan(hf/2)+3.4);                                        // pull back so the WHOLE car + kit parts fit
     camera.position.set(cx + Math.sin(ang)*dist, 2.5+cy+(dist-8.2)*0.12, cz + Math.cos(ang)*dist);
     camera.lookAt(cx, 1.05+cy, cz);
   }
