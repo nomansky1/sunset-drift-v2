@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.0-->
+<!--BUILD:v4.1-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -532,6 +532,18 @@
   @media (orientation:landscape) and (max-height:700px){
     .cta.online{ padding:6px 12px; font-size:11px; }
   }
+  /* ---------- per-card rotating 3D track minimaps ---------- */
+  .trackBtn .ic.live{ font-size:0; margin-bottom:4px; position:relative; width:100%; }
+  .tb3d{ display:block; width:100%; height:46px; border-radius:8px;
+    background:linear-gradient(180deg, rgba(10,7,18,.62), rgba(16,10,26,.4));
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.07), inset 0 -8px 14px rgba(0,0,0,.28); }
+  .tbEmoji{ position:absolute; top:2px; right:3px; font-size:11px; line-height:1; opacity:.9;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
+  @media (orientation:landscape) and (max-height:700px){
+    .tb3d{ height:30px; border-radius:6px; }
+    .tbEmoji{ font-size:9px; }
+    .trackBtn .ic.live{ margin-bottom:2px; }
+  }
 </style>
 </head>
 <body>
@@ -696,12 +708,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.0</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.1</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.0';
+(function(){ const BUILD='v4.1';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4538,6 +4550,64 @@ window.NETRACE=false;
       if(NET.peer && !NET.peer.destroyed){ modal.classList.remove('hidden'); }
     }
   },33);
+})();
+
+// per-card rotating 3D track minimaps (same projection as the big map, theme-tinted per track)
+(function(){
+  const btns=Array.from(document.querySelectorAll('.trackBtn')); if(!btns.length) return;
+  const hx=v=>'#'+(v||0).toString(16).padStart(6,'0');
+  const cards=[];
+  btns.forEach(btn=>{
+    const i=+btn.dataset.i, T=TRACKS[i]; if(!T) return;
+    const ic=btn.querySelector('.ic'); if(!ic) return;
+    const emoji=ic.textContent;
+    ic.textContent=''; ic.classList.add('live');
+    const cv=document.createElement('canvas'); cv.className='tb3d'; ic.appendChild(cv);
+    const em=document.createElement('span'); em.className='tbEmoji'; em.textContent=emoji; ic.appendChild(em);
+    // sample the control loop -> normalized pts (once)
+    const ctrl=T.ctrl, n=ctrl.length, N=110, out=[];
+    let mnx=1e9,mxx=-1e9,mnz=1e9,mxz=-1e9;
+    for(let k=0;k<N;k++){ const u=k/N*n, seg=Math.floor(u)%n, tt=u-Math.floor(u);
+      const p0=ctrl[(seg-1+n)%n],p1=ctrl[seg],p2=ctrl[(seg+1)%n],p3=ctrl[(seg+2)%n];
+      const t2=tt*tt,t3=t2*tt;
+      const x=0.5*((2*p1[0])+(-p0[0]+p2[0])*tt+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3);
+      const z=0.5*((2*p1[1])+(-p0[1]+p2[1])*tt+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3);
+      out.push([x,z]); mnx=Math.min(mnx,x);mxx=Math.max(mxx,x);mnz=Math.min(mnz,z);mxz=Math.max(mxz,z); }
+    const cx=(mnx+mxx)/2, cz=(mnz+mxz)/2, sc=1.72/Math.max(mxx-mnx,mxz-mnz);
+    const pts=out.map(pt=>[(pt[0]-cx)*sc,(pt[1]-cz)*sc]);
+    cards.push({cv, c2:cv.getContext('2d'), pts, ph:i*0.7,
+      hot:hx(T.sky&&T.sky.bot), dim:hx(T.sky&&T.sky.top), sun:hx(T.sky&&T.sky.sun)});
+  });
+  let spin=0, last=0;
+  const panel=document.getElementById('panel-race'), menu=document.getElementById('menu');
+  function frame(ts){
+    requestAnimationFrame(frame);
+    if(!menu || menu.classList.contains('hidden')) return;
+    if(panel && !panel.classList.contains('on')) return;
+    if(ts-last<40) return; last=ts;                       // ~25fps is plenty for tiny cards
+    spin+=0.011;
+    for(const cd of cards){
+      const W=cd.cv.clientWidth|0, H=cd.cv.clientHeight|0; if(!W||!H) continue;
+      if(cd.cv.width!==W||cd.cv.height!==H){ cd.cv.width=W; cd.cv.height=H; }
+      const c2=cd.c2; c2.clearRect(0,0,W,H);
+      const a=spin+cd.ph, ca=Math.cos(a), sa=Math.sin(a), tilt=0.5;
+      const P=cd.pts.map(pt=>{ const rx=pt[0]*ca-pt[1]*sa, rz=pt[0]*sa+pt[1]*ca;
+        return [W/2+rx*W*0.40, H*0.52+rz*H*0.40*tilt, rz]; });
+      c2.lineJoin='round'; c2.lineCap='round';
+      for(const pass of [0,1]){
+        let started=false; c2.beginPath();
+        for(let k=0;k<=P.length;k++){ const q=P[k%P.length]; const back=q[2]>0;
+          if((pass===0)!==back){ started=false; continue; }
+          if(!started){ c2.moveTo(q[0],q[1]); started=true; } else c2.lineTo(q[0],q[1]); }
+        c2.globalAlpha=pass===0?0.38:0.95;
+        c2.strokeStyle=pass===0?cd.dim:cd.hot;
+        c2.lineWidth=pass===0?2:3; c2.stroke();
+      }
+      c2.globalAlpha=1;
+      c2.fillStyle=cd.sun; c2.beginPath(); c2.arc(P[0][0],P[0][1],2.2,0,6.283); c2.fill();
+    }
+  }
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
