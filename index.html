@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v2.9-->
+<!--BUILD:v3.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -578,7 +578,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v2.9';
+(function(){ const BUILD='v3.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2481,8 +2481,11 @@ function calibrateGround(rig){
   try{
     rig.group.updateWorldMatrix(true,true);
     const inv=new THREE.Matrix4().copy(rig.group.matrixWorld).invert(); const bb=new THREE.Box3();
-    let low=1e9;
-    if(rig.wheels && rig.wheels.length){ rig.wheels.forEach(w=>{ bb.setFromObject(w); bb.applyMatrix4(inv); if(bb.min.y<low) low=bb.min.y; }); }
+    let low=1e9; const bots=[];
+    if(rig.wheels && rig.wheels.length){ rig.wheels.forEach(w=>{ bb.setFromObject(w); bb.applyMatrix4(inv); bots.push(bb.min.y); if(bb.min.y<low) low=bb.min.y; }); }
+    if(rig.wheels && rig.wheels.length){                                          // classify tailgate SPARES (ride high) vs road wheels — spares never spin/scale
+      rig.roadWheels=rig.wheels.filter((w,i)=> bots[i] < low+0.45);
+      rig.spares    =rig.wheels.filter((w,i)=> bots[i] >= low+0.45); }
     if(low>=1e8 && rig.chassis){ bb.setFromObject(rig.chassis); bb.applyMatrix4(inv); low=bb.min.y; }
     rig.lift = (low<1e8) ? clamp(-low, -1.2, 1.2) : 0;
   }catch(e){ rig.lift=0; }
@@ -2649,22 +2652,32 @@ function attachUpgrades(rig, carIdx, forceU){
     const _wp=new THREE.Vector3(), _kq=new THREE.Quaternion(), _wq=new THREE.Quaternion(), _bb=new THREE.Box3(), _bs=new THREE.Vector3();
     const matchWheel=(w)=>{ let wo=null, wd=9e9; (rig.wheels||[]).forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
       const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} }); return (wo&&wd<1.6)?wo:null; };
-    let stockR=0; (rig.wheels||[]).forEach(wo=>{ _bb.setFromObject(wo); _bb.getSize(_bs); stockR=Math.max(stockR, Math.max(_bs.y,_bs.z)/2); });   // measured straight off every wheel object — no matching required
+    // SPARE-WHEEL AWARE: a 5th wheel mounted on a tailgate rides much higher than the road wheels —
+    // it must stay attached exactly as authored (no scaling, no overlays, no spin-tumble)
+    { const invG=new THREE.Matrix4(); g.updateWorldMatrix(true,true); invG.copy(g.matrixWorld).invert();
+      const bots=(rig.wheels||[]).map(w=> new THREE.Box3().setFromObject(w).applyMatrix4(invG).min.y);
+      let mB=1e9; bots.forEach(b=>{ if(b<mB) mB=b; });
+      rig.roadWheels=(rig.wheels||[]).filter((w,i)=> bots[i] < mB+0.45);
+      rig.spares    =(rig.wheels||[]).filter((w,i)=> bots[i] >= mB+0.45); }
+    const roadW=rig.roadWheels||rig.wheels||[];
+    let stockR=0; roadW.forEach(wo=>{ _bb.setFromObject(wo); _bb.getSize(_bs); stockR=Math.max(stockR, Math.max(_bs.y,_bs.z)/2); });
     const kartish=/^kart/.test((CARS[carIdx]&&CARS[carIdx].raw)||'');       // kart-class: wheels are already oversized cartoon items with a tiny wheelbase
-    let sXZ = kartish ? 1 : 1+0.12*t, sYc = kartish ? 1 : 1+0.04*t;         // karts keep STOCK wheels (growth made them clash into balloons)
-    if(!kartish && stockR>1e-4){ const pg=(function(){ const cs=(rig.wheels||[]).map(w=>{ const p=new THREE.Vector3(); w.getWorldPosition(p); return p; });
+    let sR = kartish ? 1 : 1+0.08*t, sW = kartish ? 1 : 1+0.05*t;           // ROUND growth (radius grows equally in y+z — the old y<z scale made ovals), modest size (+24% max)
+    if(!kartish && stockR>1e-4){ const pg=(function(){ const cs=roadW.map(w=>{ const p=new THREE.Vector3(); w.getWorldPosition(p); return p; });
         let m=9e9; for(let a2=0;a2<cs.length;a2++)for(let b2=a2+1;b2<cs.length;b2++){ const d=cs[a2].distanceTo(cs[b2]); if(d<m)m=d; } return m; })();
       const gap=Math.max(pg, minGapT);                                      // pivots and clusters both lie on some models — trust the larger (stock wheels can't physically overlap)
-      if(gap<9e8) sXZ=clamp(Math.min(sXZ, (gap-0.08)/(2*stockR)), 1, sXZ); }
-    sYc=Math.min(sYc,sXZ);
-    if(rig.wheels) rig.wheels.forEach(w=> w.scale.set(sXZ, sYc, sXZ));
+      if(gap<9e8) sR=clamp(Math.min(sR, (gap-0.08)/(2*stockR)), 1, sR); }
+    sW=Math.min(sW,sR); const sXZ=sR;                                        // (sXZ kept for the fender-arch sizing below)
+    roadW.forEach(w=> w.scale.set(sW, sR, sR));                              // width modest, radius uniform -> ROUND tires; spares untouched
     // 4) tire ring + rim per wheel — sized from the POST-scale wheel, and NEVER larger than the tire itself (added parts cannot create clash)
     const rimMat=new THREE.MeshPhysicalMaterial({color:0xc8cdd6, metalness:0.95, roughness:0.2, envMapIntensity:1.5, clearcoat:0.5});
-    const tireMat=new THREE.MeshStandardMaterial({color:0x212328, roughness:0.95, metalness:0.02, bumpMap:treadTex(), bumpScale:0.02});   // real RUBBER w/ tread relief
+    const tireMat=new THREE.MeshStandardMaterial({color:0x131519, roughness:0.97, metalness:0.0, bumpMap:treadTex(), bumpScale:0.025});   // BLACK rubber w/ tread relief
     const rgeo=kitPartGeo.rim||null; let rsz=null; if(rgeo){ if(!rgeo.boundingBox) rgeo.computeBoundingBox(); rsz=new THREE.Vector3(); rgeo.boundingBox.getSize(rsz); }
+    const matchRoad=(w)=>{ let wo=null, wd=9e9; roadW.forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
+      const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} }); return (wo&&wd<1.6)?wo:null; };
     wheels.forEach(w=>{
       if(kartish) return;                                               // kart wheels already read as fat tires — no overlay needed
-      const wo=matchWheel(w); if(!wo) return;                           // no real wheel matched -> add NOTHING
+      const wo=matchRoad(w); if(!wo) return;                            // ROAD wheels only — spares stay exactly as authored
       kit.updateWorldMatrix(true,false); wo.updateWorldMatrix(true,false);
       _bb.setFromObject(wo); _bb.getSize(_bs);
       const wr=clamp(Math.max(_bs.y,_bs.z)/2, H*0.10, RADMAX);          // TRUE post-scale tire radius
@@ -2672,9 +2685,9 @@ function attachUpgrades(rig, carIdx, forceU){
       const inv=1/Math.max(wo.scale.x||1,1e-4);
       const mount=(mesh,kx)=>{ const p=new THREE.Vector3(kx, w.y, w.z); kit.localToWorld(p); wo.worldToLocal(p);
         mesh.position.copy(p); mesh.quaternion.copy(q); if(w.x<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
-      const tire=new THREE.Mesh(new THREE.TorusGeometry(wr*0.70, wr*0.28, 10, 20), tireMat); tire.geometry.rotateY(Math.PI/2);   // outer edge 0.98*wr <= the tire itself
-      tire.scale.setScalar(inv); mount(tire, Math.sign(w.x)*(w.outerX-wr*0.16));       // rubber ring wrapping the tire shoulder
-      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((wr*1.05)/(rsz.y||1)*inv);
+      const tire=new THREE.Mesh(new THREE.TorusGeometry(wr*0.66, wr*0.32, 12, 22), tireMat); tire.geometry.rotateY(Math.PI/2);   // outer 0.98*wr
+      tire.scale.setScalar(inv); mount(tire, w.x);                                     // centered ON the wheel -> the visible tire IS the black treaded ring
+      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((wr*1.02)/(rsz.y||1)*inv);
         mount(rm, Math.sign(w.x)*(w.outerX+0.02)); }                                    // rim face sized to THIS wheel
     });
     wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
@@ -2936,7 +2949,7 @@ function updateCar(c, inp, dt){
   syncCarMesh(c);
   const lateral=_l.length()*Math.sign(c.vel.dot(_r.set(Math.cos(c.heading),-Math.sin(c.heading))));
   c.rig.spinAcc += fwdSpeed*dt/0.55;
-  c.rig.wheels.forEach(w=> w.rotation.x=c.rig.spinAcc);
+  (c.rig.roadWheels||c.rig.wheels).forEach(w=> w.rotation.x=c.rig.spinAcc);   // spares on the tailgate don't tumble
   const vSteer=clamp(inp.steer,-1,1)*0.5;
   c.rig.front.forEach(w=> w.rotation.y=vSteer);
   c.rig.chassis.rotation.z = lerp(c.rig.chassis.rotation.z, clamp(-lateral*0.02,-0.25,0.25), 0.2);
