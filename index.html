@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v2.5-->
+<!--BUILD:v2.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -538,12 +538,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.5</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v2.6</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v2.5';
+(function(){ const BUILD='v2.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1472,7 +1472,7 @@ function buildGate(i, finish){
    ARCADE LOOP — boost pads + coin pickups + style score (Horizon-Chase juice)
    ========================================================================= */
 let boostPads=[], padMesh=null, padMat=null;
-let coinList=[], coinMesh=null, coinMat=null, coinGeo=null, coinSpin=0, coinGrab=0;
+let coinList=[], coinMesh=null, coinRim=null, coinMat=null, coinGeo=null, coinSpin=0, coinGrab=0;
 let runScore=0, combo=1, comboTimer=0;
 const _M4=new THREE.Matrix4(), _Q=new THREE.Quaternion(), _P=new THREE.Vector3(), _S=new THREE.Vector3(1,1,1), _FAR=new THREE.Vector3(0,-999,0);
 
@@ -1503,12 +1503,14 @@ function buildPickups(){
   const count=isTouch?20:26;
   for(let k=0;k<count;k++){ const idx=Math.floor((k+0.35)/count*SAMPLES)%SAMPLES; const p=samplePts[idx], n=sampleNorm[idx];
     const lat=Math.sin(k*1.8)*6.5; coinList.push({x:p.x+n.x*lat, z:p.y+n.y*lat, idx, alive:true}); }
-  coinGeo=new THREE.CylinderGeometry(0.85,0.85,0.14,16); coinGeo.rotateZ(Math.PI/2);   // upright coin disc, spins around Y
-  coinMat=new THREE.MeshStandardMaterial({color:0xffd23b, emissive:0xff9a2a, emissiveIntensity:0.7, metalness:0.6, roughness:0.32});
+  coinGeo=new THREE.CylinderGeometry(0.72,0.72,0.16,22); coinGeo.rotateZ(Math.PI/2);   // upright coin disc, spins around Y
+  coinMat=new THREE.MeshStandardMaterial({color:0xffcf4a, emissive:0xb86a14, emissiveIntensity:0.22, metalness:0.88, roughness:0.24, envMapIntensity:1.6});   // MINTED gold: reflective, not a bloom blob (emissive 0.7 smeared them into orbs)
   coinMesh=new THREE.InstancedMesh(coinGeo, coinMat, coinList.length); coinMesh.frustumCulled=false; scene.add(coinMesh);
+  const rimGeo=new THREE.TorusGeometry(0.72,0.10,10,22); rimGeo.rotateY(Math.PI/2);      // raised rim in the SAME plane as the disc face -> reads as a minted coin edge
+  coinRim=new THREE.InstancedMesh(rimGeo, coinMat, coinList.length); coinRim.frustumCulled=false; scene.add(coinRim);
   for(let i=0;i<coinList.length;i++){ const co=coinList[i]; _Q.setFromAxisAngle(_UP,0);
-    _P.set(co.x,1.15+(sampleElev[co.idx]||0),co.z); _M4.compose(_P,_Q,_S); coinMesh.setMatrixAt(i,_M4); }   // initial placement (menu shows them too)
-  coinMesh.instanceMatrix.needsUpdate=true;
+    _P.set(co.x,1.15+(sampleElev[co.idx]||0),co.z); _M4.compose(_P,_Q,_S); coinMesh.setMatrixAt(i,_M4); coinRim.setMatrixAt(i,_M4); }   // initial placement (menu shows them too)
+  coinMesh.instanceMatrix.needsUpdate=true; coinRim.instanceMatrix.needsUpdate=true;
   resetPickups();
 }
 function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpin=0; coinGrab=0;
@@ -1516,10 +1518,10 @@ function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpi
 function updateArcadeVisuals(dt){
   if(coinMesh){ coinSpin+=dt*2.4; _Q.setFromAxisAngle(_UP, coinSpin);   // one rotation for all coins this frame
     for(let i=0;i<coinList.length;i++){ const co=coinList[i];
-      if(co.alive){ _P.set(co.x, 1.15+(sampleElev[co.idx]||0), co.z); _M4.compose(_P,_Q,_S); }
+      if(co.alive){ _P.set(co.x, 1.15+(sampleElev[co.idx]||0)+Math.sin(coinSpin*1.7+i*1.3)*0.14, co.z); _M4.compose(_P,_Q,_S); }   // gentle bob = alive, premium
       else _M4.compose(_FAR,_Q,_S);
-      coinMesh.setMatrixAt(i,_M4); }
-    coinMesh.instanceMatrix.needsUpdate=true; }
+      coinMesh.setMatrixAt(i,_M4); if(coinRim) coinRim.setMatrixAt(i,_M4); }
+    coinMesh.instanceMatrix.needsUpdate=true; if(coinRim) coinRim.instanceMatrix.needsUpdate=true; }
   if(padMat) padMat.opacity=0.72+0.24*Math.sin(raceTime*4.2);  // pulse pads (stays clearly visible)
 }
 function arcadePickups(c, dt){       // player only, during a race
@@ -1732,7 +1734,7 @@ function buildCity(rng){
     if(rng()<0.10) continue;                                        // empty lot / plaza
     const fw=16+rng()*22, fd=16+rng()*22;
     if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth + Math.hypot(fw,fd)*0.5 + 5.5) continue; // clear road + sidewalk
-    if(lowCityRaw && Math.hypot(x-trackCentroid.x, z-trackCentroid.y) < trackRadius*0.95) continue;   // leave the infield for the low-poly downtown centerpiece
+    if(lowCityPlacedR>0 && Math.hypot(x-trackCentroid.x, z-trackCentroid.y) < lowCityPlacedR) continue;   // keep out of the PLACED downtown footprint only (the old blind trackRadius*0.95 exclusion left a giant barren plaza across the whole infield)
     const distC=Math.hypot(x-trackCentroid.x, z-trackCentroid.y), downtown=clamp(1-distC/520,0,1);
     const towerH=4 + downtown*52 + rng()*rng()*40;
     const fi = downtown>0.5 ? (rng()>0.5?1:4) : Math.floor(rng()*TYPES.length); // downtown = glass/dark towers
@@ -1960,8 +1962,8 @@ function buildParkedCars(rng){
   const wheelGeo=new THREE.CylinderGeometry(0.42,0.42,0.3,10); wheelGeo.rotateZ(Math.PI/2);
   const wMat=new THREE.MeshStandardMaterial({color:0x15151a, roughness:0.8});
   const glassMat=new THREE.MeshStandardMaterial({color:0x10141c, roughness:0.25, metalness:0.4});
-  for(let k=0;k<22;k++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+3.2+rng()*2.2;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+2.4) continue;
+  for(let k=0;k<22;k++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+5.8+rng()*1.8;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+5.3) continue;   // park BEYOND the raised sidewalk (was 2.4 -> cars sat ON the 4.5-wide sidewalk, half-sunk into it)
     const g=new THREE.Group(); const col=COLORS[Math.floor(rng()*COLORS.length)];
     const bm=new THREE.MeshStandardMaterial({color:col, roughness:0.4, metalness:0.3, clearcoat:0.0});
     g.add(new THREE.Mesh(bodyGeo,bm)); g.add(new THREE.Mesh(cabGeo, glassMat));
@@ -2366,7 +2368,9 @@ function loadCarModels(){
     if(cars&&cars.length && currentTheme && (currentTheme.theme==='city'||currentTheme.theme==='docks')) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
 }
 // place a few copies of the low-poly city as a distant skyline ring (city/docks themes)
+let lowCityPlacedR=0;   // world footprint radius of the PLACED downtown (0 = skipped) — procedural buildings fill the REST of the infield
 function placeLowCityBackdrop(rng){
+  lowCityPlacedR=0;
   if(!lowCityRaw||!lowCityBox) return;
   if(brActive) return;   // BR cars roam freely + the downtown has no collision -> they'd clip inside it; keep it race-only
   const sz=new THREE.Vector3(); lowCityBox.getSize(sz); const span=Math.max(sz.x,sz.z)||100;
@@ -2380,6 +2384,7 @@ function placeLowCityBackdrop(rng){
   if(span*s < 55) return;                                          // too small to read as a downtown -> skip (procedural city fills the scene anyway)
   const c=lowCityRaw.clone(true); c.position.set(trackCentroid.x, -lowCityBox.min.y*s, trackCentroid.y);
   c.scale.setScalar(s); c.rotation.y=0.4; scene.add(c);           // -> WORLD (disposed on rebuild; geo/mat SHARED)
+  lowCityPlacedR = halfDiag*s + 8;                                 // buildings keep out of THIS footprint only (not a huge blind radius -> no barren plaza)
 }
 // wheel layout taken straight from the car pack's own scene (mapped to +Z = forward)
 const CAR_WHEELS=[
@@ -2795,6 +2800,17 @@ function updateCar(c, inp, dt){
         c.pos.set(p.x,p.y); c.heading=Math.atan2(t.x,t.y); c.vel.set(t.x*9,t.y*9); c.air=0; c._airV=0; c._lostT=0;
         if(c.isPlayer){ _scy=null; camShake=Math.min(camShake+0.25,0.8); flash('↩ BACK ON TRACK','good'); } }
     } else c._lostT=0;
+    // AI NO-PROGRESS RESCUE: an AI wedged on a hairpin (oscillating against the curb, spinning at the apex)
+    // never advances its track index — after 3.5s snap it to the centerline pointing down-track
+    if(!c.isPlayer){
+      if(c._lastProgIdx==null) c._lastProgIdx=c.trackIdx;
+      const adv=((c.trackIdx - c._lastProgIdx)%SAMPLES+SAMPLES)%SAMPLES;
+      if(adv>=4 && adv<SAMPLES-60){ c._lastProgIdx=c.trackIdx; c._noProgT=0; }
+      else { c._noProgT=(c._noProgT||0)+dt;
+        if(c._noProgT>3.5){ const p=samplePts[c.trackIdx], t=sampleTan[c.trackIdx];
+          c.pos.set(p.x,p.y); c.heading=Math.atan2(t.x,t.y); c.vel.set(t.x*11,t.y*11); c.air=0; c._airV=0;
+          c._noProgT=0; c._lastProgIdx=c.trackIdx; } }
+    }
   }
 
   // lap / checkpoint progress
@@ -2918,7 +2934,7 @@ function updateSunShadow(){
 const CAM_VIEWS=[                                              // press C / tap 📷 to cycle
   {name:'CHASE', dist:5.5, height:2.9, look:6.0, fov:72},     // default — tight behind the car
   {name:'CLOSE', dist:4.6, height:2.3, look:6.0, fov:76},     // tighter + lower
-  {name:'LOW',   dist:3.6, height:1.9, look:11,  fov:84},     // near the road, immersive bumper-ish (raised off the deck)
+  {name:'LOW',   dist:4.9, height:2.1, look:11,  fov:84},     // near the road, immersive — pulled back so it never skims the car's trunk
   {name:'HOOD',  dist:-1.8, height:1.75, look:14, fov:84},    // FRONT POV — camera over the nose (raised so it's not flat on the ground), first-person forward
   {name:'FAR',   dist:10.5, height:5.0, look:8,  fov:66},     // wide overview (still pulled in a bit)
 ];
@@ -3542,12 +3558,12 @@ const CINEMATIC_SHADER = {
     '  for(int i=0;i<6;i++){ float t=float(i)/5.0; float w=1.0-0.5*t;',
     '    col+=texture2D(tDiffuse, vUv-dir*uBlur*t*0.19*edge)*w; tot+=w; }',
     '  col/=tot;',
-    '  if(uSpeed>0.01){',                                                   // sense-of-speed at the edges (boost/high speed)
-    '    vec2 ca=dir*uSpeed*0.009*edge;',                                    // chromatic aberration outward
+    '  if(uSpeed>0.01){',                                                   // sense-of-speed at the edges (boost/high speed) — SUBTLE (heavy spokes/CA washed the whole frame and read as glitches)
+    '    vec2 ca=dir*uSpeed*0.0042*edge;',                                   // chromatic aberration outward
     '    col.r=texture2D(tDiffuse, vUv+ca).r; col.b=texture2D(tDiffuse, vUv-ca).b;',
     '    float ang=atan(dir.y,dir.x); float streak=pow(sin(ang*64.0)*0.5+0.5, 9.0);',  // radial speed lines
-    '    col.rgb += streak*edge*uSpeed*0.15;',
-    '    float l2=dot(col.rgb,vec3(0.299,0.587,0.114)); col.rgb=mix(col.rgb, vec3(l2), edge*uSpeed*0.12);',  // edge desat
+    '    col.rgb += streak*edge*uSpeed*0.06;',
+    '    float l2=dot(col.rgb,vec3(0.299,0.587,0.114)); col.rgb=mix(col.rgb, vec3(l2), edge*uSpeed*0.06);',  // edge desat
     '  }',
     '  col.rgb=(col.rgb-0.5)*uContrast+0.5;',                               // contrast
     '  float l=dot(col.rgb, vec3(0.299,0.587,0.114));',
