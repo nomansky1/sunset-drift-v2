@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v3.3-->
+<!--BUILD:v3.4-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -573,12 +573,12 @@
 <div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.3</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v3.4</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v3.3';
+(function(){ const BUILD='v3.4';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1581,6 +1581,9 @@ function buildPickups(){
 function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpin=0; coinGrab=0;
   boostPads.forEach(p=>p.hit=0); }
 function updateArcadeVisuals(dt){
+  if(player&&player.rig&&player.rig.headSpot) player.rig.headSpot.visible=!!nightMode;
+  if(updateArcadeVisuals._night!==nightMode){ updateArcadeVisuals._night=nightMode;
+    cars.forEach(c=>{ if(c.rig&&c.rig.lampMats){ c.rig.lampMats[0].emissiveIntensity=nightMode?2.2:0.7; c.rig.lampMats[1].emissiveIntensity=nightMode?2.0:0.8; } }); }
   if(coinMesh){ coinSpin+=dt*2.4; _Q.setFromAxisAngle(_UP, coinSpin);   // one rotation for all coins this frame
     for(let i=0;i<coinList.length;i++){ const co=coinList[i];
       if(co.alive){ _P.set(co.x, 1.15+(sampleElev[co.idx]||0)+Math.sin(coinSpin*1.7+i*1.3)*0.14, co.z); _M4.compose(_P,_Q,_S); }   // gentle bob = alive, premium
@@ -2522,6 +2525,11 @@ function upgradeCars(){
     if(paintStyles[liveryIdx]) finishCar(rig, paintStyles[liveryIdx]);       // custom finish/style (matte/metallic/chrome/pearl)
     if(rig.flames) rig.flames.forEach((f,fi)=>{ rig.group.add(f);   // re-attach exhaust flames (group was wiped above)
       if(rig.exhaustPts && rig.exhaustPts[fi]) f.position.copy(rig.exhaustPts[fi]); });   // fire comes out of THIS model's pipes
+    if(c.isPlayer && !rig.headSpot){                                    // night driving beam (player only - cheap)
+      const sp=new THREE.SpotLight(0xfff2d0, 2.6, 42, 0.6, 0.55, 1.2);
+      sp.position.set(0, 1.1, (rig.dims?rig.dims.Lz:4.6)/2);
+      sp.target.position.set(0, 0.1, 10); rig.group.add(sp); rig.group.add(sp.target);
+      sp.visible=false; rig.headSpot=sp; }
     calibrateGround(rig);                                     // EVERY car (stock or upgraded) rests its wheels exactly on the road
     if(isTouch && !c.isPlayer) rig.group.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   });
@@ -2600,6 +2608,14 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     for(const sx of [-1,1]){ const tip=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.062,0.18,10), pm);
       tip.rotation.x=Math.PI/2; tip.position.set(sx*ex, ey, ez); tip.castShadow=false; rig.group.add(tip);
       rig.exhaustPts.push(new THREE.Vector3(sx*ex, ey, ez-0.08)); }
+    // HEAD + TAIL LIGHTS on every model (the GLBs have none): emissive lamps that bloom at night
+    const ly=clamp(H*0.30, 0.35, 0.75), lx=W*0.30;
+    const headM=new THREE.MeshStandardMaterial({color:0xfff6d8, emissive:0xfff0c0, emissiveIntensity:nightMode?2.2:0.7, roughness:0.3});
+    const tailM=new THREE.MeshStandardMaterial({color:0x4d1014, emissive:0xff2018, emissiveIntensity:nightMode?2.0:0.8, roughness:0.4});
+    rig.lampMats=[headM,tailM];
+    for(const sx of [-1,1]){
+      const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, Lz/2+0.01); rig.group.add(hl);
+      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, -Lz/2-0.01); rig.group.add(tl); }
   }
 }
 // rounded (molded) box: a rounded-rect profile extruded + beveled -> no hard square edges
@@ -2679,7 +2695,9 @@ function attachUpgrades(rig, carIdx, forceU){
       for(let i=0;i<=NZ;i++){ const lz=rear*0.58 + (front*0.58-rear*0.58)*(i/NZ);
         const exTop=surfX(side, lz, floorY+H*0.24, x0*0.92), exBot=surfX(side, lz, floorY+H*0.12, x0*0.9), b=pos.length/3;
         pos.push(side*(exTop-0.02), floorY+H*0.22, lz,  side*(exBot+0.03), floorY+H*0.035, lz);   // top hugs the body at its height; bottom flares slightly + drops to the sill
-        if(i>0){ const a=b-2; idx.push(a,a+1,b, a+1,b+1,b); } }
+        // winding must MIRROR with the side: same order on x<0 faced the triangles inward -> the
+        // LEFT skirt was backface-culled invisible (kits only showed on the right)
+        if(i>0){ const a=b-2; if(side>0) idx.push(a,a+1,b, a+1,b+1,b); else idx.push(a,b,a+1, a+1,b,b+1); } }
       const gsk=new THREE.BufferGeometry(); gsk.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); gsk.setIndex(idx); gsk.computeVertexNormals();
       const m=new THREE.Mesh(gsk, bodyKit); m.castShadow=sh; kit.add(m); }
     if(kitPartGeo.diffuser) placeGLB('diffuser','x', W*0.7, bodyKit, 0, floorY+H*0.07, rear+Lz*0.03, -0.18);
@@ -2851,7 +2869,7 @@ function placeGrid(){
     c._nmT=-9; c._rivAhead=undefined;                      // reset near-miss timestamp + rival side so they work on race 2+
     if(!c.isPlayer){
       const rampT=(TRACKS.length>1 ? currentTrack/(TRACKS.length-1) : 0);        // 0 (easiest track) .. 1 (hardest track) — difficulty RAMPS along the unlock ladder
-      const dLift=(difficulty==='easy'?-0.14:difficulty==='hard'?0.30:0.05);     // the easy/normal/hard toggle shifts the whole ramp — wider spread so the toggle is meaningful (easy = winnable by newcomers, hard = pushes a skilled player)
+      const dLift=(difficulty==='easy'?-0.14:difficulty==='hard'?0.40:0.12);     // the easy/normal/hard toggle shifts the whole ramp — wider spread so the toggle is meaningful (easy = winnable by newcomers, hard = pushes a skilled player)
       const pw=clamp(rampT*0.44 + 0.16 + dLift + (champ.active?0.04*champ.round:0), 0, 0.86);   // combined AI power — RAISED FLOOR (early tracks no longer a walkover for a strong player) + kept a high ceiling, gentler slope so no trivial->wall cliff
       aiAccel=1 + pw*0.72; aiCap=1.12 + pw*0.46; aiAggro=0.96 + pw*0.38;         // strong top-end (challenges a skilled human) but a firmer floor
       c.aiBase=(0.95+((i*0.0185)%0.06)) * (1 + pw*0.33);                          // top-speed baseline
@@ -3401,7 +3419,11 @@ function mountGun(rig){ if(rig.gun||!rig.group) return;
   for(let rx=-1;rx<=1;rx+=2){ const tube=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.42,10), M.dark); tube.rotation.x=Math.PI/2; tube.position.set(rx*0.1,0,0.2); pod.add(tube);
     const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.07,10), M.warn); cap.rotation.x=Math.PI/2; cap.position.set(rx*0.1,0,0.41); pod.add(cap);   // red warhead peeking out
     const rm=new THREE.Object3D(); rm.position.set(rx*0.1,0,0.46); pod.add(rm); rmuz.push(rm); }
-  const d=rig.dims||{H:1.5,Lz:4.6}; g.position.set(0, d.H*0.72, -d.Lz*0.03); g.scale.setScalar(1.12);
+  // sit ON each model's roofline (H*0.72 buried the turret inside tall cabins = weapons not
+  // visible on taxi/ambulance), capped for kart flag-pole bounds; sized to the car's width
+  const d=rig.dims||{H:1.5,Lz:4.6,W:2};
+  g.position.set(0, Math.min(d.H,2.6)+0.02, -d.Lz*0.03);
+  g.scale.setScalar(clamp((d.W||2)*0.56, 0.95, 1.35));
   g.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; });
   rig.group.add(g); rig.gun=g; rig.gunYaw=yaw; rig.gunSpin=spin; rig.muzzle=mzl; rig.rocketMuz=rmuz; rig.rocketPod=pod; }
 function buildZone(){ if(zoneMesh){ scene.remove(zoneMesh); zoneMesh.geometry.dispose(); }
@@ -3429,6 +3451,7 @@ function fireRocket(c){ if(!c.rig||!c.rig.rocketMuz||!c.rig.rocketMuz.length||(c
   if(audio&&audio.launch && (c.isPlayer || Math.hypot(c.pos.x-player.pos.x,c.pos.y-player.pos.y)<60)) audio.launch();
   if(c.isPlayer){ camShake=Math.min(camShake+0.24,0.9); if(navigator.vibrate){try{navigator.vibrate(18);}catch(e){}} } }
 function updateRockets(dt){ for(let i=rockets.length-1;i>=0;i--){ const r=rockets[i]; r.life-=dt;
+    if(tireSmoke && Math.random()<0.8) tireSmoke.emit(r.mesh.position.x, r.mesh.position.y, r.mesh.position.z, 0, 0.4, 0, 0.22, 1);   // smoke TRAIL behind every rocket
     let tgt=r.target; if(tgt && !tgt.alive){ tgt=r.target=null; }
     if(tgt){ const to=new THREE.Vector3(tgt.pos.x-r.mesh.position.x, (tgt.visY||0)+1-r.mesh.position.y, tgt.pos.y-r.mesh.position.z); const dl=to.length();
       if(dl>0.001){ to.multiplyScalar(1/dl); const cur=r.vel.clone().normalize(); const ang=Math.acos(clamp(cur.dot(to),-1,1));
@@ -3529,6 +3552,12 @@ function damageCar(c, amt, by){ if(!c.alive) return;
     addExplosion(new THREE.Vector3(c.pos.x,(c.visY||0)+0.9,c.pos.y));               // kill flash
     if(audio&&audio.boom) audio.boom(0.95);
     killFeed(by, c);
+    if(by===player && c!==player){                                                  // KILL REWARDS: paid + escalating streak popups
+      player._brStreak=(player._brStreak||0)+1; const st=player._brStreak;
+      coins+=50; if(typeof saveCoins==='function') saveCoins(); if(typeof updateCoinHud==='function') updateCoinHud();
+      popup(st>=4?'RAMPAGE x'+st+' +50c':st===3?'TRIPLE KILL +50c':st===2?'DOUBLE KILL +50c':'KILL +50c', st>=3?'#ff8a3c':'#ffd23b');
+      if(audio&&audio.coin) audio.coin(); }
+    if(c===player) player._brStreak=0;
     if(navigator.vibrate){ try{navigator.vibrate(40);}catch(e){} }
     c.rig.group.visible=false; if(c.shadowMesh) c.shadowMesh.visible=false;
     if(c.isPlayer && !brWon){ brWon=true; brFinish(brAlive+1); }
@@ -3703,9 +3732,10 @@ function update(dt){
     updateCar(player, inp, dt);
     for(let i=1;i<cars.length;i++){ const c=cars[i];
       const gap=(prog(player)-prog(c))/SAMPLES;   // + = player ahead of this AI
-      const band = gap>0 ? clamp(gap*3.6, 0, 0.6) : clamp(gap*0.5, -0.04, 0);   // chase HARD when trailing; hold pace (don't fall away) when ahead
+      // NO holding back: leaders keep full pace (the old -0.04 band eased off when ahead of the player)
+      const band = gap>0 ? clamp(gap*3.6, 0, 0.6) : 0;
       c.maxScale=clamp((c.aiBase||1)+band, 0.95, c.isRival?(aiCap+0.06):aiCap);
-      if(aiAccel>1.01 && gap>-0.05) c.boost=Math.max(c.boost, CONFIG.boostMax*0.5);   // normal/hard only: keep AI nitrous fed when near/behind so they sustain boost like a maxed player (easy AI doesn't get this)
+      if(aiAccel>1.01) c.boost=Math.max(c.boost, CONFIG.boostMax*0.5);   // normal/hard: nitrous stays fed whether leading or chasing
       updateCar(c, aiInput(c), dt); }
     resolveCollisions();
     recordGhost(dt); updateGhost();                                  // sample this run + replay your best
@@ -3999,7 +4029,7 @@ function init(){
   // cars
   cars=[]; player=makeCar(CONFIG.colors.player, true); cars.push(player);
   for(let i=0;i<CONFIG.aiCount;i++) cars.push(makeCar(CONFIG.colors.ai[i%CONFIG.colors.ai.length], false));
-  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=5') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
+  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=6') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
   loadCarModels();   // upgrades the box placeholders to the realistic GLB when it loads
   loadPropModels();  // swaps procedural trees/rocks/palms for real CC0 GLBs when they load
 
