@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.9-->
+<!--BUILD:v4.10-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -722,12 +722,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.9</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.10</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.9';
+(function(){ const BUILD='v4.10';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1266,6 +1266,18 @@ function playMusic(theme){
   applyMusicVol();
   if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
 }
+// mode music (menu / combat): play a dedicated local loop if the file exists, else fall back to the theme beat.
+// so audio/menu.mp3 + audio/combat.mp3 "just work" when dropped in, and nothing breaks if they're absent.
+let _missingMusic={};   // remember mode files that 404'd so we don't re-request them every menu return
+function playModeMusic(url, fallbackTheme){
+  if(_missingMusic[url]){ if(fallbackTheme) playMusic(fallbackTheme); return; }
+  if(!bgMusic){ bgMusic=new Audio(); bgMusic.loop=true; bgMusic.preload='auto'; }
+  if(musicTheme==='mode:'+url){ applyMusicVol(); if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} } return; }
+  musicTheme='mode:'+url;
+  bgMusic.onerror=()=>{ bgMusic.onerror=null; _missingMusic[url]=true; if(fallbackTheme) playMusic(fallbackTheme); };   // file missing -> theme beat, and don't retry
+  bgMusic.src=url; applyMusicVol();
+  if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
+}
 let rainSys = null, rainGeo = null, rainPos = null, rainData = null;  // camera-following rain streaks
 
 /* =========================================================================
@@ -1422,6 +1434,11 @@ class AudioEngine {
     const p=this.ctx.createOscillator(); p.type='square'; p.frequency.value=210;
     const pg=this.ctx.createGain(); pg.gain.setValueAtTime(0.10,t); pg.gain.exponentialRampToValueAtTime(0.001,t+0.05);
     p.connect(pg); pg.connect(o); p.start(); p.stop(t+0.06);
+  }catch(e){} }
+  ui(){ if(!this.ok) return; try{ const t=this.ctx.currentTime, o=this.comp;   // soft menu tick (tab switch / selection)
+    const a=this.ctx.createOscillator(); a.type='triangle'; a.frequency.setValueAtTime(1200,t); a.frequency.exponentialRampToValueAtTime(760,t+0.05);
+    const g=this.ctx.createGain(); g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.0008,t+0.09);
+    a.connect(g); g.connect(o); a.start(); a.stop(t+0.11);
   }catch(e){} }
   resume(){ if(this.ok && this.ctx.state==='suspended') this.ctx.resume(); }
 }
@@ -3496,6 +3513,7 @@ function showMenu(){                                       // back to the garage
   const sb=document.getElementById('scoreBox'); if(sb) sb.style.display='none';   // clear race HUD leftovers
   document.getElementById('rivalTag').classList.add('hidden');
   placeGrid(); renderCoins(); renderShop(); renderTrackStars(); renderDaily();   // reset car to the grid + refresh coins/unlock/stars/daily
+  playModeMusic('audio/menu.mp3', currentTheme?currentTheme.theme:'city');       // chill menu loop in the garage (falls back to theme beat)
 }
 function startChampionship(){
   if(!isOwned(selectedCar)){ renderShop(); return; }
@@ -3778,7 +3796,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   upgradeCars();                                                         // build real models + liveries/kits for the new cars
   selectTrack(currentTrack);                                            // battle in the SELECTED environment (any track's world = the open arena)
   zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone();
-  audio.start(); if(currentTheme) playMusic(currentTheme.theme);
+  audio.start(); playModeMusic('audio/combat.mp3', currentTheme?currentTheme.theme:'city');   // dedicated combat loop (falls back to theme beat)
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1; player.brakeLvl=0; player.turboMul=1;
   rockets.forEach(r=>{scene.remove(r.mesh); disposeGroup(r.mesh);}); rockets=[];   // reset combat systems
   explosions.forEach(e=>scene.remove(e.m)); explosions=[]; mflashes.forEach(e=>scene.remove(e.m)); mflashes=[];
@@ -4219,6 +4237,7 @@ function init(){
 
   bindKeys(); bindTouch();
   document.querySelectorAll('#tabStrip .tab').forEach(t=> t.addEventListener('click', e=>{ e.stopPropagation();
+    if(audio){ audio.start(); audio.ui(); }   // tab click is a user gesture -> safe to init audio + tick
     const id=t.dataset.tab;
     document.getElementById('menu').dataset.tab=id;   // lets CSS drop the backdrop-blur in the garage so the showcased car stays sharp
     document.querySelectorAll('#tabStrip .tab').forEach(x=>x.classList.toggle('on', x===t));
