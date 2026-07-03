@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.6-->
+<!--BUILD:v4.7-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -487,8 +487,13 @@
     #map3d{ position:absolute; right:10px; left:auto; top:30px; width:150px; height:82px; margin:0; z-index:1; }
     #mPanels{ overflow:visible; }                              /* never clip the garage side panels */
     /* GARAGE: side panels guaranteed inside the viewport, car visible between them */
-    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); max-height:calc(100svh - 148px); top:auto; bottom:60px;
-      transform:none; padding:5px 8px; font-size:11px; overflow-y:auto; overflow-x:hidden; }
+    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); max-height:calc(100svh - 168px); top:auto; bottom:60px;
+      transform:none; padding:5px 8px; font-size:11px; overflow:hidden; }
+    #garR{ display:flex; flex-direction:column; justify-content:flex-end; }   /* grows UP from the same baseline as the left panel */
+    #garR .garHead{ margin-top:2px; }
+    #kitRow,#weaponRow{ display:flex; flex-direction:column; gap:2px; margin-top:2px; }
+    #kitRow .kit,#weaponRow .kit{ padding:2px 7px; font-size:9px; line-height:1.5; }
+    #kitRow .kit b,#weaponRow .kit b{ flex-basis:46px; }
     #garL{ left:calc(env(safe-area-inset-left,0px) + 6px); }
     #garR{ right:calc(env(safe-area-inset-right,0px) + 6px); }
     #carName{ font-size:13px; }
@@ -497,7 +502,7 @@
     .garHead{ font-size:9px; }
     #carStatus{ font-size:10px; }
     .paintSw{ width:16px; height:16px; } .styleSw{ font-size:8px; padding:2px 6px; }
-    #carSlider{ top:32px; left:24%; right:24%; }
+    #carSlider{ top:66px; left:24%; right:24%; }
     .csChip{ min-width:70px; padding:4px 8px; font-size:9.5px; }
     #carPrev{ left:calc(env(safe-area-inset-left,0px) + min(24vw,212px) + 10px); }
     #carNext{ right:calc(env(safe-area-inset-right,0px) + min(24vw,212px) + 10px); }
@@ -711,12 +716,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.6</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.7</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.6';
+(function(){ const BUILD='v4.7';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
