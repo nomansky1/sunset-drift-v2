@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.3-->
+<!--BUILD:v4.4-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -435,6 +435,7 @@
   /* ---------- v3.6 menu FX: beat EQ + embers + brand shine + 3D map + car slider ---------- */
   #menuFx{ position:absolute; inset:0; z-index:0; pointer-events:none; }
   #menu>*{ position:relative; z-index:1; }
+  #menu>#menuFx{ position:absolute; z-index:0; width:100%; height:100%; }   /* canvas = replaced element: inset alone does not stretch it */   /* #menu>* above cancelled the absolute - this outranks it */
   .brand{ position:relative; overflow:hidden; }
   .brand::after{ content:''; position:absolute; top:0; bottom:0; left:-60%; width:34%;
     background:linear-gradient(105deg, transparent, rgba(255,240,200,.55), transparent);
@@ -482,7 +483,8 @@
     .cta.cta2{ padding:6px 14px; font-size:12px; }
     .credit{ display:none; }
     /* 3D map lives in the dead space under the brand — never in the flow */
-    #map3d{ position:absolute; left:10px; top:34px; width:146px; height:80px; margin:0; z-index:1; }
+    #map3d{ position:absolute; right:10px; left:auto; top:30px; width:150px; height:82px; margin:0; z-index:1; }
+    #mPanels{ overflow:visible; }                              /* never clip the garage side panels */
     /* GARAGE: side panels guaranteed inside the viewport, car visible between them */
     #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); top:auto; bottom:60px;
       transform:none; padding:5px 8px; font-size:11px; overflow-y:auto; overflow-x:hidden; }
@@ -708,12 +710,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.3</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.4</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.3';
+(function(){ const BUILD='v4.4';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
