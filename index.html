@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.5-->
+<!--BUILD:v4.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -487,7 +487,7 @@
     #map3d{ position:absolute; right:10px; left:auto; top:30px; width:150px; height:82px; margin:0; z-index:1; }
     #mPanels{ overflow:visible; }                              /* never clip the garage side panels */
     /* GARAGE: side panels guaranteed inside the viewport, car visible between them */
-    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); max-height:calc(100svh - 124px); top:auto; bottom:60px;
+    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); max-height:calc(100svh - 148px); top:auto; bottom:60px;
       transform:none; padding:5px 8px; font-size:11px; overflow-y:auto; overflow-x:hidden; }
     #garL{ left:calc(env(safe-area-inset-left,0px) + 6px); }
     #garR{ right:calc(env(safe-area-inset-right,0px) + 6px); }
@@ -711,17 +711,21 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.5</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.6</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.5';
+(function(){ const BUILD='v4.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
       const head=await r.text();
-      const m=head.match(/BUILD:(v[\d.]+)/); if(m && m[1]!==BUILD) chip.style.display='block'; }catch(e){} }
+      const m=head.match(/BUILD:(v[\d.]+)/); if(m && m[1]!==BUILD){ chip.style.display='block';
+        // AUTO-APPLY: if the player is sitting in the menu (not mid-race), install the update NOW -
+        // stale tabs kept showing users bugs that were already fixed
+        try{ if(typeof state==='undefined' || state==='menu'){
+          chip.textContent='⟳ UPDATING…'; setTimeout(()=>location.reload(true), 1500); } }catch(e){} } }catch(e){} }
   setInterval(check, 60000); setTimeout(check, 6000);
 })();
 </script>
