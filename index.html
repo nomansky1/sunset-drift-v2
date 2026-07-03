@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.7-->
+<!--BUILD:v4.8-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -487,12 +487,15 @@
     #map3d{ position:absolute; right:10px; left:auto; top:30px; width:150px; height:82px; margin:0; z-index:1; }
     #mPanels{ overflow:visible; }                              /* never clip the garage side panels */
     /* GARAGE: side panels guaranteed inside the viewport, car visible between them */
-    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); max-height:calc(100svh - 168px); top:auto; bottom:60px;
-      transform:none; padding:5px 8px; font-size:11px; overflow:hidden; }
-    #garR{ display:flex; flex-direction:column; justify-content:flex-end; }   /* grows UP from the same baseline as the left panel */
+    #garL,#garR{ width:min(24vw,212px); top:102px; bottom:58px; max-height:none; height:auto;
+      transform:none; padding:5px 8px; font-size:11px; overflow:hidden; }   /* SAME top + SAME bottom = panels always level */
+    #garL,#garR{ display:flex; flex-direction:column; justify-content:flex-start; }
+    #garL>*:first-child{ margin-top:0; }
+    #garR{ justify-content:space-between; }   /* rows breathe to fill the band, never scroll */
     #garR .garHead{ margin-top:2px; }
     #kitRow,#weaponRow{ display:flex; flex-direction:column; gap:2px; margin-top:2px; }
-    #kitRow .kit,#weaponRow .kit{ padding:2px 7px; font-size:9px; line-height:1.5; }
+    #kitRow .kit,#weaponRow .kit{ padding:min(2px,0.4svh) 7px; font-size:min(9px,2svh); line-height:1.3; }
+    #garR .garHead{ font-size:min(9px,2svh); margin-top:0; }
     #kitRow .kit b,#weaponRow .kit b{ flex-basis:46px; }
     #garL{ left:calc(env(safe-area-inset-left,0px) + 6px); }
     #garR{ right:calc(env(safe-area-inset-right,0px) + 6px); }
@@ -716,12 +719,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.7</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.8</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.7';
+(function(){ const BUILD='v4.8';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2909,6 +2912,12 @@ function attachUpgrades(rig, carIdx, forceU){
       const wo=matchRoad(w); if(!wo) return;                            // ROAD wheels only — spares stay exactly as authored
       kit.updateWorldMatrix(true,false); wo.updateWorldMatrix(true,false);
       _bb.setFromObject(wo); _bb.getSize(_bs);
+      // SPLIT-MESH measure: some wheel objects (SUV fronts) bundle fender geometry with the tire -
+      // the whole-object box read ~25% too big, so the rim rendered as a giant disc swallowing the wheel.
+      // The TIRE is the lowest child mesh (it touches the ground); measure THAT mesh alone.
+      { let tb=null, low=1e9; wo.traverse(o=>{ if(o.isMesh){ const b=new THREE.Box3().setFromObject(o);
+          if(b.min.y<low-1e-3){ low=b.min.y; tb=b; } } });
+        if(tb){ _bb.copy(tb); _bb.getSize(_bs); } }
       const wr=clamp(Math.max(_bs.y,_bs.z)/2, H*0.10, RADMAX);          // TRUE post-scale tire radius
       kit.getWorldQuaternion(_kq); wo.getWorldQuaternion(_wq); const q=_wq.clone().invert().multiply(_kq);
       // WORLD scale, not local: GLB wheels sit inside the ~3x normalization group — local scale (1)
