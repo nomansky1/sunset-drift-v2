@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v4.4-->
+<!--BUILD:v4.5-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#ff8c42">
 <title>Sunset Drift — Low-Poly Racer</title>
 <style>
+  html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }   /* Android font boosting inflated panel text past the layout */
   :root{ --accent:#ff7a3c; --accent2:#ffd23b; --ink:#1b1024; }
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ width:100%; height:100%; overflow:hidden; background:#1a0f24;
@@ -486,7 +487,7 @@
     #map3d{ position:absolute; right:10px; left:auto; top:30px; width:150px; height:82px; margin:0; z-index:1; }
     #mPanels{ overflow:visible; }                              /* never clip the garage side panels */
     /* GARAGE: side panels guaranteed inside the viewport, car visible between them */
-    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); top:auto; bottom:60px;
+    #garL,#garR{ width:min(24vw,212px); max-height:calc(100vh - 110px); max-height:calc(100svh - 124px); top:auto; bottom:60px;
       transform:none; padding:5px 8px; font-size:11px; overflow-y:auto; overflow-x:hidden; }
     #garL{ left:calc(env(safe-area-inset-left,0px) + 6px); }
     #garR{ right:calc(env(safe-area-inset-right,0px) + 6px); }
@@ -505,7 +506,7 @@
   @media (orientation:landscape) and (max-height:400px){
     #map3d{ width:120px; height:64px; }
     #trackPick{ max-width:min(84%,600px); }
-    #garL,#garR{ max-height:calc(100vh - 130px); }
+    #garL,#garR{ max-height:calc(100vh - 130px); max-height:calc(100svh - 130px); }
   }
   /* ---------- ONLINE multiplayer ---------- */
   #netModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
@@ -710,12 +711,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.4</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v4.5</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v4.4';
+(function(){ const BUILD='v4.5';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2904,12 +2905,20 @@ function attachUpgrades(rig, carIdx, forceU){
       // WORLD scale, not local: GLB wheels sit inside the ~3x normalization group — local scale (1)
       // made every added tire/rim ~3x oversized (tires nearly as tall as the car on RACER/EXOTIC)
       const _ws=new THREE.Vector3(); wo.getWorldScale(_ws); const inv=1/Math.max(_ws.x,1e-4);
-      const mount=(mesh,kx)=>{ const p=new THREE.Vector3(kx, w.y, w.z); kit.localToWorld(p); wo.worldToLocal(p);
-        mesh.position.copy(p); mesh.quaternion.copy(q); if(w.x<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
+      // CLUSTER-FALLBACK cars (COUPE/HATCH/SUV: no named wheel meshes) measured the BODY, so w.x/outerX
+      // sat at the fender line - the rim rendered as a detached disc floating outside the tire.
+      // Trust the matched wheel OBJECT instead: its true center + outboard edge in kit space.
+      let cx=w.x, cy=w.y, cz=w.z, outX=w.outerX;
+      if(!exact){ const wcK=_bb.getCenter(new THREE.Vector3()); kit.worldToLocal(wcK);   // box CENTER, not pivot - SUV front-wheel pivots sit ~0.2 above the true hub
+        cx=wcK.x; cy=wcK.y; cz=wcK.z; outX=0; const vv=new THREE.Vector3();
+        for(const X of [_bb.min.x,_bb.max.x]) for(const Y of [_bb.min.y,_bb.max.y]) for(const Z of [_bb.min.z,_bb.max.z]){
+          vv.set(X,Y,Z); kit.worldToLocal(vv); outX=Math.max(outX,Math.abs(vv.x)); } }
+      const mount=(mesh,kx)=>{ const p=new THREE.Vector3(kx, cy, cz); kit.localToWorld(p); wo.worldToLocal(p);
+        mesh.position.copy(p); mesh.quaternion.copy(q); if(cx<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
       const tire=new THREE.Mesh(new THREE.TorusGeometry(wr*0.66, wr*0.32, 12, 22), tireMat); tire.geometry.rotateY(Math.PI/2);   // outer 0.98*wr
-      tire.scale.setScalar(inv); mount(tire, w.x);                                     // centered ON the wheel -> the visible tire IS the black treaded ring
+      tire.scale.setScalar(inv); mount(tire, cx);                                     // centered ON the wheel -> the visible tire IS the black treaded ring
       if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((wr*0.70)/(rsz.y||1)*inv);   // rim sits INSIDE the tire ring (1.02 poked past the rubber = hubcap-bigger-than-tire look)
-        mount(rm, Math.sign(w.x)*(w.outerX+0.02)); }
+        mount(rm, Math.sign(cx)*(outX+0.02)); }
     });
     wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
       arch.rotation.y=Math.PI/2; arch.position.set(Math.sign(w.x)*(w.outerX-0.06), w.y, w.z); });
