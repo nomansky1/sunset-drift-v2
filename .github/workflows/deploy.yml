@@ -9,15 +9,16 @@ permissions:
   pages: write
   id-token: write
 
+# one deploy at a time; NEVER cancel one mid-flight (cancelling orphaned artifacts -> "multiple artifacts" errors)
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.report.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,21 +26,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
-      # GitHub's deployment service intermittently answers "try again later" -
-      # retry up to 3 times inside ONE run so flakiness never emails a failure.
-      - id: try1
+      - id: deployment
         uses: actions/deploy-pages@v4
-        continue-on-error: true
-      - if: steps.try1.outcome == 'failure'
-        run: sleep 45
-      - id: try2
-        if: steps.try1.outcome == 'failure'
-        uses: actions/deploy-pages@v4
-        continue-on-error: true
-      - if: steps.try1.outcome == 'failure' && steps.try2.outcome == 'failure'
-        run: sleep 90
-      - id: try3
-        if: steps.try1.outcome == 'failure' && steps.try2.outcome == 'failure'
-        uses: actions/deploy-pages@v4
-      - id: report
-        run: echo "page_url=${{ steps.try1.outputs.page_url || steps.try2.outputs.page_url || steps.try3.outputs.page_url }}" >> "$GITHUB_OUTPUT"
