@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.3-->
+<!--BUILD:v6.4-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -553,6 +553,21 @@
   .qRew{ font-size:11px; font-weight:900; color:#ffd23b; white-space:nowrap; }
   .qDone .qLbl{ color:#5fe08a; } .qDone .qRew{ color:#5fe08a; }
   #togQuests.questReady{ box-shadow:0 0 0 1px #ffd23b, 0 0 10px rgba(255,210,59,.5); }
+  /* ---------- DAILY BOARD ---------- */
+  #lbModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
+  #lbModal.hidden{ display:none; }
+  #lbCard{ width:min(88vw,360px); max-height:90vh; overflow:auto; background:linear-gradient(160deg,#1d1428,#120c1c);
+    border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; text-align:center; box-shadow:0 14px 44px rgba(0,0,0,.6); }
+  #lbTitle{ font-weight:900; letter-spacing:1px; font-size:15px; }
+  #lbSub{ font-size:11px; color:#9a90ae; margin:2px 0 8px; }
+  .lbRow{ display:flex; align-items:center; gap:9px; padding:6px 4px; border-top:1px solid rgba(255,255,255,.07); font-size:12px; }
+  .lbRow:first-child{ border-top:0; }
+  .lbRow .rk{ width:22px; font-weight:900; color:#ffd23b; text-align:center; }
+  .lbRow .nm{ flex:1; text-align:left; font-weight:700; color:#e7e1f2; }
+  .lbRow .tm{ font-weight:900; color:#cfe0ff; white-space:nowrap; }
+  .lbRow.me{ background:rgba(255,90,44,.14); border-radius:7px; }
+  .lbRow.me .nm{ color:#ff9a5a; }
+  #togBoard.boardChal{ box-shadow:0 0 0 1px #5fe08a, 0 0 10px rgba(95,224,138,.5); }
   /* ---------- ONLINE multiplayer ---------- */
   #netModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
   #netModal.hidden{ display:none; }
@@ -698,6 +713,7 @@
           <div class="tog" id="togRain">🌧 RAIN</div>
           <div class="tog" id="togTT">⏱ TIME TRIAL</div>
           <div class="tog" id="togQuests">🎯 QUESTS</div>
+          <div class="tog" id="togBoard">🏁 DAILY BOARD</div>
           <div class="tog" id="togLow">⚡ LITE</div>
         </div>
         <div id="sndRow">
@@ -764,6 +780,16 @@
     <div class="netBtn ghostBtn" id="netCloseBtn">CLOSE</div>
   </div>
 </div>
+<div id="lbModal" class="hidden">
+  <div id="lbCard">
+    <div id="lbTitle">🏁 DAILY BOARD</div>
+    <div id="lbSub"></div>
+    <div id="lbList"></div>
+    <div class="netBtn" id="lbShare">⚔ CHALLENGE A FRIEND</div>
+    <div id="lbShareNote" style="font-size:10px;color:#9a90ae;min-height:12px"></div>
+    <div class="netBtn ghostBtn" id="lbClose">CLOSE</div>
+  </div>
+</div>
 <div id="questModal" class="hidden">
   <div id="questCard">
     <div id="questTitle">🎯 DAILY QUESTS</div>
@@ -773,12 +799,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.3</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.4</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.3';
+(function(){ const BUILD='v6.4';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4077,6 +4103,7 @@ function finishRace(){
   if(wasDaily){ const dn=dayNum();
     if(dailyState.day!==dn){ dailyState.streak=(dailyState.day===dn-1)?dailyState.streak+1:1; dailyState.day=dn; dailyState.best=raceTime; }
     else if(!dailyState.best || raceTime<dailyState.best){ dailyState.best=raceTime; }
+    try{ if(typeof LB!=='undefined') LB.submit(dn, dailyTrackIdx(), lbName(), Math.round(raceTime*1000)); }catch(e){}   // DAILY BOARD
     saveDaily(); }
   const styleCoins=Math.round(runScore/40);              // drift/style pays
   const diffMul = Math.max(1, TRACK_DIFF[currentTrack]||1);   // harder (later) tracks pay more; easy tracks still pay base
@@ -4520,6 +4547,10 @@ function init(){
   if(togQuests) togQuests.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } renderQuests(); if(questModal) questModal.classList.remove('hidden'); });
   if(questClose) questClose.addEventListener('click', e=>{ e.stopPropagation(); if(questModal) questModal.classList.add('hidden'); });
   loadQuests(); renderQuests(); questBadge();
+  const togBoard=document.getElementById('togBoard'), lbModal=document.getElementById('lbModal');
+  if(togBoard) togBoard.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } renderBoard(); if(lbModal) lbModal.classList.remove('hidden'); });
+  const lbClose=document.getElementById('lbClose'); if(lbClose) lbClose.addEventListener('click', e=>{ e.stopPropagation(); if(lbModal) lbModal.classList.add('hidden'); });
+  const lbShareB=document.getElementById('lbShare'); if(lbShareB) lbShareB.addEventListener('click', e=>{ e.stopPropagation(); shareChallenge(); });
   const togLow=document.getElementById('togLow');
   togLow.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     lowQuality=!lowQuality; togLow.classList.toggle('on',lowQuality);
@@ -4593,6 +4624,46 @@ init();
 
 <script>
 /* ============ v3.6 UI layer: beat FX + 3D map preview + car slider + monetize stub ============ */
+// ---------- DAILY BOARD + serverless CHALLENGE links ----------
+// Backend-ready adapter: times live in localStorage today; swap LB.submit/LB.top to a Vercel endpoint later for a
+// truly global board (Supabase REST is quota-blocked, so global must route through the backend pooler). The
+// CHALLENGE link is real async competition NOW — encodes {track,time,name} in the URL, no server needed.
+const LB={
+  _k(day,track){ return 'sd_lb_'+day+'_'+track; },
+  get(day,track){ try{ return JSON.parse(localStorage.getItem(this._k(day,track))||'[]'); }catch(e){ return []; } },
+  _save(day,track,b){ try{ localStorage.setItem(this._k(day,track), JSON.stringify(b.slice(0,50))); }catch(e){} },
+  submit(day,track,name,ms){ const b=this.get(day,track); const me=b.find(r=>r.self);
+    if(me){ if(ms<me.ms){ me.ms=ms; me.name=name; } } else b.push({name,ms,self:true}); this._save(day,track,b); },
+  addChallenge(day,track,name,ms){ const b=this.get(day,track);
+    if(!b.some(r=>!r.self && r.name===name && Math.abs(r.ms-ms)<50)){ b.push({name,ms,self:false}); this._save(day,track,b); } },
+  top(day,track){ return this.get(day,track).slice().sort((a,b)=>a.ms-b.ms); }
+};
+function lbName(){ try{ return (localStorage.getItem('sd_name')||'YOU').toUpperCase().slice(0,12); }catch(e){ return 'YOU'; } }
+function lbFmt(ms){ const s=ms/1000; return s.toFixed(2)+'s'; }
+function renderBoard(){ const list=document.getElementById('lbList'); if(!list) return;
+  const day=(typeof dayNum==='function')?dayNum():0, track=(typeof dailyTrackIdx==='function')?dailyTrackIdx():0;
+  const tname=(typeof TRACKS!=='undefined'&&TRACKS[track])?TRACKS[track].name:('TRACK '+track);
+  const sub=document.getElementById('lbSub'); if(sub) sub.textContent='Today · '+tname;
+  const rows=LB.top(day,track);
+  list.innerHTML = rows.length ? rows.slice(0,12).map((r,i)=>
+    '<div class="lbRow'+(r.self?' me':'')+'"><div class="rk">'+(i+1)+'</div><div class="nm">'+(r.self?'YOU':r.name)+'</div><div class="tm">'+lbFmt(r.ms)+'</div></div>'
+  ).join('') : '<div style="font-size:12px;color:#9a90ae;padding:14px">Race today\u2019s Daily to set a time, then challenge a friend.</div>';
+  const b=document.getElementById('togBoard'); if(b) b.classList.remove('boardChal'); }
+function shareChallenge(){ const day=dayNum(), track=dailyTrackIdx(); const me=LB.get(day,track).find(r=>r.self);
+  const note=document.getElementById('lbShareNote');
+  if(!me){ if(note) note.textContent='Set a Daily time first, then challenge!'; return; }
+  const url=location.origin+location.pathname+'?ch='+track+'.'+me.ms+'.'+encodeURIComponent(lbName());
+  const txt='Beat my '+lbFmt(me.ms)+' on '+((TRACKS[track]||{}).name||'the Daily')+' in Sunset Drift! '+url;
+  try{ if(navigator.share){ navigator.share({title:'Sunset Drift challenge', text:txt, url}); if(note) note.textContent='Shared!'; return; } }catch(e){}
+  try{ navigator.clipboard.writeText(url); if(note) note.textContent='\u2714 Challenge link copied!'; }catch(e){ if(note) note.textContent=url; }
+}
+// parse an incoming challenge link -> add the challenger to today's board + nudge
+(function(){ const m=/[?&]ch=(\d+)\.(\d+)\.([^&]+)/.exec(location.search); if(!m) return;
+  const track=+m[1], ms=+m[2], name=decodeURIComponent(m[3]).toUpperCase().slice(0,12);
+  window.addEventListener('load', ()=>{ try{ LB.addChallenge(dayNum(), track, name, ms);
+    const b=document.getElementById('togBoard'); if(b) b.classList.add('boardChal');
+    setTimeout(()=>{ if(typeof popup==='function') popup('\u2694\ufe0f '+name+' challenged you: '+lbFmt(ms), '#5fe08a'); }, 1400);
+  }catch(e){} }); })();
 const MONETIZE={ enabled:false, rewardedX2:false, premiumCars:false };   // foundation flags (see monetization plan)
 // REWARDED-AD adapter: auto-uses the portal SDK when the game runs on Poki / CrazyGames; hidden otherwise.
 // Local testing: append ?ads=test to the URL to simulate a rewarded ad. No SDK = available()=false = buttons hidden (never fake coins in production).
