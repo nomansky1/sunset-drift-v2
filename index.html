@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.8-->
+<!--BUILD:v6.9-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -350,35 +350,51 @@
   #actions{ right:calc(env(safe-area-inset-right,0px) + 16px); display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
   .actRow{ display:flex; align-items:flex-end; gap:12px; pointer-events:none; }
   .actRow>.btn{ pointer-events:auto; }
-  .btn.sm{ width:60px; height:60px; border-radius:9px; font-size:10px; }
-  .btn.sm .ico{ font-size:20px; }
-  .btn.ped{ width:84px; height:84px; }
-  .btn.ped .ico{ font-size:30px; }
-  .btn.ped.gas{ width:106px; height:106px; background:linear-gradient(160deg, rgba(60,220,120,.30), rgba(18,110,58,.34)); border-color:rgba(120,255,170,.55); }
-  .btn.ped.brake{ background:linear-gradient(160deg, rgba(255,96,74,.30), rgba(150,30,30,.34)); border-color:rgba(255,150,130,.55); }
-  .btn.ped.on{ transform:scale(0.94); filter:brightness(1.25); }
-  .btn{ width:80px; height:80px; border-radius:10px; pointer-events:auto;
+  /* ---- MODERN HUD: circular glass buttons, colored glow, springy press, attention pulse ---- */
+  .btn{ width:76px; height:76px; border-radius:50%; pointer-events:auto;
         display:flex; align-items:center; justify-content:center; flex-direction:column;
-        font-weight:900; font-size:14px; letter-spacing:.5px; color:#fff;
-        background:rgba(24,20,28,.52); border:1.5px solid rgba(255,255,255,.22);
-        text-shadow:0 1px 3px rgba(0,0,0,.6); transition:transform .06s, background .06s, box-shadow .1s;
-        box-shadow:0 7px 20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.16); }
-  .btn .ico{ font-size:27px; line-height:1; }
-  .btn.big{ width:98px; height:98px; border-radius:12px; font-size:15px; }
-  .btn.big .ico{ font-size:32px; }
-  .btn:active,.btn.on{ transform:scale(.93); box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 2px 8px rgba(0,0,0,.25); }
-  #joy-base{ width:132px; height:132px; border-radius:14px; pointer-events:auto; position:relative;
-             background:radial-gradient(circle at 50% 45%, rgba(255,255,255,.10), rgba(24,20,28,.52));
-             border:1.5px solid rgba(255,255,255,.22); box-shadow:0 7px 20px rgba(0,0,0,.45), inset 0 0 20px rgba(0,0,0,.35); touch-action:none; }
-  #joy-base::before,#joy-base::after{ position:absolute; left:50%; transform:translateX(-50%); font-size:15px; font-weight:900; opacity:.65; pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,.6); }
-  #joy-base::before{ content:'▲'; top:5px; color:#7effb0; }      /* up = accelerate */
-  #joy-base::after{ content:'▼'; bottom:5px; color:#ff9a9a; }    /* down = brake */
-  #joy-knob{ width:62px; height:62px; border-radius:9px; position:absolute; left:50%; top:50%;
+        font-weight:900; font-size:13px; letter-spacing:.6px; color:#fff;
+        background:linear-gradient(155deg, rgba(56,48,72,.60), rgba(16,12,22,.62));
+        border:1.5px solid rgba(255,255,255,.30);
+        -webkit-backdrop-filter:blur(7px) saturate(1.2); backdrop-filter:blur(7px) saturate(1.2);
+        text-shadow:0 1px 3px rgba(0,0,0,.6);
+        transition:transform .11s cubic-bezier(.34,1.56,.5,1), box-shadow .14s, filter .12s;
+        box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 2px 7px rgba(255,255,255,.24), inset 0 -7px 13px rgba(0,0,0,.30); }
+  .btn .ico{ font-size:26px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
+  .btn.sm{ width:56px; height:56px; font-size:9px; }
+  .btn.sm .ico{ font-size:20px; }
+  .btn.big{ width:94px; height:94px; font-size:15px; }
+  .btn.big .ico{ font-size:31px; }
+  .btn.ped{ width:86px; height:86px; }
+  .btn.ped .ico{ font-size:31px; }
+  .btn.ped.gas{ width:112px; height:112px;
+        background:radial-gradient(circle at 42% 34%, rgba(160,255,196,.55), rgba(34,205,116,.55) 52%, rgba(12,120,60,.62));
+        border-color:rgba(150,255,200,.72); color:#08240f; text-shadow:0 1px 2px rgba(255,255,255,.4);
+        box-shadow:0 10px 26px rgba(24,190,96,.4), 0 0 0 2px rgba(130,255,185,.22), inset 0 3px 11px rgba(255,255,255,.4), inset 0 -8px 16px rgba(0,80,40,.4);
+        animation:gasPulse 1.9s ease-in-out infinite; }
+  @keyframes gasPulse{ 0%,100%{ box-shadow:0 10px 26px rgba(24,190,96,.4), 0 0 0 2px rgba(130,255,185,.2), inset 0 3px 11px rgba(255,255,255,.35), inset 0 -8px 16px rgba(0,80,40,.4); }
+                       50%{ box-shadow:0 12px 34px rgba(30,210,108,.55), 0 0 0 7px rgba(130,255,185,.1), inset 0 3px 11px rgba(255,255,255,.45), inset 0 -8px 16px rgba(0,80,40,.4); } }
+  .btn.ped.brake{ background:radial-gradient(circle at 42% 34%, rgba(255,176,158,.55), rgba(232,74,62,.55) 52%, rgba(140,26,26,.62));
+        border-color:rgba(255,164,146,.72); color:#2a0808; text-shadow:0 1px 2px rgba(255,220,215,.4);
+        box-shadow:0 10px 26px rgba(206,54,44,.36), inset 0 3px 11px rgba(255,255,255,.36), inset 0 -8px 16px rgba(90,10,10,.4); }
+  #btn-boost{ background:radial-gradient(circle at 42% 34%, rgba(255,214,140,.5), rgba(255,120,44,.5) 55%, rgba(150,60,10,.55)); border-color:rgba(255,190,120,.6); }
+  #btn-drift{ background:radial-gradient(circle at 42% 34%, rgba(200,160,255,.46), rgba(140,80,230,.5) 55%, rgba(70,30,130,.55)); border-color:rgba(200,160,255,.6); }
+  #btn-rocket{ background:radial-gradient(circle at 42% 34%, rgba(120,190,255,.46), rgba(40,120,230,.5) 55%, rgba(20,60,130,.55)); border-color:rgba(140,190,255,.6); }
+  .btn:active,.btn.on,.btn.ped.on{ transform:scale(.88); filter:brightness(1.32); animation:none;
+        box-shadow:0 3px 10px rgba(0,0,0,.5), 0 0 22px rgba(255,255,255,.28), inset 0 3px 14px rgba(0,0,0,.35); }
+  #joy-base{ width:132px; height:132px; border-radius:50%; pointer-events:auto; position:relative;
+             background:radial-gradient(circle at 50% 42%, rgba(255,255,255,.13), rgba(20,16,26,.58));
+             border:1.5px solid rgba(255,255,255,.28); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+             box-shadow:0 8px 22px rgba(0,0,0,.45), inset 0 0 24px rgba(0,0,0,.4), inset 0 2px 6px rgba(255,255,255,.2); touch-action:none; }
+  #joy-base::before,#joy-base::after{ position:absolute; left:50%; transform:translateX(-50%); font-size:14px; font-weight:900; opacity:.6; pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  #joy-base::before{ content:'▲'; top:7px; color:#7effb0; }
+  #joy-base::after{ content:'▼'; bottom:7px; color:#ff9a9a; }
+  #joy-knob{ width:62px; height:62px; border-radius:50%; position:absolute; left:50%; top:50%;
              margin:-31px 0 0 -31px; transform:translate(0,0); pointer-events:none;
-             background:radial-gradient(circle at 40% 35%, #ffe2a0, #ff7a3c);
-             border:2px solid rgba(255,255,255,.6); box-shadow:0 4px 14px rgba(0,0,0,.45); transition:background .08s; }
-  #joy-knob.gas{ background:radial-gradient(circle at 40% 35%, #c8ffd8, #36cc68); }
-  #joy-knob.brk{ background:radial-gradient(circle at 40% 35%, #ffd0d0, #e84d4d); }
+             background:radial-gradient(circle at 40% 32%, #ffe8b8, #ff7a3c);
+             border:2.5px solid rgba(255,255,255,.7); box-shadow:0 5px 16px rgba(0,0,0,.5), inset 0 2px 6px rgba(255,255,255,.5); transition:background .1s; }
+  #joy-knob.gas{ background:radial-gradient(circle at 40% 32%, #d8ffe4, #2fce6a); }
+  #joy-knob.brk{ background:radial-gradient(circle at 40% 32%, #ffd8d8, #e84d4d); }
   #btn-gas{ grid-column:2; grid-row:2; background:rgba(60,200,120,.42); border-color:rgba(150,255,200,.6); }
   #btn-gas.on{ background:rgba(60,220,130,.8); }
   #btn-brake{ grid-column:1; grid-row:2; background:rgba(230,70,70,.42); border-color:rgba(255,170,170,.6); }
@@ -871,12 +887,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.8</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.9</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.8';
+(function(){ const BUILD='v6.9';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1861,7 +1877,7 @@ function buildCitySideStreets(rng){
     const p=samplePts[i], n=sampleNorm[i], t=sampleTan[i], hw=(sampleHW[i]||CONFIG.roadHalfWidth);
     for(const side of [1,-1]){
       if(rng()<0.4) continue;                                  // not every side, every time
-      const inner=hw+4.6, outer=hw+26+rng()*14, w=5.5+rng()*2.5, y=0.055;
+      const inner=hw+9.6, outer=hw+30+rng()*14, w=5.5+rng()*2.5, y=0.055;
       const IL=[p.x+n.x*inner*side - t.x*w, y, p.y+n.y*inner*side - t.y*w];
       const IR=[p.x+n.x*inner*side + t.x*w, y, p.y+n.y*inner*side + t.y*w];
       const OL=[p.x+n.x*outer*side - t.x*w, y, p.y+n.y*outer*side - t.y*w];
@@ -1959,6 +1975,9 @@ function buildTrackMeshes(){
     const walkMat=new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95});
     buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
     buildSideStrips(0, 4.5, 0.28, walkMat);             // sidewalk = road edge .. edge+4.5 (never inverts at corners)
+    { const th=currentTheme?currentTheme.theme:'city';   // GRASS VERGE: a planted strip just past the sidewalk (grass on city/docks, dune on coast/beach)
+      const vcol=(th==='coast'||th==='beach')?0xcdb98a:0x3f6b3a;
+      buildSideStrips(4.5, 9.5, 0.11, new THREE.MeshStandardMaterial({color:vcol, roughness:1, metalness:0})); }
     buildCitySideStreets(mulberry32(4242));             // perpendicular cross-streets + crosswalks -> track blends into a city grid
   }
   buildBarriers();                                       // continuous visible barrier on EVERY track
@@ -2333,6 +2352,30 @@ function buildCity(rng){
     scene.add(pl); scene.add(bush);
   }
 }
+function buildRoadsideAmenities(rng, addPoles){
+  const _m=new THREE.Matrix4(), _q=new THREE.Quaternion();
+  if(addPoles){                                                // modern lamp posts (arm + emissive head) line the road
+    const poles=[]; for(let i=0;i<SAMPLES;i+=26){ const p=samplePts[i], n=sampleNorm[i], side=((i/26)%2)?1:-1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+3.4;
+      const x=p.x+n.x*off*side, z=p.y+n.y*off*side; poles.push({x,z,y:terrainHeight(x,z),side}); }
+    if(poles.length){
+      const pg=new THREE.CylinderGeometry(0.16,0.2,7,6); pg.translate(0,3.5,0);
+      const pmat=new THREE.MeshStandardMaterial({color:0x2a2a30, roughness:0.7, metalness:0.45});
+      const pole=new THREE.InstancedMesh(pg, pmat, poles.length);
+      const lampMat=new THREE.MeshStandardMaterial({color:0xfff2c0, emissive:0xffe08a, emissiveIntensity:nightMode?2.6:0.7});
+      const lamp=new THREE.InstancedMesh(new THREE.SphereGeometry(0.42,8,6), lampMat, poles.length);
+      poles.forEach((q,k)=>{ _m.makeTranslation(q.x,q.y,q.z); pole.setMatrixAt(k,_m); _m.makeTranslation(q.x,q.y+7,q.z); lamp.setMatrixAt(k,_m); });
+      pole.instanceMatrix.needsUpdate=lamp.instanceMatrix.needsUpdate=true; pole.castShadow=!isTouch; scene.add(pole); scene.add(lamp); }
+  }
+  // BENCHES on the sidewalk, facing the road (every track)
+  const bn=[]; for(let i=17;i<SAMPLES;i+=44){ if(rng()<0.45) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+2.6;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+1) continue; bn.push({x,z,y:terrainHeight(x,z),ang:Math.atan2(p.x-x,p.y-z)}); }
+  if(bn.length){ const wood=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
+    const sg=new THREE.BoxGeometry(2.4,0.16,0.66); sg.translate(0,0.48,0);
+    const bg=new THREE.BoxGeometry(2.4,0.66,0.12); bg.translate(0,0.82,-0.27);
+    const seat=new THREE.InstancedMesh(sg, wood, bn.length), back=new THREE.InstancedMesh(bg, wood, bn.length);
+    bn.forEach((b,k)=>{ _q.setFromAxisAngle(_UP,b.ang); _m.compose(new THREE.Vector3(b.x,b.y,b.z),_q,new THREE.Vector3(1,1,1)); seat.setMatrixAt(k,_m); back.setMatrixAt(k,_m); });
+    seat.instanceMatrix.needsUpdate=back.instanceMatrix.needsUpdate=true; seat.castShadow=!isTouch; scene.add(seat); scene.add(back); }
+}
 function buildStreetFurniture(rng){
   // streetlights along the road (glowing lamps -> bloom)
   const poles=[];
@@ -2457,6 +2500,7 @@ function scatterProps(){ const rng=mulberry32(7777);
   buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it)
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
+  buildRoadsideAmenities(rng, !(th==='city'||th==='docks'));   // benches everywhere + lamp posts where missing
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
   if(th==='city'||th==='docks'||th==='coast'||th==='beach') buildParkedCars(rng);   // parked cars = street life
   buildTrackFurniture(rng);                            // Kenney Racing Kit: grandstands + pits + start gantry + banners
