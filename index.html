@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.5-->
+<!--BUILD:v6.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -577,6 +577,15 @@
   .lbRow.me{ background:rgba(255,90,44,.14); border-radius:7px; }
   .lbRow.me .nm{ color:#ff9a5a; }
   #togBoard.boardChal{ box-shadow:0 0 0 1px #5fe08a, 0 0 10px rgba(95,224,138,.5); }
+  #mtModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
+  #mtModal.hidden{ display:none; }
+  .mtRow{ display:flex; align-items:center; gap:6px; padding:7px 4px; border-top:1px solid rgba(255,255,255,.07); }
+  .mtRow:first-child{ border-top:0; }
+  .mtRow .mn{ flex:1; text-align:left; font-size:12px; font-weight:800; color:#e7e1f2; }
+  .mtRow .mb{ background:rgba(60,45,80,.85); border:1px solid rgba(255,255,255,.14); color:#e7e1f2; font-weight:800; font-size:10px; padding:6px 9px; border-radius:7px; cursor:pointer; }
+  .mtRow .mb.go{ background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#160c06; }
+  .mtRow .mb.del{ background:rgba(120,40,40,.7); }
+  .edMakeBtn{ background:linear-gradient(95deg,#7a3bff,#ff5a2c); }
   /* ---------- ONLINE multiplayer ---------- */
   #netModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
   #netModal.hidden{ display:none; }
@@ -649,6 +658,7 @@
     <div class="edBtn" id="edTheme">🌆 CITY</div>
     <div class="edBtn" id="edAdd">＋ NODE</div>
     <div class="edBtn" id="edDel">🗑 NODE</div>
+    <div class="edBtn" id="edSave">💾 SAVE</div>
     <div class="edBtn" id="edShare">⤴ SHARE</div>
     <div class="edBtn edGo" id="edTest">▶ TEST DRIVE</div>
   </div>
@@ -737,6 +747,7 @@
           <div class="tog" id="togQuests">🎯 QUESTS</div>
           <div class="tog" id="togBoard">🏁 DAILY BOARD</div>
           <div class="tog" id="togEditor">🔧 TRACK EDITOR</div>
+          <div class="tog" id="togMyTracks">📁 MY TRACKS</div>
           <div class="tog" id="togLow">⚡ LITE</div>
         </div>
         <div id="sndRow">
@@ -803,6 +814,14 @@
     <div class="netBtn ghostBtn" id="netCloseBtn">CLOSE</div>
   </div>
 </div>
+<div id="mtModal" class="hidden">
+  <div id="lbCard">
+    <div id="lbTitle">📁 MY TRACKS</div>
+    <div id="mtList"></div>
+    <div class="netBtn edMakeBtn" id="mtNew">＋ CREATE NEW TRACK</div>
+    <div class="netBtn ghostBtn" id="mtClose">CLOSE</div>
+  </div>
+</div>
 <div id="lbModal" class="hidden">
   <div id="lbCard">
     <div id="lbTitle">🏁 DAILY BOARD</div>
@@ -822,12 +841,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.5</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.6</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.5';
+(function(){ const BUILD='v6.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2023,7 +2042,7 @@ function popup(txt, color){
    BUILD: terrain dunes, rocks, cacti, sky, lights
    ========================================================================= */
 function distToTrackApprox(x,z){
-  let best=Infinity; for(let i=0;i<SAMPLES;i+=4){ const p=samplePts[i];
+  let best=Infinity; for(let i=0;i<SAMPLES;i+=2){ const p=samplePts[i];
     const dx=p.x-x,dz=p.y-z,d=dx*dx+dz*dz; if(d<best)best=d; } return Math.sqrt(best);
 }
 // ---- NYC/Chicago-style city: street grid + mixed-use businesses + signage ----
@@ -2364,6 +2383,39 @@ function buildRoadsideBusinesses(rng){
     placed.push({x,z}); made++;
   }
 }
+// CITY-AROUND-THE-TRACK: a continuous wall of buildings LINING both sides of the track, set back just past the
+// sidewalk (near face >= road edge + 6.5 -> guaranteed never on the track), each facing the road. Instanced = cheap.
+function buildTrackBuildings(rng){
+  const th=currentTheme?currentTheme.theme:'city';
+  if(!(th==='city'||th==='docks'||th==='coast'||th==='beach')) return;   // built-up themes only (wilderness keeps its scatter)
+  const TYPES = th==='beach' ? ['limestone','concrete','sandstone'] : ['brick','concrete','glass','limestone','dark','steel'];
+  const facadeTex=TYPES.map(t=>makeFacadeTexture(rng,t));
+  const rows=facadeTex.map(()=>[]); const _c=new THREE.Color();
+  const box=new THREE.BoxGeometry(1,1,1); box.translate(0,0.5,0);
+  let cum=0, last=-999;
+  for(let i=0;i<SAMPLES;i++){ const jn=(i+1)%SAMPLES; cum+=samplePts[i].distanceTo(samplePts[jn]);
+    if(cum-last < 22+rng()*9) continue; last=cum;
+    const p=samplePts[i], n=sampleNorm[i], hw=(sampleHW[i]||CONFIG.roadHalfWidth);
+    for(const side of [1,-1]){
+      if(rng()<0.14) continue;                                            // gaps = cross-streets / plazas
+      const fw=14+rng()*12, fd=12+rng()*8, off=hw+6.5+fd*0.5;             // near face ~6.5u past the road edge
+      const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
+      if(distToTrackApprox(x,z) < hw + fw*0.5 + 6) continue;              // guard against another leg on folded tracks
+      const distC=Math.hypot(x-trackCentroid.x, z-trackCentroid.y), downtown=clamp(1-distC/520,0,1);
+      const H = th==='city' ? (10+downtown*46+rng()*rng()*36) : (7+rng()*15);
+      const fi=Math.floor(rng()*TYPES.length), tint=0.6+rng()*0.4, ang=Math.atan2(p.x-x, p.y-z);   // face the road
+      const q=new THREE.Quaternion().setFromAxisAngle(_UP, ang), y=terrainHeight(x,z);
+      rows[fi].push({ mtx:new THREE.Matrix4().compose(new THREE.Vector3(x,y,z), q, new THREE.Vector3(fw,H,fd)), tint });
+      camColliders.push({x,z, r:Math.hypot(fw,fd)*0.5+1, top:y+H});
+    }
+  }
+  facadeTex.forEach((tex,fi)=>{ const arr=rows[fi]; if(!arr.length) return; const g=TYPES[fi]==='glass';
+    const mat=new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff, emissiveIntensity:0.85, roughness:g?0.28:0.9, metalness:g?0.32:0.03});
+    const m=new THREE.InstancedMesh(box, mat, arr.length);
+    arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(b.tint); m.setColorAt(k,_c); });
+    m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true;
+    m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); });
+}
 function scatterProps(){ const rng=mulberry32(7777);
   const th=currentTheme?currentTheme.theme:'city';
   if(th==='coast') buildCoast(rng);
@@ -2372,6 +2424,7 @@ function scatterProps(){ const rng=mulberry32(7777);
   else if(th==='desert') buildDesert(rng);
   else if(th==='forest' || th==='snow') buildForest(rng);   // snow reuses the pine scatter (white ground)
   else { buildCity(rng); buildStreetFurniture(rng); }
+  buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it)
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
@@ -4579,6 +4632,8 @@ function init(){
   const lbShareB=document.getElementById('lbShare'); if(lbShareB) lbShareB.addEventListener('click', e=>{ e.stopPropagation(); shareChallenge(); });
   const togEditor=document.getElementById('togEditor');
   if(togEditor) togEditor.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } const t=TRACKS[currentTrack]||TRACKS[0]; if(window.openEditor) window.openEditor(t.ctrl, t.theme); });
+  const togMyTracks=document.getElementById('togMyTracks');
+  if(togMyTracks) togMyTracks.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } if(window.openMyTracks) window.openMyTracks(); });
   const togLow=document.getElementById('togLow');
   togLow.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     lowQuality=!lowQuality; togLow.classList.toggle('on',lowQuality);
@@ -5097,6 +5152,25 @@ window.NETRACE=false;
       if(navigator.share){ navigator.share({title:'My Sunset Drift track', url}); } else navigator.clipboard.writeText(url);
       document.getElementById('edHint').textContent='\u2714 Track link copied \u2014 send it to a friend!';
     }catch(e){} };
+  // ---- MY TRACKS library (localStorage) ----
+  const MT={ list(){ try{ return JSON.parse(localStorage.getItem('sd_mytracks')||'[]'); }catch(e){ return []; } },
+    save(t){ const a=this.list(); a.unshift(t); try{ localStorage.setItem('sd_mytracks', JSON.stringify(a.slice(0,40))); }catch(e){} },
+    del(i){ const a=this.list(); a.splice(i,1); try{ localStorage.setItem('sd_mytracks', JSON.stringify(a)); }catch(e){} } };
+  document.getElementById('edSave').onclick=()=>{ MT.save({ name:'Track '+(MT.list().length+1), t:theme, c:ctrl.map(p=>[p[0],p[1]]) });
+    document.getElementById('edHint').textContent='✔ Saved to My Tracks'; };
+  function raceCustom(t){ try{ customTrack=makeCustomTrack(t.t, t.c); currentTrack=CUSTOM_IDX; overlay.classList.add('hidden');
+    const mm=document.getElementById('mtModal'); if(mm) mm.classList.add('hidden'); document.body.classList.remove('inmenu');
+    selectTrack(CUSTOM_IDX); if(typeof ownedCars!=='undefined' && !ownedCars[selectedCar]) ownedCars[selectedCar]=true; startGame(); }catch(e){} }
+  function renderMyTracks(){ const list=document.getElementById('mtList'); if(!list) return; const a=MT.list();
+    list.innerHTML = a.length ? a.map((t,i)=>'<div class="mtRow"><div class="mn">'+(t.name||'Track')+' <span style="color:#9a90ae;font-weight:600">'+(t.t||'city')+' · '+t.c.length+' nodes</span></div>'
+      +'<div class="mb" data-e="'+i+'">EDIT</div><div class="mb go" data-r="'+i+'">RACE</div><div class="mb del" data-d="'+i+'">✕</div></div>').join('')
+      : '<div style="font-size:12px;color:#9a90ae;padding:16px">No saved tracks yet. Create one and hit SAVE.</div>';
+    list.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ const t=MT.list()[+b.dataset.e]; document.getElementById('mtModal').classList.add('hidden'); open(t.c,t.t); });
+    list.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ raceCustom(MT.list()[+b.dataset.r]); });
+    list.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ MT.del(+b.dataset.d); renderMyTracks(); }); }
+  window.openMyTracks=function(){ renderMyTracks(); const mm=document.getElementById('mtModal'); if(mm) mm.classList.remove('hidden'); };
+  document.getElementById('mtClose').onclick=()=>{ document.getElementById('mtModal').classList.add('hidden'); };
+  document.getElementById('mtNew').onclick=()=>{ document.getElementById('mtModal').classList.add('hidden'); open(null,'city'); };
   addEventListener('resize',()=>{ if(!overlay.classList.contains('hidden')){ fit(); draw(); } });
   // load an incoming shared track link
   const m=/[?&]track=([^&]+)/.exec(location.search);
