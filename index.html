@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.6-->
+<!--BUILD:v6.7-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -773,6 +773,7 @@
   <div id="resStats"></div>
   <div id="resReward"></div>
   <div class="cta" id="dblBtn" style="display:none;background:linear-gradient(95deg,#7a3bff,#ff5a2c)">▶ 2× COINS</div>
+  <div class="cta cta2" id="boardBtn" style="background:linear-gradient(95deg,#2a7bff,#7a3bff)">🏁 TRACK BOARD</div>
   <div class="cta" id="nextBtn">NEXT RACE →</div>
   <div id="resBtnRow"><div class="cta cta2" id="againBtn">RETRY</div><div class="cta cta2" id="garageBtn">🏠 GARAGE</div></div>
 </div>
@@ -841,12 +842,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.6</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.7</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.6';
+(function(){ const BUILD='v6.7';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4188,6 +4189,7 @@ function finishRace(){
   const diffMul = Math.max(1, TRACK_DIFF[currentTrack]||1);   // harder (later) tracks pay more; easy tracks still pay base
   const reward=Math.round((([240,140,90,50][r-1]||30) + Math.max(0, Math.round((22-(bestLap||raceTime))*8)) + styleCoins) * diffMul);   // place + lap-speed + style, scaled by track difficulty
   coins+=reward; saveCoins(); renderCoins();
+  try{ if(typeof LB!=='undefined' && !brActive) LB.submitTrack(trackKeyNow(), lbName(), Math.round(raceTime*1000)); }catch(e){}
   { const db=document.getElementById('dblBtn'); if(db){ db._reward=reward;   // REWARDED AD: offer to double the winnings (only when an ad provider is available)
       const show=(typeof Rewarded!=='undefined' && Rewarded.available()); db.style.display=show?'block':'none';
       if(show) db.textContent='▶ 2× COINS  (+'+reward+')'; } }
@@ -4656,6 +4658,7 @@ function init(){
   document.getElementById('pRestartBtn').addEventListener('click', e=>{ e.stopPropagation(); champ.active=false; startGame(); });
   document.getElementById('pGarageBtn').addEventListener('click', e=>{ e.stopPropagation(); showMenu(); });
   document.getElementById('againBtn').addEventListener('click', e=>{ e.stopPropagation(); if(brActive){ startBattle(); return; } champ.active=false; startGame(); });
+  { const bb=document.getElementById('boardBtn'); if(bb) bb.addEventListener('click', e=>{ e.stopPropagation(); if(window.openTrackBoard) window.openTrackBoard(); }); }
   document.getElementById('nextBtn').addEventListener('click', e=>{ e.stopPropagation(); if(brActive){ startBattle(); return; } champ.active=false;
     let ni=(currentTrack+1)%TRACKS.length; if(trackLocked(ni)) ni=0; currentTrack=ni; selectTrack(ni); startGame(); });
   document.getElementById('garageBtn').addEventListener('click', e=>{ e.stopPropagation(); showMenu(); });
@@ -4719,8 +4722,30 @@ const LB={
     if(me){ if(ms<me.ms){ me.ms=ms; me.name=name; } } else b.push({name,ms,self:true}); this._save(day,track,b); },
   addChallenge(day,track,name,ms){ const b=this.get(day,track);
     if(!b.some(r=>!r.self && r.name===name && Math.abs(r.ms-ms)<50)){ b.push({name,ms,self:false}); this._save(day,track,b); } },
-  top(day,track){ return this.get(day,track).slice().sort((a,b)=>a.ms-b.ms); }
+  top(day,track){ return this.get(day,track).slice().sort((a,b)=>a.ms-b.ms); },
+  _tk(k){ return 'sd_tlb_'+k; },
+  tget(k){ try{ return JSON.parse(localStorage.getItem(this._tk(k))||'[]'); }catch(e){ return []; } },
+  submitTrack(k,name,ms){ const b=this.tget(k); const me=b.find(r=>r.self);
+    if(me){ if(ms<me.ms){ me.ms=ms; me.name=name; } } else b.push({name,ms,self:true});
+    try{ localStorage.setItem(this._tk(k), JSON.stringify(b.slice(0,50))); }catch(e){} },
+  topTrack(k){ return this.tget(k).slice().sort((a,b)=>a.ms-b.ms); }
 };
+// stable per-track key: normal tracks by index, custom tracks by an FNV hash of theme+nodes (same track = same board)
+function trackKeyNow(){ try{ if(currentTrack===CUSTOM_IDX && customTrack){ const str=(customTrack.theme||'')+JSON.stringify(customTrack.ctrl);
+    let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=(h*16777619)>>>0; } return 'c'+h.toString(36); } }catch(e){}
+  return 't'+(typeof currentTrack!=='undefined'?currentTrack:0); }
+let _lbTrackMode=false;
+function renderTrackBoard(){ const list=document.getElementById('lbList'); if(!list) return; _lbTrackMode=true;
+  const rows=LB.topTrack(trackKeyNow());
+  const tname=(currentTrack===CUSTOM_IDX)?((customTrack&&customTrack.name)||'CUSTOM'):(((typeof TRACKS!=='undefined'&&TRACKS[currentTrack])||{}).name||'TRACK');
+  const tt=document.getElementById('lbTitle'); if(tt) tt.textContent='🏁 TRACK BOARD';
+  const sub=document.getElementById('lbSub'); if(sub) sub.textContent=tname+' · all-time best';
+  const sh=document.getElementById('lbShare'); if(sh) sh.style.display=(currentTrack===CUSTOM_IDX)?'block':'none';
+  list.innerHTML = rows.length ? rows.slice(0,12).map((r,i)=>
+    '<div class="lbRow'+(r.self?' me':'')+'"><div class="rk">'+(i+1)+'</div><div class="nm">'+(r.self?'YOU':r.name)+'</div><div class="tm">'+lbFmt(r.ms)+'</div></div>').join('')
+    : '<div style="font-size:12px;color:#9a90ae;padding:14px">Be the first to set a time on this track!</div>'; }
+function openTrackBoard(){ renderTrackBoard(); const m=document.getElementById('lbModal'); if(m) m.classList.remove('hidden'); }
+window.openTrackBoard=openTrackBoard;
 function lbName(){ try{ return (localStorage.getItem('sd_name')||'YOU').toUpperCase().slice(0,12); }catch(e){ return 'YOU'; } }
 function lbFmt(ms){ const s=ms/1000; return s.toFixed(2)+'s'; }
 function renderBoard(){ const list=document.getElementById('lbList'); if(!list) return;
@@ -4731,6 +4756,7 @@ function renderBoard(){ const list=document.getElementById('lbList'); if(!list) 
   list.innerHTML = rows.length ? rows.slice(0,12).map((r,i)=>
     '<div class="lbRow'+(r.self?' me':'')+'"><div class="rk">'+(i+1)+'</div><div class="nm">'+(r.self?'YOU':r.name)+'</div><div class="tm">'+lbFmt(r.ms)+'</div></div>'
   ).join('') : '<div style="font-size:12px;color:#9a90ae;padding:14px">Race today\u2019s Daily to set a time, then challenge a friend.</div>';
+  _lbTrackMode=false; const shd=document.getElementById('lbShare'); if(shd) shd.style.display='block';
   const b=document.getElementById('togBoard'); if(b) b.classList.remove('boardChal'); }
 function shareChallenge(){ const day=dayNum(), track=dailyTrackIdx(); const me=LB.get(day,track).find(r=>r.self);
   const note=document.getElementById('lbShareNote');
