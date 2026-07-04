@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v7.1-->
+<!--BUILD:v7.2-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -282,7 +282,9 @@
   body.inbattle #btn-rocket{ display:flex; }
   #coinBadge{ position:fixed; top:14px; right:16px; z-index:30; pointer-events:none; font-size:min(4.4vw,19px); font-weight:900; letter-spacing:.5px;
               color:#ffd23b; background:linear-gradient(150deg,rgba(38,24,12,.86),rgba(18,12,20,.78)); padding:7px 16px; border-radius:6px;
-              border:1px solid rgba(255,210,59,.5); box-shadow:0 4px 16px rgba(0,0,0,.4); }
+              border:1px solid rgba(255,210,59,.5); box-shadow:0 4px 16px rgba(0,0,0,.4); transition:transform .1s; }
+  #coinBadge.grab{ animation:coinPop .32s ease-out; }
+  @keyframes coinPop{ 0%{ transform:scale(1); } 35%{ transform:scale(1.28); color:#fff6c8; text-shadow:0 0 12px rgba(255,220,80,.9); } 100%{ transform:scale(1); } }
 
   /* ---------- premium tabbed menu shell ---------- */
   :root{ --hairline:1px solid rgba(255,255,255,.10); }
@@ -374,48 +376,45 @@
   #ckVent, #ckVent2{ position:absolute; top:16%; width:9vw; max-width:74px; height:16px; border-radius:4px;
     background:repeating-linear-gradient(180deg,#141319 0 3px,#0b0a10 3px 6px); box-shadow:inset 0 0 4px #000; opacity:.9; }
   .ckVentL{ left:16%; } .ckVentR{ right:16%; }
-  /* gauge binnacle (hood over the cluster) */
-  #ckBinnacle{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(26vh - 18px);
-    padding:8px 16px 4px; border-radius:16px 16px 8px 8px;
-    background:linear-gradient(180deg,#1a1822,#0d0c12); box-shadow:0 -3px 10px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.05); }
-  #ckGauge{ display:block; width:min(42vw,270px); height:auto; filter:drop-shadow(0 3px 12px rgba(0,0,0,.6)); }
-  /* steering wheel */
-  #ckWheel{ position:absolute; left:50%; bottom:-27vh; width:54vh; height:54vh; transform:translateX(-50%); transition:transform .05s linear; will-change:transform; filter:drop-shadow(0 -4px 16px rgba(0,0,0,.5)); }
-  @media (orientation:landscape) and (max-height:520px){
-    #ckDash{ height:32vh; } #ckWheel{ bottom:-31vh; width:60vh; height:60vh; }
-    #ckBinnacle{ bottom:calc(32vh - 14px); } #ckGauge{ width:min(36vw,240px); } #ckPillarL,#ckPillarR{ height:88vh; } }
+  /* compact digital cluster mounted on the dash, above the wheel (no heavy box) */
+  #ckBinnacle{ position:absolute; left:50%; transform:translateX(-50%); bottom:20vh; padding:0; background:none; box-shadow:none; }
+  #ckGauge{ display:block; width:min(52vw,320px); height:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.7)); }
+  /* steering wheel — lower + smaller so the road stays clear */
+  #ckWheel{ position:absolute; left:50%; bottom:-24vh; width:46vh; height:46vh; transform:translateX(-50%); transition:transform .05s linear; will-change:transform; filter:drop-shadow(0 -4px 16px rgba(0,0,0,.5)); }
+  body.ck-view #speedBox{ display:none !important; }   /* one speed readout in the cabin, not two */
+  @media (orientation:landscape) and (max-height:560px){
+    #ckDash{ height:30vh; } #ckWheel{ bottom:-27vh; width:52vh; height:52vh; }
+    #ckBinnacle{ bottom:23vh; } #ckGauge{ width:min(44vw,280px); } #ckPillarL,#ckPillarR{ height:88vh; } }
   /* ---- MODERN HUD: circular glass buttons, colored glow, springy press, attention pulse ---- */
-  .btn{ width:76px; height:76px; border-radius:50%; pointer-events:auto;
+  .btn{ width:72px; height:72px; border-radius:50%; pointer-events:auto;
         display:flex; align-items:center; justify-content:center; flex-direction:column;
-        font-weight:900; font-size:13px; letter-spacing:.6px; color:#fff;
-        background:linear-gradient(155deg, rgba(56,48,72,.60), rgba(16,12,22,.62));
-        border:1.5px solid rgba(255,255,255,.30);
-        -webkit-backdrop-filter:blur(7px) saturate(1.2); backdrop-filter:blur(7px) saturate(1.2);
-        text-shadow:0 1px 3px rgba(0,0,0,.6);
-        transition:transform .11s cubic-bezier(.34,1.56,.5,1), box-shadow .14s, filter .12s;
-        box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 2px 7px rgba(255,255,255,.24), inset 0 -7px 13px rgba(0,0,0,.30); }
-  .btn .ico{ font-size:26px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
+        font-weight:800; font-size:11px; letter-spacing:.7px; color:rgba(255,255,255,.9);
+        background:radial-gradient(circle at 50% 38%, rgba(44,42,56,.42), rgba(12,11,17,.5));
+        border:1.5px solid rgba(255,255,255,.20);
+        -webkit-backdrop-filter:blur(9px) saturate(1.1); backdrop-filter:blur(9px) saturate(1.1);
+        text-shadow:0 1px 2px rgba(0,0,0,.55);
+        transition:transform .1s cubic-bezier(.34,1.5,.5,1), box-shadow .12s, border-color .12s, background .12s, filter .12s;
+        box-shadow:0 5px 14px rgba(0,0,0,.4), inset 0 1px 1px rgba(255,255,255,.12); }
+  .btn .ico{ font-size:24px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
   .btn.sm{ width:56px; height:56px; font-size:9px; }
   .btn.sm .ico{ font-size:20px; }
   .btn.big{ width:94px; height:94px; font-size:15px; }
   .btn.big .ico{ font-size:31px; }
-  .btn.ped{ width:86px; height:86px; }
-  .btn.ped .ico{ font-size:31px; }
-  .btn.ped.gas{ width:112px; height:112px;
-        background:radial-gradient(circle at 42% 34%, rgba(160,255,196,.55), rgba(34,205,116,.55) 52%, rgba(12,120,60,.62));
-        border-color:rgba(150,255,200,.72); color:#08240f; text-shadow:0 1px 2px rgba(255,255,255,.4);
-        box-shadow:0 10px 26px rgba(24,190,96,.4), 0 0 0 2px rgba(130,255,185,.22), inset 0 3px 11px rgba(255,255,255,.4), inset 0 -8px 16px rgba(0,80,40,.4);
-        animation:gasPulse 1.9s ease-in-out infinite; }
-  @keyframes gasPulse{ 0%,100%{ box-shadow:0 10px 26px rgba(24,190,96,.4), 0 0 0 2px rgba(130,255,185,.2), inset 0 3px 11px rgba(255,255,255,.35), inset 0 -8px 16px rgba(0,80,40,.4); }
-                       50%{ box-shadow:0 12px 34px rgba(30,210,108,.55), 0 0 0 7px rgba(130,255,185,.1), inset 0 3px 11px rgba(255,255,255,.45), inset 0 -8px 16px rgba(0,80,40,.4); } }
-  .btn.ped.brake{ background:radial-gradient(circle at 42% 34%, rgba(255,176,158,.55), rgba(232,74,62,.55) 52%, rgba(140,26,26,.62));
-        border-color:rgba(255,164,146,.72); color:#2a0808; text-shadow:0 1px 2px rgba(255,220,215,.4);
-        box-shadow:0 10px 26px rgba(206,54,44,.36), inset 0 3px 11px rgba(255,255,255,.36), inset 0 -8px 16px rgba(90,10,10,.4); }
-  #btn-boost{ background:radial-gradient(circle at 42% 34%, rgba(255,214,140,.5), rgba(255,120,44,.5) 55%, rgba(150,60,10,.55)); border-color:rgba(255,190,120,.6); }
-  #btn-drift{ background:radial-gradient(circle at 42% 34%, rgba(200,160,255,.46), rgba(140,80,230,.5) 55%, rgba(70,30,130,.55)); border-color:rgba(200,160,255,.6); }
-  #btn-rocket{ background:radial-gradient(circle at 42% 34%, rgba(120,190,255,.46), rgba(40,120,230,.5) 55%, rgba(20,60,130,.55)); border-color:rgba(140,190,255,.6); }
-  .btn:active,.btn.on,.btn.ped.on{ transform:scale(.88); filter:brightness(1.32); animation:none;
-        box-shadow:0 3px 10px rgba(0,0,0,.5), 0 0 22px rgba(255,255,255,.28), inset 0 3px 14px rgba(0,0,0,.35); }
+  .btn.ped{ width:82px; height:82px; }
+  .btn.ped .ico{ font-size:28px; }
+  .btn.ped.gas{ width:104px; height:104px;
+        background:radial-gradient(circle at 50% 40%, rgba(60,220,140,.34), rgba(10,70,40,.5));
+        border-color:rgba(120,255,180,.7); color:#eafff2; text-shadow:0 1px 2px rgba(0,0,0,.5);
+        box-shadow:0 6px 18px rgba(20,170,90,.3), 0 0 16px rgba(40,220,120,.18), inset 0 1px 2px rgba(255,255,255,.18); }
+  .btn.ped.brake{ background:radial-gradient(circle at 50% 40%, rgba(235,80,72,.34), rgba(100,18,18,.5));
+        border-color:rgba(255,150,140,.7); color:#ffecea; text-shadow:0 1px 2px rgba(0,0,0,.5);
+        box-shadow:0 6px 18px rgba(200,50,44,.28), 0 0 16px rgba(240,70,60,.16), inset 0 1px 2px rgba(255,255,255,.16); }
+  #btn-boost{ border-color:rgba(255,190,120,.7); box-shadow:0 5px 14px rgba(0,0,0,.4), 0 0 14px rgba(255,150,50,.22), inset 0 1px 1px rgba(255,255,255,.12); }
+  #btn-drift{ border-color:rgba(190,160,255,.7); box-shadow:0 5px 14px rgba(0,0,0,.4), 0 0 14px rgba(150,100,240,.22), inset 0 1px 1px rgba(255,255,255,.12); }
+  #btn-rocket{ border-color:rgba(150,190,255,.7); box-shadow:0 5px 14px rgba(0,0,0,.4), 0 0 14px rgba(70,140,240,.22), inset 0 1px 1px rgba(255,255,255,.12); }
+  .btn:active,.btn.on,.btn.ped.on{ transform:scale(.9); filter:brightness(1.28);
+        background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.55);
+        box-shadow:0 2px 8px rgba(0,0,0,.45), 0 0 20px rgba(255,255,255,.3), inset 0 2px 10px rgba(0,0,0,.3); }
   #joy-base{ width:132px; height:132px; border-radius:50%; pointer-events:auto; position:relative;
              background:radial-gradient(circle at 50% 42%, rgba(255,255,255,.13), rgba(20,16,26,.58));
              border:1.5px solid rgba(255,255,255,.28); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
@@ -717,7 +716,7 @@
   <div id="ckDoorL"></div><div id="ckDoorR"></div>
   <div id="ckDash">
     <div id="ckVent" class="ckVentL"></div><div id="ckVent2" class="ckVentR"></div>
-    <div id="ckBinnacle"><canvas id="ckGauge" width="300" height="150"></canvas></div>
+    <div id="ckBinnacle"><canvas id="ckGauge" width="320" height="88"></canvas></div>
     <div id="ckWheel"><svg viewBox="0 0 100 100" width="100%" height="100%">
       <defs>
         <radialGradient id="ckRim" cx="0.42" cy="0.34" r="0.85">
@@ -950,12 +949,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.1</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.2</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v7.1';
+(function(){ const BUILD='v7.2';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2073,7 +2072,8 @@ function buildGate(i, finish){
    ARCADE LOOP — boost pads + coin pickups + style score (Horizon-Chase juice)
    ========================================================================= */
 let boostPads=[], padMesh=null, padMat=null;
-let coinList=[], coinMesh=null, coinRim=null, coinMat=null, coinGeo=null, coinSpin=0, coinGrab=0;
+let coinList=[], coinMesh=null, coinRim=null, coinMat=null, coinGeo=null, coinSpin=0, coinGrab=0, coinGlow=null, coinGlowMat=null;
+const _GS=new THREE.Vector3();
 let runScore=0, combo=1, comboTimer=0;
 const _M4=new THREE.Matrix4(), _Q=new THREE.Quaternion(), _P=new THREE.Vector3(), _S=new THREE.Vector3(1,1,1), _FAR=new THREE.Vector3(0,-999,0);
 
@@ -2112,6 +2112,12 @@ function buildPickups(){
   for(let i=0;i<coinList.length;i++){ const co=coinList[i]; _Q.setFromAxisAngle(_UP,0);
     _P.set(co.x,1.15+(sampleElev[co.idx]||0),co.z); _M4.compose(_P,_Q,_S); coinMesh.setMatrixAt(i,_M4); coinRim.setMatrixAt(i,_M4); }   // initial placement (menu shows them too)
   coinMesh.instanceMatrix.needsUpdate=true; coinRim.instanceMatrix.needsUpdate=true;
+  { const gc=document.createElement('canvas'); gc.width=gc.height=64; const gx=gc.getContext('2d');   // additive glow halo -> coins POP
+    const gg=gx.createRadialGradient(32,32,1,32,32,32);
+    gg.addColorStop(0,'rgba(255,235,150,0.95)'); gg.addColorStop(0.35,'rgba(255,196,70,0.55)'); gg.addColorStop(1,'rgba(255,180,40,0)');
+    gx.fillStyle=gg; gx.fillRect(0,0,64,64);
+    coinGlowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(gc), transparent:true, blending:THREE.AdditiveBlending, depthWrite:false});
+    coinGlow=new THREE.InstancedMesh(new THREE.PlaneGeometry(3.1,3.1), coinGlowMat, coinList.length); coinGlow.frustumCulled=false; coinGlow.renderOrder=3; scene.add(coinGlow); }
   resetPickups();
 }
 function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpin=0; coinGrab=0;
@@ -2120,12 +2126,15 @@ function updateArcadeVisuals(dt){
   if(player&&player.rig&&player.rig.headSpot) player.rig.headSpot.visible=!!nightMode;
   if(updateArcadeVisuals._night!==nightMode){ updateArcadeVisuals._night=nightMode;
     cars.forEach(c=>{ if(c.rig&&c.rig.lampMats){ c.rig.lampMats[0].emissiveIntensity=nightMode?2.2:0.7; c.rig.lampMats[1].emissiveIntensity=nightMode?2.0:0.8; } }); }
-  if(coinMesh){ coinSpin+=dt*2.4; _Q.setFromAxisAngle(_UP, coinSpin);   // one rotation for all coins this frame
+  if(coinMesh){ coinSpin+=dt*3.2; _Q.setFromAxisAngle(_UP, coinSpin);   // one rotation for all coins this frame
+    const cq=(typeof camera!=='undefined'&&camera)?camera.quaternion:_Q;
     for(let i=0;i<coinList.length;i++){ const co=coinList[i];
-      if(co.alive){ _P.set(co.x, 1.15+(sampleElev[co.idx]||0)+Math.sin(coinSpin*1.7+i*1.3)*0.14, co.z); _M4.compose(_P,_Q,_S); }   // gentle bob = alive, premium
+      if(co.alive){ _P.set(co.x, 1.15+(sampleElev[co.idx]||0)+Math.sin(coinSpin*1.5+i*1.3)*0.18, co.z); _M4.compose(_P,_Q,_S); }   // livelier bob
       else _M4.compose(_FAR,_Q,_S);
-      coinMesh.setMatrixAt(i,_M4); if(coinRim) coinRim.setMatrixAt(i,_M4); }
-    coinMesh.instanceMatrix.needsUpdate=true; if(coinRim) coinRim.instanceMatrix.needsUpdate=true; }
+      coinMesh.setMatrixAt(i,_M4); if(coinRim) coinRim.setMatrixAt(i,_M4);
+      if(coinGlow){ if(co.alive){ const ps=1.0+0.35*Math.sin(coinSpin*2.1+i*1.1); _GS.set(ps,ps,ps); _M4.compose(_P, cq, _GS); }   // pulsing billboard halo
+        else _M4.compose(_FAR,_Q,_S); coinGlow.setMatrixAt(i,_M4); } }
+    coinMesh.instanceMatrix.needsUpdate=true; if(coinRim) coinRim.instanceMatrix.needsUpdate=true; if(coinGlow) coinGlow.instanceMatrix.needsUpdate=true; }
   if(padMat) padMat.opacity=0.72+0.24*Math.sin(raceTime*4.2);  // pulse pads (stays clearly visible)
 }
 function arcadePickups(c, dt){       // player only, during a race
@@ -2136,7 +2145,8 @@ function arcadePickups(c, dt){       // player only, during a race
       audio&&audio.boost(); popup('⚡ BOOST','#ffb14d'); } }
   for(let i=0;i<coinList.length;i++){ const co=coinList[i]; if(!co.alive) continue;
     const dx=c.pos.x-co.x, dz=c.pos.y-co.z; if(dx*dx+dz*dz<7.0){ co.alive=false; coins++; coinGrab++; renderCoins(); saveCoins();
-      sparks.emit(co.x,1.15+(c.visY||0),co.z,(Math.random()-.5)*3,3,(Math.random()-.5)*3,0.3,7); audio&&audio.coin(); } }
+      sparks.emit(co.x,1.2+(c.visY||0),co.z,(Math.random()-.5)*5,3.6,(Math.random()-.5)*5,0.35,16); audio&&audio.coin();
+      const bd=document.getElementById('coinBadge'); if(bd){ bd.classList.remove('grab'); void bd.offsetWidth; bd.classList.add('grab'); } } }
 }
 function addScore(n, txt, color){ runScore+=Math.round(n*combo); comboTimer=2.6; if(txt) popup(txt+' +'+Math.round(n*combo), color); }
 
@@ -3897,6 +3907,25 @@ function drawGauge(x, W, H, kmh, maxKmh, boostFrac, boosting){
   x.lineCap='butt'; x.textAlign='start';
 }
 function drawSpeedo(kmh, maxKmh){ drawGauge(speedoCtx, 148, 148, kmh, maxKmh, 0, false); }
+// compact horizontal digital cluster for the cockpit dash (slim, non-obstructive)
+function drawCluster(x, W, H, kmh, maxKmh, boostFrac, boosting){
+  if(!x) return; x.clearRect(0,0,W,H); const f=Math.min(kmh/maxKmh,1);
+  x.textAlign='center'; x.textBaseline='alphabetic';
+  x.fillStyle='#fff'; x.font='italic 900 '+Math.round(H*0.66)+'px system-ui,Arial';
+  x.shadowColor='rgba(140,105,255,'+(boosting?0.95:0.5)+')'; x.shadowBlur=boosting?18:9;
+  x.fillText(kmh, W*0.5, H*0.62); x.shadowBlur=0;
+  x.fillStyle='rgba(255,255,255,.5)'; x.font='700 '+Math.round(H*0.13)+'px system-ui'; x.fillText('KM/H', W*0.5, H*0.8);
+  const bx=W*0.24, bw=W*0.52, by=H*0.9, bh=Math.max(4,Math.round(H*0.07));                     // speed bar
+  x.fillStyle='rgba(255,255,255,.13)'; x.fillRect(bx,by,bw,bh);
+  const g=x.createLinearGradient(bx,0,bx+bw,0); g.addColorStop(0,'#37d6ff'); g.addColorStop(.5,'#9b6bff'); g.addColorStop(1,'#ff3b6b');
+  x.fillStyle=g; x.fillRect(bx,by,bw*f,bh);
+  const gear=kmh<3?'N':('D'+Math.min(6,1+Math.floor(f*5.2)));                                   // gear pill (left)
+  x.textAlign='left'; x.fillStyle=boosting?'#ffb45a':'#7ce0ff'; x.font='italic 900 '+Math.round(H*0.3)+'px system-ui'; x.fillText(gear, 4, H*0.52);
+  const nb=Math.max(0,Math.min(boostFrac||0,1)), nx=W-9, nh=H*0.52, ny=H*0.22;                  // NOS bar (right)
+  x.fillStyle='rgba(255,255,255,.13)'; x.fillRect(nx,ny,6,nh);
+  x.fillStyle=boosting?'#ffd08a':'#ff8a3c'; x.fillRect(nx,ny+nh*(1-nb),6,nh*nb);
+  x.textAlign='start';
+}
 function updateHUD(){
   elLapNow.textContent=Math.min(player.lap+1,CONFIG.laps);
   elCurTime.textContent=fmt(raceTime);
@@ -3914,13 +3943,13 @@ function updateHUD(){
   // COCKPIT interior overlay — live gauge cluster + steering wheel that tracks input
   { const V=CAM_VIEWS[camView], ck=document.getElementById('cockpit');
     if(ck){ const on=!!(V&&V.cockpit);
-      if(on){ ck.classList.remove('hidden');
+      if(on){ ck.classList.remove('hidden'); document.body.classList.add('ck-view');
         if(!window._ckCtx){ const cg=document.getElementById('ckGauge'); if(cg) window._ckCtx=cg.getContext('2d'); }
-        drawGauge(window._ckCtx, 300, 150, kmh, 250, player.boost/(CONFIG.boostMax*(player.nosMax||1)), player.boosting);
+        drawCluster(window._ckCtx, 320, 88, kmh, 250, player.boost/(CONFIG.boostMax*(player.nosMax||1)), player.boosting);
         const st=clamp((keys.left?1:0)-(keys.right?1:0)+joyX,-1,1);
         window._ckW=(window._ckW||0)+(st-(window._ckW||0))*0.28;
         const w=document.getElementById('ckWheel'); if(w) w.style.transform='translateX(-50%) rotate('+(-window._ckW*135).toFixed(1)+'deg)';
-      } else ck.classList.add('hidden'); } }
+      } else { ck.classList.add('hidden'); document.body.classList.remove('ck-view'); } } }
   elBoostBar.style.width=(player.boost/(CONFIG.boostMax*(player.nosMax||1))*100)+'%';   // scale by the (possibly bigger) NOS tank
   elBoostWrap.classList.toggle('charging', player.drifting && !player.boosting);
   // rival tag + pass callouts
@@ -3974,7 +4003,7 @@ function startGame(){
 function hidePauseUI(){ const pb=document.getElementById('pauseBtn'); if(pb) pb.classList.remove('show');
   const cb=document.getElementById('camBtn'); if(cb) cb.classList.remove('show');
   const pm=document.getElementById('pauseMenu'); if(pm) pm.classList.add('hidden');
-  const ck=document.getElementById('cockpit'); if(ck) ck.classList.add('hidden'); }
+  const ck=document.getElementById('cockpit'); if(ck) ck.classList.add('hidden'); document.body.classList.remove('ck-view'); }
 function pauseGame(){ if(state!=='race') return; state='paused'; document.getElementById('pauseMenu').classList.remove('hidden'); if(audio&&audio.ok) audio.update(0,0,false); }
 function resumeGame(){ if(state!=='paused') return; document.getElementById('pauseMenu').classList.add('hidden'); state='race'; }
 function showMenu(){                                       // back to the garage/menu (shop)
