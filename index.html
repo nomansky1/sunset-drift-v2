@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.2-->
+<!--BUILD:v6.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -773,12 +773,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.2</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.3</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.2';
+(function(){ const BUILD='v6.3';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1452,6 +1452,12 @@ class AudioEngine {
       // ENGINE: REAL recorded loops (CC0) crossfaded by RPM + pitch-shifted -> sounds like an actual car
       this.engGain=this.ctx.createGain(); this.engGain.gain.value=0; this.engGain.connect(this.comp);
       this.layers=[]; this.buffers={}; this._rpm=0.12; this.skidOn=false;
+      // TURBO / forced-induction spool whine — a filtered saw that rises with revs (amount per car class)
+      this.turbo=this.ctx.createOscillator(); this.turbo.type='sawtooth'; this.turbo.frequency.value=600;
+      this.turboF=this.ctx.createBiquadFilter(); this.turboF.type='bandpass'; this.turboF.frequency.value=2600; this.turboF.Q.value=7;
+      this.turboG=this.ctx.createGain(); this.turboG.gain.value=0;
+      this.turbo.connect(this.turboF); this.turboF.connect(this.turboG); this.turboG.connect(this.comp); try{this.turbo.start();}catch(e){}
+      this.engChar=this.engChar||{pitch:1, turbo:0.5}; this._prevThr=false;
       const LAYERS=[['audio/engine-idle.mp3',0.10],['audio/eng2.wav',0.42],['audio/eng4.wav',0.72],['audio/eng5.wav',1.0]];  // cleaner CC0 idle at the low end
       LAYERS.forEach((L,i)=>{ this._fetchBuf(L[0]).then(buf=>{ if(!buf||!this.ctx) return;
         const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=true;
@@ -1465,18 +1471,27 @@ class AudioEngine {
   }
   setVolume(v){ if(this.ok) this.master.gain.setTargetAtTime(muted?0:v, this.ctx.currentTime, 0.04); }
   _fetchBuf(url){ return fetch(url).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>this.ctx.decodeAudioData(ab,res,rej))).catch(()=>null); }
-  update(speed01, throttle, drift){ if(!this.ok) return; if(window.__auto){ if(this.master) this.master.gain.value=0; return; } const t=this.ctx.currentTime;
+  update(speed01, throttle, drift, boosting){ if(!this.ok) return; if(window.__auto){ if(this.master) this.master.gain.value=0; return; } const t=this.ctx.currentTime;
     // faux 5-speed gearbox: rpm climbs within a gear then "shifts" back down on the next
     const gv=[0,0.16,0.34,0.55,0.80,1.30]; let g=0; while(g<gv.length-2 && speed01>gv[g+1]) g++;
     let rpm=0.25+0.75*clamp((speed01-gv[g])/Math.max(gv[g+1]-gv[g],1e-3),0,1);
     if(speed01<0.02) rpm=0.05;                                  // idle
     this._rpm += (rpm-this._rpm)*0.18;
-    const pitch=0.78 + this._rpm*1.05;                          // playbackRate sweep within a layer
+    const ch=this.engChar||{pitch:1,turbo:0.5};
+    const pitch=(0.78 + this._rpm*1.05)*ch.pitch;              // per-car tone: deep V8 (low) vs high-rev exotic (high)
     for(const L of this.layers){ if(!L) continue;
       const w=clamp(1 - Math.abs(this._rpm-L.center)/0.36, 0, 1);  // triangular crossfade window
       L.g.gain.setTargetAtTime(w, t, 0.09);
       try{ L.src.playbackRate.setTargetAtTime(pitch, t, 0.09); }catch(e){}
     }
+    // TURBO spool: whine rises with revs under throttle, louder on boost
+    const tf=1100 + this._rpm*3000*ch.pitch;
+    this.turbo.frequency.setTargetAtTime(tf, t, 0.08);
+    const tg = ch.turbo*( (throttle?clamp((this._rpm-0.32)/0.68,0,1):0)*0.045 + (boosting?0.05:0) );
+    this.turboG.gain.setTargetAtTime(tg, t, 0.12);
+    // EXHAUST POP / backfire crackle when you lift off the throttle at high revs
+    if(this._prevThr && !throttle && this._rpm>0.5) this._exhaustPop(0.4+this._rpm*0.6);
+    this._prevThr=throttle;
     if(this._gear!=null && g!==this._gear) this._shift=1;                       // gear changed -> brief clutch-cut (punchier shift feel)
     this._gear=g; const shiftDuck=1-(this._shift||0)*0.55;
     this.engGain.gain.setTargetAtTime((0.42 + (throttle?0.34:0.07) + this._rpm*0.2)*shiftDuck, t, 0.05);   // more presence at high revs + shift duck
@@ -1553,6 +1568,24 @@ class AudioEngine {
     const g=this.ctx.createGain(); g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.0008,t+0.09);
     a.connect(g); g.connect(o); a.start(); a.stop(t+0.11);
   }catch(e){} }
+  _exhaustPop(v){ if(!this.ok) return; v=clamp(v,0.2,1); try{ const t=this.ctx.currentTime, o=this.comp;
+    const n=this.ctx.createBufferSource(); n.buffer=this.noiseBuf;                       // crackle
+    const bp=this.ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.setValueAtTime(340,t); bp.Q.value=1.3;
+    const g=this.ctx.createGain(); g.gain.setValueAtTime(0.16*v,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.09);
+    n.connect(bp); bp.connect(g); g.connect(o); n.start(); n.stop(t+0.1);
+    const os=this.ctx.createOscillator(); os.type='triangle'; os.frequency.setValueAtTime(94,t); os.frequency.exponentialRampToValueAtTime(48,t+0.08);  // low pop body
+    const og=this.ctx.createGain(); og.gain.setValueAtTime(0.11*v,t); og.gain.exponentialRampToValueAtTime(0.001,t+0.11);
+    os.connect(og); og.connect(o); os.start(); os.stop(t+0.12);
+  }catch(e){} }
+  setCar(raw){ raw=raw||''; const M={
+    muscle:{pitch:0.80,turbo:0.0}, roadster:{pitch:0.88,turbo:0.25},
+    super:{pitch:1.20,turbo:0.35}, racecar:{pitch:1.22,turbo:0.25}, race:{pitch:1.14,turbo:0.35},
+    sport:{pitch:1.00,turbo:0.9}, hatch:{pitch:1.06,turbo:1.0},
+    suv:{pitch:0.78,turbo:0.4}, van:{pitch:0.80,turbo:0.5}, pickup:{pitch:0.82,turbo:0.4},
+    truck:{pitch:0.70,turbo:0.6}, firetruck:{pitch:0.72,turbo:0.5}, ambulance:{pitch:0.75,turbo:0.4},
+    police:{pitch:0.95,turbo:0.6}, taxi:{pitch:0.92,turbo:0.3} };
+    let c=M[raw] || {pitch:1.0,turbo:0.5}; if(/^kart/.test(raw)) c={pitch:1.34,turbo:0.1};
+    this.engChar={pitch:c.pitch, turbo:c.turbo}; }
   resume(){ if(this.ok && this.ctx.state==='suspended') this.ctx.resume(); }
 }
 
@@ -3652,7 +3685,7 @@ function showBest(){ elBest.classList.remove('show'); void elBest.offsetWidth; e
 function startGame(){
   if(!isOwned(selectedCar)){ renderShop(); return; }     // must own the selected car
   if(brActive) endBattle();                              // leaving Battle Royale for a normal race
-  audio.start();
+  audio.start(); if(audio.setCar) audio.setCar((CARS[selectedCar]||{}).raw||'');   // per-car engine tone
   if(currentTheme) playMusic(currentTheme.theme);
   placeGrid();
   cars.forEach(c=>{ if(c.rig&&c.rig.group) c.rig.group.visible=true; });   // showcase hid the AI cars
@@ -3976,7 +4009,8 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   upgradeCars();                                                         // build real models + liveries/kits for the new cars
   selectTrack(currentTrack);                                            // battle in the SELECTED environment (any track's world = the open arena)
   zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone();
-  audio.start(); playModeMusic('audio/combat.mp3', currentTheme?currentTheme.theme:'city');   // dedicated combat loop (falls back to theme beat)
+  audio.start(); if(audio.setCar) audio.setCar((CARS[selectedCar]||{}).raw||'');
+  playModeMusic('audio/combat.mp3', currentTheme?currentTheme.theme:'city');   // dedicated combat loop (falls back to theme beat)
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1; player.brakeLvl=0; player.turboMul=1;
   rockets.forEach(r=>{scene.remove(r.mesh); disposeGroup(r.mesh);}); rockets=[];   // reset combat systems
   explosions.forEach(e=>scene.remove(e.m)); explosions=[]; mflashes.forEach(e=>scene.remove(e.m)); mflashes=[];
@@ -4121,7 +4155,7 @@ function update(dt){
     if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=1; }   // combo decays when you stop earning
     updateArcadeVisuals(dt);
     updateCamera(dt); updateHUD();
-    audio && audio.update(clamp(player.vel.length()/CONFIG.topSpeed,0,1.2), (inp.throttle||inp.boost)?1:0, player.drifting && player.vel.length()>6);
+    audio && audio.update(clamp(player.vel.length()/CONFIG.topSpeed,0,1.2), (inp.throttle||inp.boost)?1:0, player.drifting && player.vel.length()>6, player.boosting);
     }
   } else if(state==='finished'){
     if(brActive){ updateCamera(dt); }
