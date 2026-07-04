@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v7.4-->
+<!--BUILD:v7.5-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -385,6 +385,19 @@
   @media (orientation:landscape) and (max-height:560px){
     #ckDash{ height:30vh; } #ckWheel{ bottom:-27vh; width:52vh; height:52vh; }
     #ckBinnacle{ bottom:23vh; } #ckGauge{ width:min(44vw,280px); } #ckPillarL,#ckPillarR{ height:88vh; } }
+  /* ---------- PROFILE + RESET (settings) ---------- */
+  #profRow{ display:flex; align-items:center; gap:8px; margin-top:7px; flex-wrap:wrap; }
+  #avaWrap{ position:relative; width:40px; height:40px; border-radius:50%; overflow:hidden; cursor:pointer; flex:0 0 auto;
+            background:rgba(60,45,85,.6); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; }
+  #avaImg{ width:100%; height:100%; object-fit:cover; display:none; }
+  #avaWrap.has #avaImg{ display:block; } #avaWrap.has #avaPlus{ display:none; }
+  #avaPlus{ font-size:20px; color:#cdbfe6; font-weight:700; line-height:1; }
+  #avaFile{ position:absolute; inset:0; opacity:0; cursor:pointer; font-size:0; }
+  #profName{ flex:1; min-width:88px; background:rgba(12,7,20,.6); border:1px solid rgba(255,255,255,.2); color:#fff;
+             border-radius:7px; padding:7px 10px; font-weight:800; font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+  #profName:focus{ outline:none; border-color:rgba(124,224,255,.6); }
+  #resetData{ background:rgba(120,30,30,.5); border-color:rgba(255,120,120,.5); }
+  #resetData.arm{ background:rgba(210,40,40,.92); border-color:#ff8a8a; }
   /* ---- MODERN HUD: circular glass buttons, colored glow, springy press, attention pulse ---- */
   .btn{ width:72px; height:72px; border-radius:50%; pointer-events:auto;
         display:flex; align-items:center; justify-content:center; flex-direction:column;
@@ -837,6 +850,15 @@
           <div class="tog" id="togAO">◑ AO</div>
           <div class="tog" id="togLow">⚡ LITE</div>
         </div>
+        <div id="profRow">
+          <label id="avaWrap" title="Upload avatar">
+            <img id="avaImg" alt="">
+            <span id="avaPlus">＋</span>
+            <input id="avaFile" type="file" accept="image/*">
+          </label>
+          <input id="profName" type="text" maxlength="12" placeholder="YOUR NAME" aria-label="your name">
+          <div class="tog" id="resetData">🗑 RESET DATA</div>
+        </div>
         <div id="sndRow">
           <div class="tog" id="muteBtn">🔊</div>
           <input id="volSlider" type="range" min="0" max="100" value="55" aria-label="sfx volume">
@@ -950,12 +972,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.4</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.5</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v7.4';
+(function(){ const BUILD='v7.5';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4939,6 +4961,29 @@ function init(){
   const togAO=document.getElementById('togAO'); if(togAO){ togAO.classList.toggle('on',aoPref);
     togAO.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
       aoPref=!aoPref; saveAO(); togAO.classList.toggle('on',aoPref); buildComposer(); onResize(); }); }
+  // ---- PROFILE: name + uploaded avatar (identity for leaderboards / multiplayer) + RESET DATA ----
+  (function(){
+    const nameI=document.getElementById('profName'), avaImg=document.getElementById('avaImg'),
+          avaWrap=document.getElementById('avaWrap'), avaFile=document.getElementById('avaFile'), reset=document.getElementById('resetData');
+    function loadAva(){ let a=''; try{ a=localStorage.getItem('sd_avatar')||''; }catch(e){} if(a){ avaImg.src=a; avaWrap.classList.add('has'); } else avaWrap.classList.remove('has'); }
+    try{ if(nameI) nameI.value=localStorage.getItem('sd_name')||''; }catch(e){}
+    loadAva();
+    if(nameI){ nameI.addEventListener('input', ()=>{ const v=(nameI.value||'').toUpperCase().slice(0,12); try{ localStorage.setItem('sd_name',v); }catch(e){} });
+      nameI.addEventListener('pointerdown', e=>e.stopPropagation()); nameI.addEventListener('click', e=>e.stopPropagation()); }
+    if(avaFile){ avaFile.addEventListener('click', e=>e.stopPropagation());
+      avaFile.addEventListener('change', e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return;
+        const r=new FileReader(); r.onload=()=>{ const img=new Image(); img.onload=()=>{
+          const S=128, cv=document.createElement('canvas'); cv.width=cv.height=S; const x=cv.getContext('2d');
+          const sc=Math.max(S/img.width,S/img.height), w=img.width*sc, h=img.height*sc; x.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+          try{ localStorage.setItem('sd_avatar', cv.toDataURL('image/jpeg',0.82)); }catch(err){} loadAva(); if(typeof popup==='function') popup('\uD83D\uDC64 AVATAR SAVED','#5fe08a'); };
+          img.src=r.result; }; r.readAsDataURL(f); }); }
+    if(reset){ let armed=false, tid=0; reset.addEventListener('click', e=>{ e.stopPropagation();
+      if(!armed){ armed=true; reset.textContent='\u26A0 TAP AGAIN'; reset.classList.add('arm');
+        tid=setTimeout(()=>{ armed=false; reset.textContent='\uD83D\uDDD1 RESET DATA'; reset.classList.remove('arm'); }, 3000); return; }
+      clearTimeout(tid);
+      try{ const ks=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('sd_')===0) ks.push(k); } ks.forEach(k=>localStorage.removeItem(k)); }catch(err){}
+      location.reload(); }); }
+  })();
   const volSlider=document.getElementById('volSlider'), muteBtn=document.getElementById('muteBtn');
   const applyVol=()=>{ muteBtn.textContent = (muted||sfxVolume<=0) ? '🔇' : '🔊'; muteBtn.classList.toggle('on',!muted&&sfxVolume>0); if(audio) audio.setVolume(sfxVolume); };
   ['input','change'].forEach(ev=> volSlider.addEventListener(ev, e=>{ e.stopPropagation(); sfxVolume=(+volSlider.value)/100; muted=false; applyVol(); }));
