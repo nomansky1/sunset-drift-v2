@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v5.7-->
+<!--BUILD:v5.8-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -758,12 +758,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.7</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.8</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v5.7';
+(function(){ const BUILD='v5.8';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4671,8 +4671,14 @@ window.NETRACE=false;
     conn.on('close',()=>{ dropPeer(conn.peer); });
     conn.on('error',()=>{ dropPeer(conn.peer); });
   }
-  function dropPeer(id){ delete NET.players[id]; NET.conns=NET.conns.filter(c=>c.peer!==id);
-    removeRemote(id); if(NET.host) broadcast({t:'roster',list:roster()}); drawLobby(roster()); }
+  function dropPeer(id){ const nm=(NET.players[id]&&NET.players[id].name)||'Player';
+    delete NET.players[id]; NET.conns=NET.conns.filter(c=>c.peer!==id);
+    removeRemote(id); if(NET.host) broadcast({t:'roster',list:roster()}); drawLobby(roster());
+    if(NET.running && typeof popup==='function') popup('\u{1F44B} '+nm+' left', '#ff9a5a');   // in-race notice
+    // GUEST: if the connection to the host is gone mid-race, bail back to the menu cleanly (no frozen ghost race)
+    if(!NET.host && NET.running && NET.conns.length===0){ NET.running=false; window.NETRACE=false; stand.classList.add('hidden');
+      if(typeof showMenu==='function' && (state==='race'||state==='finished'||state==='countdown')) showMenu();
+      if(typeof popup==='function') popup('⚠️ Host disconnected', '#ff6a5a'); } }
   function broadcast(m,except){ NET.conns.forEach(c=>{ if(c.open && c.peer!==except) c.send(m); }); }
 
   // ---- host ----
