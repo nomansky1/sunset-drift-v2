@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v5.9-->
+<!--BUILD:v6.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -347,7 +347,16 @@
   .pad{ position:fixed; bottom:calc(env(safe-area-inset-bottom,14px) + 14px); pointer-events:auto;
         display:flex; gap:14px; }
   #joy{ left:calc(env(safe-area-inset-left,0px) + 16px); }
-  #actions{ right:calc(env(safe-area-inset-right,0px) + 16px); display:flex; align-items:flex-end; gap:16px; }
+  #actions{ right:calc(env(safe-area-inset-right,0px) + 16px); display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+  .actRow{ display:flex; align-items:flex-end; gap:12px; pointer-events:none; }
+  .actRow>.btn{ pointer-events:auto; }
+  .btn.sm{ width:60px; height:60px; border-radius:9px; font-size:10px; }
+  .btn.sm .ico{ font-size:20px; }
+  .btn.ped{ width:84px; height:84px; }
+  .btn.ped .ico{ font-size:30px; }
+  .btn.ped.gas{ width:106px; height:106px; background:linear-gradient(160deg, rgba(60,220,120,.30), rgba(18,110,58,.34)); border-color:rgba(120,255,170,.55); }
+  .btn.ped.brake{ background:linear-gradient(160deg, rgba(255,96,74,.30), rgba(150,30,30,.34)); border-color:rgba(255,150,130,.55); }
+  .btn.ped.on{ transform:scale(0.94); filter:brightness(1.25); }
   .btn{ width:80px; height:80px; border-radius:10px; pointer-events:auto;
         display:flex; align-items:center; justify-content:center; flex-direction:column;
         font-weight:900; font-size:14px; letter-spacing:.5px; color:#fff;
@@ -611,9 +620,15 @@
 <div id="touch">
   <div id="joy" class="pad"><div id="joy-base"><div id="joy-knob"></div></div></div>
   <div id="actions" class="pad">
-    <div class="btn" id="btn-rocket"><span class="ico">🚀</span>FIRE</div>
-    <div class="btn" id="btn-drift"><span class="ico">✦</span>DRIFT</div>
-    <div class="btn big" id="btn-boost"><span class="ico">🔥</span>BOOST</div>
+    <div class="actRow">
+      <div class="btn sm" id="btn-rocket"><span class="ico">🚀</span>FIRE</div>
+      <div class="btn sm" id="btn-drift"><span class="ico">✦</span>DRIFT</div>
+      <div class="btn sm" id="btn-boost"><span class="ico">🔥</span>BOOST</div>
+    </div>
+    <div class="actRow">
+      <div class="btn ped brake" id="btn-brake"><span class="ico">⬇</span>BRAKE</div>
+      <div class="btn ped gas big" id="btn-gas"><span class="ico">⬆</span>GAS</div>
+    </div>
   </div>
 </div>
 
@@ -758,12 +773,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.9</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.0</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v5.9';
+(function(){ const BUILD='v6.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4225,6 +4240,7 @@ function bindButton(id, key){ const el=document.getElementById(id); if(!el) retu
 function bindTouch(){
   initJoystick();                                            // joystick now drives steer + accelerate/brake
   bindButton('btn-drift','space'); bindButton('btn-boost','shift');
+  bindButton('btn-gas','up'); bindButton('btn-brake','down');   // explicit throttle / brake+reverse pedals
   const rb=document.getElementById('btn-rocket');            // FIRE = launch a homing rocket (press, not hold)
   if(rb) rb.addEventListener('pointerdown', e=>{ e.preventDefault(); if(brActive && state==='race' && player.alive){ fireRocket(player); rb.classList.add('on'); setTimeout(()=>rb.classList.remove('on'),130); } });
 }
@@ -4334,7 +4350,7 @@ function init(){
   document.body.classList.add('inmenu');                  // start on the menu -> driving controls hidden until RACE
   document.getElementById('lapTot').textContent=CONFIG.laps;
   if(isTouch) document.getElementById('keysHint').innerHTML=
-    'Steer with the <b>joystick</b> &nbsp;•&nbsp; <b>GAS</b> / <b>BRAKE</b><br><b>DRIFT</b> round corners &nbsp;•&nbsp; <b>BOOST</b> for speed';
+    'Steer with the <b>joystick</b> &nbsp;•&nbsp; hold <b>GAS</b> ⬆ / <b>BRAKE</b> ⬇ (hold to reverse)<br><b>DRIFT</b> round corners &nbsp;•&nbsp; <b>BOOST</b> for speed';
 
   scene=new THREE.Scene();
   scene.fog=new THREE.Fog(CONFIG.colors.fog, 120, 760);
@@ -4453,7 +4469,7 @@ function init(){
   document.getElementById('garageBtn').addEventListener('click', e=>{ e.stopPropagation(); showMenu(); });
   loadCoins(); renderCoins();
   loadSelCar(); loadOwned(); loadStars(); loadCamView(); loadUpg(); loadArsenal(); loadBest(); loadMaxTrack();
-  try{ const a=localStorage.getItem('sd_auto'); autoDrive = a===null ? true : a==='1'; }catch(_){ autoDrive=true; }
+  try{ const a=localStorage.getItem('sd_auto'); autoDrive = a===null ? !isTouch : a==='1'; }catch(_){ autoDrive=!isTouch; }
   document.body.classList.toggle('autodrive', autoDrive);
   document.getElementById('togAuto').classList.toggle('on', autoDrive);
   const swapCar=(d)=>{ selectedCar=(selectedCar+d+CARS.length)%CARS.length; renderShop(); saveSelCar(); upgradeCars(); if(window.syncCarSlider) syncCarSlider(); };
