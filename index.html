@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.7-->
+<!--BUILD:v6.8-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -562,6 +562,17 @@
   .edBtn.edGo{ background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#160c06; }
   .edBtn:active{ transform:scale(.95); }
   #edHint{ position:absolute; top:calc(env(safe-area-inset-top,8px)+8px); left:50%; transform:translateX(-50%); z-index:2; font-size:11px; font-weight:600; color:#cfc8dd; background:rgba(10,7,17,.72); padding:6px 12px; border-radius:9px; text-align:center; max-width:92vw; pointer-events:none; }
+  /* ---------- PLAY & CREATE HUB ---------- */
+  #hubModal,#cmModal{ position:fixed; inset:0; z-index:61; background:rgba(8,5,14,.8); display:flex; align-items:center; justify-content:center; }
+  #hubModal.hidden,#cmModal.hidden{ display:none; }
+  #hubCard{ width:min(90vw,380px); background:linear-gradient(160deg,#1d1428,#120c1c); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:16px; text-align:center; box-shadow:0 14px 44px rgba(0,0,0,.6); }
+  #hubTitle{ font-weight:900; letter-spacing:1px; font-size:16px; margin-bottom:12px; }
+  #hubGrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .hubItem{ background:rgba(42,32,58,.7); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px 8px; cursor:pointer; transition:transform .12s, background .12s; }
+  .hubItem:active{ transform:scale(.95); } .hubItem:hover{ background:rgba(60,45,85,.8); }
+  .hubItem .hi{ font-size:30px; line-height:1; } .hubItem .ht{ font-size:12px; font-weight:800; color:#e7e1f2; margin-top:6px; }
+  .hubItem[data-h="community"]{ grid-column:1 / -1; background:linear-gradient(120deg, rgba(122,59,255,.3), rgba(255,90,44,.3)); }
+  #cmList{ max-height:52vh; overflow:auto; margin-top:6px; }
   /* ---------- DAILY BOARD ---------- */
   #lbModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
   #lbModal.hidden{ display:none; }
@@ -744,10 +755,7 @@
           <div class="tog" id="togNight">🌙 NIGHT</div>
           <div class="tog" id="togRain">🌧 RAIN</div>
           <div class="tog" id="togTT">⏱ TIME TRIAL</div>
-          <div class="tog" id="togQuests">🎯 QUESTS</div>
-          <div class="tog" id="togBoard">🏁 DAILY BOARD</div>
-          <div class="tog" id="togEditor">🔧 TRACK EDITOR</div>
-          <div class="tog" id="togMyTracks">📁 MY TRACKS</div>
+          <div class="tog" id="togMore">🎮 PLAY &amp; CREATE</div>
           <div class="tog" id="togLow">⚡ LITE</div>
         </div>
         <div id="sndRow">
@@ -833,6 +841,27 @@
     <div class="netBtn ghostBtn" id="lbClose">CLOSE</div>
   </div>
 </div>
+<div id="hubModal" class="hidden">
+  <div id="hubCard">
+    <div id="hubTitle">🎮 PLAY &amp; CREATE</div>
+    <div id="hubGrid">
+      <div class="hubItem" data-h="quests"><div class="hi">🎯</div><div class="ht">Daily Quests</div></div>
+      <div class="hubItem" data-h="board"><div class="hi">🏁</div><div class="ht">Daily Board</div></div>
+      <div class="hubItem" data-h="editor"><div class="hi">🔧</div><div class="ht">Track Editor</div></div>
+      <div class="hubItem" data-h="mine"><div class="hi">📁</div><div class="ht">My Tracks</div></div>
+      <div class="hubItem" data-h="community"><div class="hi">🌐</div><div class="ht">Community Tracks</div></div>
+    </div>
+    <div class="netBtn ghostBtn" id="hubClose">CLOSE</div>
+  </div>
+</div>
+<div id="cmModal" class="hidden">
+  <div id="lbCard">
+    <div id="lbTitle">🌐 COMMUNITY TRACKS</div>
+    <div id="lbSub">Built-in + tracks shared with you — every one has its own leaderboard</div>
+    <div id="cmList"></div>
+    <div class="netBtn ghostBtn" id="cmClose">CLOSE</div>
+  </div>
+</div>
 <div id="questModal" class="hidden">
   <div id="questCard">
     <div id="questTitle">🎯 DAILY QUESTS</div>
@@ -842,12 +871,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.7</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.8</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.7';
+(function(){ const BUILD='v6.8';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4636,6 +4665,20 @@ function init(){
   if(togEditor) togEditor.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } const t=TRACKS[currentTrack]||TRACKS[0]; if(window.openEditor) window.openEditor(t.ctrl, t.theme); });
   const togMyTracks=document.getElementById('togMyTracks');
   if(togMyTracks) togMyTracks.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } if(window.openMyTracks) window.openMyTracks(); });
+  // ---- PLAY & CREATE hub (declutters the settings row into one organized menu) ----
+  const hubModal=document.getElementById('hubModal'), togMore=document.getElementById('togMore');
+  function closeHub(){ if(hubModal) hubModal.classList.add('hidden'); }
+  if(togMore) togMore.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } if(hubModal) hubModal.classList.remove('hidden'); });
+  const hubClose=document.getElementById('hubClose'); if(hubClose) hubClose.addEventListener('click', e=>{ e.stopPropagation(); closeHub(); });
+  document.querySelectorAll('#hubGrid .hubItem').forEach(it=>{ it.addEventListener('click', e=>{ e.stopPropagation(); if(audio) audio.ui(); const h=it.dataset.h; closeHub();
+    if(h==='quests'){ if(typeof renderQuests==='function') renderQuests(); const m=document.getElementById('questModal'); if(m) m.classList.remove('hidden'); }
+    else if(h==='board'){ if(typeof renderBoard==='function') renderBoard(); const m=document.getElementById('lbModal'); if(m) m.classList.remove('hidden'); }
+    else if(h==='editor'){ const t=TRACKS[currentTrack]||TRACKS[0]; if(window.openEditor) window.openEditor(t.ctrl, t.theme); }
+    else if(h==='mine'){ if(window.openMyTracks) window.openMyTracks(); }
+    else if(h==='community'){ if(window.openCommunity) window.openCommunity(); }
+  }); });
+  const cmClose=document.getElementById('cmClose'); if(cmClose) cmClose.addEventListener('click', e=>{ e.stopPropagation(); const m=document.getElementById('cmModal'); if(m) m.classList.add('hidden'); });
+
   const togLow=document.getElementById('togLow');
   togLow.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     lowQuality=!lowQuality; togLow.classList.toggle('on',lowQuality);
@@ -5201,7 +5244,32 @@ window.NETRACE=false;
   // load an incoming shared track link
   const m=/[?&]track=([^&]+)/.exec(location.search);
   if(m){ addEventListener('load',()=>{ try{ let _r=decodeURIComponent(m[1]).replace(/[^A-Za-z0-9+/]/g,''); _r+='='.repeat((4-_r.length%4)%4); const o=JSON.parse(atob(_r));
-    if(o&&o.c&&o.c.length>=4){ setTimeout(()=>{ if(typeof popup==='function') popup('\uD83D\uDD27 Shared track loaded \u2014 TEST to drive','#5fe08a'); openEditor(o.c, o.t||'city'); }, 900); } }catch(e){} }); }
+    if(o&&o.c&&o.c.length>=4){ if(window.addReceivedTrack) window.addReceivedTrack({name:'Shared Track', t:o.t||'city', c:o.c}); setTimeout(()=>{ if(typeof popup==='function') popup('\uD83D\uDD27 Shared track loaded \u2014 TEST to drive','#5fe08a'); openEditor(o.c, o.t||'city'); }, 900); } }catch(e){} }); }
+})();
+</script>
+<script>
+/* ============ COMMUNITY TRACKS: built-in designer tracks + tracks shared with you (serverless discovery) ============ */
+(function(){
+  const BUILTIN=[
+    {name:'Neon Serpent', t:'city',   c:[[-160,-120],[120,-150],[190,-30],[90,40],[170,120],[10,150],[-90,90],[-60,10],[-160,40]]},
+    {name:'Coast Ripper', t:'coast',  c:[[-180,-60],[-20,-130],[120,-90],[170,20],[80,90],[120,160],[-60,150],[-160,80]]},
+    {name:'Dust Bowl',    t:'desert', c:[[-140,-140],[140,-140],[150,0],[140,140],[-140,140],[-150,0]]},
+    {name:'Pine Circuit', t:'forest', c:[[-120,-130],[130,-120],[160,60],[40,110],[-80,150],[-170,40],[-110,-40]]},
+    {name:'Harbor Dash',  t:'docks',  c:[[-170,-90],[60,-140],[180,-40],[110,60],[160,150],[-40,140],[-150,60]]}
+  ];
+  function received(){ try{ return JSON.parse(localStorage.getItem('sd_community')||'[]'); }catch(e){ return []; } }
+  window.addReceivedTrack=function(t){ try{ const a=received(); if(!a.some(x=>JSON.stringify(x.c)===JSON.stringify(t.c))){ a.unshift(t); localStorage.setItem('sd_community', JSON.stringify(a.slice(0,30))); } }catch(e){} };
+  function raceIt(t){ try{ customTrack=makeCustomTrack(t.t, t.c); currentTrack=CUSTOM_IDX;
+    ['cmModal','hubModal','editor','menu'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.add('hidden'); });
+    document.body.classList.remove('inmenu'); selectTrack(CUSTOM_IDX);
+    if(typeof ownedCars!=='undefined' && !ownedCars[selectedCar]) ownedCars[selectedCar]=true; startGame(); }catch(e){} }
+  window.openCommunity=function(){ const list=document.getElementById('cmList'); if(!list) return;
+    const rec=received(), all=rec.map(t=>Object.assign({rec:true},t)).concat(BUILTIN);
+    list.innerHTML = all.map((t,i)=>'<div class="mtRow"><div class="mn">'+(t.rec?'\u2b50 ':'')+(t.name||'Track')+' <span style="color:#9a90ae;font-weight:600">'+(t.t||'city')+'</span></div>'
+      +'<div class="mb" data-e="'+i+'">EDIT</div><div class="mb go" data-r="'+i+'">RACE</div></div>').join('');
+    list.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>raceIt(all[+b.dataset.r]));
+    list.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ const t=all[+b.dataset.e]; document.getElementById('cmModal').classList.add('hidden'); if(window.openEditor) window.openEditor(t.c, t.t); });
+    const m=document.getElementById('cmModal'); if(m) m.classList.remove('hidden'); };
 })();
 </script>
 </body>
