@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sunset Drift — Render Lab (Three.js WebGPU)</title>
+<style>
+  html,body{ margin:0; height:100%; background:#0a0810; overflow:hidden; font-family:system-ui,Arial; }
+  #c{ display:block; width:100vw; height:100vh; }
+  #hud{ position:fixed; top:10px; left:12px; z-index:5; color:#cfe6ff; font-size:13px; font-weight:700;
+        background:rgba(10,8,18,.55); padding:7px 12px; border-radius:8px; letter-spacing:.4px;
+        border:1px solid rgba(255,255,255,.14); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  #hud b{ color:#7ce0ff; } #hud .warn{ color:#ffb45a; }
+  #err{ position:fixed; left:12px; bottom:12px; z-index:6; color:#ff9a9a; font-size:12px; max-width:90vw;
+        white-space:pre-wrap; font-family:ui-monospace,monospace; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">initializing…</div>
+<div id="err"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.webgpu.js",
+    "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.webgpu.js",
+    "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.tsl.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+const hud = document.getElementById('hud');
+const errBox = document.getElementById('err');
+const showErr = (e)=>{ errBox.textContent += (e && e.stack ? e.stack : e) + '\n'; console.error(e); };
+window.addEventListener('error', ev=>showErr(ev.error||ev.message));
+
+try {
+  const THREE = await import('three');
+
+  /* ===== REUSABLE RENDER PIPELINE (this is what ports into the game + future titles) ===== */
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGPURenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;      // filmic tone map — the biggest "cheap→real" jump
+  renderer.toneMappingExposure = 1.28;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;         // soft shadows
+  await renderer.init();
+
+  const backend = renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2 (fallback)';
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 400);
+
+  /* ----- procedural sunset HDRI for image-based lighting (no downloaded asset) ----- */
+  function sunsetEnv(){
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0,0,0,512);
+    g.addColorStop(0.00,'#1a1230'); g.addColorStop(0.42,'#3a2450');
+    g.addColorStop(0.60,'#8a3d63'); g.addColorStop(0.74,'#ff7a44');
+    g.addColorStop(0.84,'#ffce7a'); g.addColorStop(0.90,'#6a4636'); g.addColorStop(1,'#120c14');
+    x.fillStyle = g; x.fillRect(0,0,1024,512);
+    const rg = x.createRadialGradient(512,392,6, 512,392,230);           // sun bloom on the horizon
+    rg.addColorStop(0,'rgba(255,244,214,1)'); rg.addColorStop(0.4,'rgba(255,206,140,.7)'); rg.addColorStop(1,'rgba(255,190,120,0)');
+    x.fillStyle = rg; x.fillRect(0,0,1024,512);
+    for(let i=0;i<60;i++){ x.fillStyle='rgba(255,255,255,'+(0.15+Math.random()*0.25)+')'; x.fillRect(Math.random()*1024, Math.random()*150, 1.5,1.5); }  // stars up top
+    const t = new THREE.CanvasTexture(c);
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  const env = sunsetEnv();
+  scene.environment = env;   // IBL — real reflections on paint/glass
+  scene.background = env;
+  scene.fog = new THREE.Fog(0x2a1c30, 30, 140);
+
+  /* ----- lights (IBL does the fill; one warm sun for shape + shadow) ----- */
+  const sun = new THREE.DirectionalLight(0xffe0b0, 3.4);
+  sun.position.set(7, 8, 9); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  const sc = sun.shadow.camera; sc.left=-14; sc.right=14; sc.top=14; sc.bottom=-14; sc.near=1; sc.far=40;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0x9a7bff, 0x1a0f18, 0.4));
+
+  /* ----- ground: semi-reflective asphalt ----- */
+  const road = new THREE.Mesh(
+    new THREE.PlaneGeometry(400,400),
+    new THREE.MeshStandardMaterial({ color:0x14151b, metalness:0.62, roughness:0.30, envMapIntensity:1.15 })
+  );
+  road.rotation.x = -Math.PI/2; road.receiveShadow = true; scene.add(road);
+  // centre lane dashes
+  const dashMat = new THREE.MeshStandardMaterial({ color:0xffe9b0, emissive:0x2a2410, roughness:0.6 });
+  for(let i=-8;i<=8;i++){ const d=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.02,2.4), dashMat); d.position.set(0,0.011,i*6); d.receiveShadow=true; scene.add(d); }
+
+  /* ----- car (primitives, PBR clearcoat paint — proves the material look) ----- */
+  const car = new THREE.Group();
+  const paint = new THREE.MeshPhysicalMaterial({ color:0xc21f2c, metalness:0.55, roughness:0.28, clearcoat:1, clearcoatRoughness:0.10, envMapIntensity:1.5 });
+  const glass = new THREE.MeshPhysicalMaterial({ color:0x0b0e14, metalness:0.2, roughness:0.05, envMapIntensity:2.2, clearcoat:1, clearcoatRoughness:0.04 });
+  const rim   = new THREE.MeshStandardMaterial({ color:0xd8dce2, metalness:1.0, roughness:0.22, envMapIntensity:1.6 });
+  const tire  = new THREE.MeshStandardMaterial({ color:0x0b0b0d, metalness:0.0, roughness:0.85 });
+  const chrome= new THREE.MeshStandardMaterial({ color:0xeef1f5, metalness:1.0, roughness:0.12, envMapIntensity:2 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.0,0.55,4.3), paint); body.position.y=0.75; body.castShadow=true; car.add(body);
+  const lower= new THREE.Mesh(new THREE.BoxGeometry(2.1,0.4,4.4), paint); lower.position.y=0.5; lower.castShadow=true; car.add(lower);
+  const cabin= new THREE.Mesh(new THREE.BoxGeometry(1.75,0.5,2.0), paint); cabin.position.set(0,1.12,-0.15); cabin.castShadow=true; car.add(cabin);
+  const wind = new THREE.Mesh(new THREE.BoxGeometry(1.62,0.42,1.86), glass); wind.position.set(0,1.14,-0.15); car.add(wind);
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.9,0.05,1.2), chrome); hood.position.set(0,1.03,1.35); car.add(hood);
+  // headlights + tails (emissive → will bloom later)
+  const hl = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff2cc, emissiveIntensity:3 });
+  const tl = new THREE.MeshStandardMaterial({ color:0xff2a2a, emissive:0xff1a1a, emissiveIntensity:3 });
+  [[-0.66,1],[0.66,1]].forEach(([x,s])=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.2,0.08), hl); m.position.set(x,0.78,2.16); car.add(m); });
+  [[-0.66],[0.66]].forEach(([x])=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.22,0.08), tl); m.position.set(x,0.82,-2.16); car.add(m); });
+  // wheels
+  const wheelGeo = new THREE.CylinderGeometry(0.52,0.52,0.42,26); wheelGeo.rotateZ(Math.PI/2);
+  const rimGeo = new THREE.CylinderGeometry(0.30,0.30,0.44,12); rimGeo.rotateZ(Math.PI/2);
+  [[-1.0,1.4],[1.0,1.4],[-1.0,-1.4],[1.0,-1.4]].forEach(([x,z])=>{
+    const w=new THREE.Mesh(wheelGeo,tire); w.position.set(x,0.52,z); w.castShadow=true; car.add(w);
+    const r=new THREE.Mesh(rimGeo,rim); r.position.set(x,0.52,z); car.add(r);
+  });
+  scene.add(car);
+
+  /* ----- resize ----- */
+  addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+
+  /* ----- optional bloom (WebGPU node post) — falls back to plain render on any error ----- */
+  let post = null;
+  try {
+    const { pass } = await import('three/tsl');
+    const { bloom } = await import('three/addons/tsl/display/BloomNode.js');
+    post = new THREE.PostProcessing(renderer);
+    const scenePass = pass(scene, camera);
+    const bloomPass = bloom(scenePass, 0.55, 0.35, 0.75);
+    post.outputNode = scenePass.add(bloomPass);
+    hud.dataset.post = 'on';
+  } catch(e){ showErr('bloom disabled: '+(e.message||e)); post = null; }
+
+  /* ----- loop ----- */
+  let frames=0, fps=0, last=performance.now(), acc=0;
+  function frame(now){
+    const dt=(now-last)/1000; last=now; acc+=dt; frames++;
+    if(acc>=0.5){ fps=Math.round(frames/acc); frames=0; acc=0;
+      hud.innerHTML = 'Renderer: <b>Three.js r176 · '+backend+'</b> &nbsp;|&nbsp; '+fps+' fps'
+        + (post?' &nbsp;|&nbsp; bloom on':' &nbsp;|&nbsp; <span class="warn">bloom off</span>')
+        + '<br><span style="opacity:.7">ACES tone map · sunset IBL · clearcoat PBR · soft shadows</span>'; }
+    const a = now*0.00018;
+    camera.position.set(Math.cos(a)*7.2, 2.5+Math.sin(a*0.6)*0.6, Math.sin(a)*7.2);
+    camera.lookAt(0,0.7,0);
+    car.rotation.y = Math.sin(a*0.7)*0.04;
+    if(post) post.renderAsync(); else renderer.renderAsync(scene,camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.__lab = { renderer, backend };
+
+} catch(e){ showErr(e); document.getElementById('hud').innerHTML='<span style="color:#ff9a9a">init failed — see log</span>'; }
+</script>
+</body>
+</html>
