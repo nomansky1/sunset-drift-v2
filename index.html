@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v5.5-->
+<!--BUILD:v5.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -528,6 +528,22 @@
     #trackPick{ max-width:min(84%,600px); }
     #garL,#garR{ max-height:calc(100vh - 130px); max-height:calc(100svh - 130px); }
   }
+  /* ---------- DAILY QUESTS ---------- */
+  #questModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
+  #questModal.hidden{ display:none; }
+  #questCard{ width:min(88vw,360px); max-height:90vh; overflow:auto; background:linear-gradient(160deg,#1d1428,#120c1c);
+    border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:14px 16px; text-align:center; box-shadow:0 14px 44px rgba(0,0,0,.6); }
+  #questTitle{ font-weight:900; letter-spacing:1px; font-size:15px; margin-bottom:10px; }
+  .qRow{ display:flex; align-items:center; gap:9px; padding:7px 4px; border-top:1px solid rgba(255,255,255,.07); }
+  .qRow:first-child{ border-top:0; }
+  .qIco{ font-size:19px; width:24px; text-align:center; }
+  .qMid{ flex:1; text-align:left; }
+  .qLbl{ font-size:11.5px; font-weight:700; color:#e7e1f2; margin-bottom:4px; }
+  .qBar{ height:6px; border-radius:4px; background:rgba(255,255,255,.10); overflow:hidden; }
+  .qBar i{ display:block; height:100%; background:linear-gradient(90deg,#ff5a2c,#ffd23b); border-radius:4px; transition:width .3s; }
+  .qRew{ font-size:11px; font-weight:900; color:#ffd23b; white-space:nowrap; }
+  .qDone .qLbl{ color:#5fe08a; } .qDone .qRew{ color:#5fe08a; }
+  #togQuests.questReady{ box-shadow:0 0 0 1px #ffd23b, 0 0 10px rgba(255,210,59,.5); }
   /* ---------- ONLINE multiplayer ---------- */
   #netModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
   #netModal.hidden{ display:none; }
@@ -666,6 +682,7 @@
           <div class="tog" id="togNight">🌙 NIGHT</div>
           <div class="tog" id="togRain">🌧 RAIN</div>
           <div class="tog" id="togTT">⏱ TIME TRIAL</div>
+          <div class="tog" id="togQuests">🎯 QUESTS</div>
           <div class="tog" id="togLow">⚡ LITE</div>
         </div>
         <div id="sndRow">
@@ -731,13 +748,21 @@
     <div class="netBtn ghostBtn" id="netCloseBtn">CLOSE</div>
   </div>
 </div>
+<div id="questModal" class="hidden">
+  <div id="questCard">
+    <div id="questTitle">🎯 DAILY QUESTS</div>
+    <div id="questList"></div>
+    <div style="font-size:10px;color:#9a90ae;margin-top:6px">Resets daily · rewards paid instantly</div>
+    <div class="netBtn ghostBtn" id="questClose">CLOSE</div>
+  </div>
+</div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.5</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.6</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v5.5';
+(function(){ const BUILD='v5.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1163,6 +1188,38 @@ function renderDaily(){ const c=document.getElementById('dailyCard'); if(!c) ret
   const tt=document.getElementById('dcTrack'); if(tt) tt.textContent='· '+t.name;
   const ds=document.getElementById('dcStreak'); if(ds) ds.innerHTML=(dailyState.streak>0?('🔥 '+dailyState.streak):'')+(done&&dailyState.best?(' <span style="color:#5fe08a">'+fmt(dailyState.best)+'</span>'):'');
   const dp=document.getElementById('dcPlay'); if(dp) dp.innerHTML=(done?'REPLAY':'PLAY')+'&nbsp;▸'; }
+// ---- DAILY QUESTS: 3 rotating goals per day (retention). Deterministic by dayNum, progress persisted, coin rewards. ----
+const QUEST_POOL=[
+  {type:'finish', verb:'Finish',  unit:'races',            tgts:[2,3,4],       rew:80,  icon:'🏁'},
+  {type:'win',    verb:'Win',     unit:'races',            tgts:[1,2,3],       rew:130, icon:'🏆'},
+  {type:'kill',   verb:'Destroy', unit:'cars in Battle',   tgts:[2,3,5],       rew:120, icon:'💥'},
+  {type:'drift',  verb:'Drift',   unit:'meters',           tgts:[400,700,1100],rew:100, icon:'🌀'},
+];
+let quests=[], _questDrift=0;
+function _qrand(seed){ let x=(seed*2654435761)&0x7fffffff; return function(){ x=(x*1103515245+12345)&0x7fffffff; return x/0x7fffffff; }; }
+function genQuests(){ const r=_qrand(dayNum()+1), pool=QUEST_POOL.slice(), out=[];
+  for(let i=0;i<3 && pool.length;i++){ const q=pool.splice(Math.floor(r()*pool.length),1)[0];
+    const target=q.tgts[Math.floor(r()*q.tgts.length)];
+    out.push({type:q.type, target, rew:q.rew, icon:q.icon, label:q.verb+' '+target+' '+q.unit, prog:0, done:false}); }
+  return out; }
+function loadQuests(){ const dn=dayNum();
+  try{ const st=JSON.parse(localStorage.getItem('sd_quests')||'{}'); if(st.day===dn && Array.isArray(st.q) && st.q.length===3){ quests=st.q; return; } }catch(e){}
+  quests=genQuests(); saveQuests(); }
+function saveQuests(){ try{ localStorage.setItem('sd_quests', JSON.stringify({day:dayNum(), q:quests})); }catch(e){} }
+function questProgress(type, amt){ if(!quests.length) loadQuests(); let any=false;
+  quests.forEach(q=>{ if(q.type!==type || q.done) return; q.prog=Math.min(q.target, q.prog+(amt||1)); any=true;
+    if(q.prog>=q.target){ q.done=true; coins+=q.rew; if(typeof saveCoins==='function') saveCoins(); if(typeof renderCoins==='function') renderCoins();
+      if(typeof popup==='function') popup(q.icon+' QUEST COMPLETE  +'+q.rew+'c', '#5fe08a'); if(window.audio&&audio.coin) audio.coin(); } });
+  if(any){ saveQuests(); renderQuests(); } }
+function questDrift(distM){ _questDrift+=distM; if(_questDrift>=20){ const m=Math.floor(_questDrift); _questDrift-=m; questProgress('drift', m); } }
+function renderQuests(){ const list=document.getElementById('questList'); if(!list) return; if(!quests.length) loadQuests();
+  const done=quests.filter(q=>q.done).length;
+  const tt=document.getElementById('questTitle'); if(tt) tt.innerHTML='🎯 DAILY QUESTS <span style="font-size:11px;color:#9a90ae">'+done+'/3</span>';
+  list.innerHTML=quests.map(q=>{ const pct=Math.round(q.prog/q.target*100);
+    return '<div class="qRow'+(q.done?' qDone':'')+'"><div class="qIco">'+q.icon+'</div><div class="qMid"><div class="qLbl">'+q.label+(q.done?' ✔':'')+'</div>'
+      +'<div class="qBar"><i style="width:'+pct+'%"></i></div></div><div class="qRew">'+(q.done?'DONE':'+'+q.rew)+'</div></div>'; }).join(''); questBadge(); }
+function questBadge(){ const b=document.getElementById('togQuests'); if(!b||!quests.length) return;
+  const n=quests.filter(q=>!q.done).length; b.classList.toggle('questReady', n>0); }
 // ---- LOCAL GHOST: record your run, race a translucent replay of your BEST run per track (server-less; the PolyTrack/Ghost-Pro retention glue) ----
 let ghostOn=true;                                            // settings toggle (sd_ghost_on)
 let ghostRec=[], ghostRecAcc=0;                              // current-run sampling buffer (~10fps)
@@ -3317,6 +3374,7 @@ function updateCar(c, inp, dt){
     // ----- DRIFT CHAIN: holding a drift scores + escalates the combo multiplier; clean exit pays out -----
     if(c.drifting && slip>1.6 && spd>8){
       runScore += slip*dt*8*combo; comboTimer=2.6;
+      if(c.isPlayer && !timeTrial) questDrift(spd*dt);                              // DAILY QUEST: drift distance
       c._driftT=(c._driftT||0)+dt;
       if(c._driftT>=1.2){ c._driftT=0; combo=Math.min(combo+1,12); popup('🌀 DRIFT x'+combo,'#c98aff'); }   // each ~1.2s held bumps the chain
     } else if((c._driftT||0)>0){
@@ -3801,6 +3859,7 @@ function damageCar(c, amt, by){ if(!c.alive) return;
     if(audio&&audio.boom) audio.boom(0.95);
     killFeed(by, c);
     if(by===player && c!==player){                                                  // KILL REWARDS: paid + escalating streak popups
+      questProgress('kill',1);                                                      // DAILY QUEST progress
       player._brStreak=(player._brStreak||0)+1; const st=player._brStreak;
       coins+=50; if(typeof saveCoins==='function') saveCoins(); if(typeof updateCoinHud==='function') updateCoinHud();
       popup(st>=4?'RAMPAGE x'+st+' +50c':st===3?'TRIPLE KILL +50c':st===2?'DOUBLE KILL +50c':'KILL +50c', st>=3?'#ff8a3c':'#ffd23b');
@@ -3910,6 +3969,7 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
 function finishRace(){
   player.finished=true; state='finished'; hidePauseUI();
   const r=rankOf(player), won=r===1;
+  if(!timeTrial){ questProgress('finish',1); if(won) questProgress('win',1); }   // DAILY QUEST progress
   // ADAPTIVE AI: every win permanently sharpens the field (+0.07 power, cap +0.35);
   // finishing 3rd+ relaxes it. Beating everyone stops being possible to do on autopilot.
   try{ let ad=parseFloat(localStorage.getItem('sd_adapt')||'0')||0;
@@ -4358,6 +4418,10 @@ function init(){
   togRain.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return; rainOn=!rainOn; togRain.classList.toggle('on',rainOn); selectTrack(currentTrack); });
   const togTT=document.getElementById('togTT');
   if(togTT) togTT.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return; timeTrial=!timeTrial; togTT.classList.toggle('on',timeTrial); if(audio){ audio.start(); audio.ui(); } });
+  const togQuests=document.getElementById('togQuests'), questModal=document.getElementById('questModal'), questClose=document.getElementById('questClose');
+  if(togQuests) togQuests.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } renderQuests(); if(questModal) questModal.classList.remove('hidden'); });
+  if(questClose) questClose.addEventListener('click', e=>{ e.stopPropagation(); if(questModal) questModal.classList.add('hidden'); });
+  loadQuests(); renderQuests(); questBadge();
   const togLow=document.getElementById('togLow');
   togLow.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     lowQuality=!lowQuality; togLow.classList.toggle('on',lowQuality);
