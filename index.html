@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v7.3-->
+<!--BUILD:v7.4-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -950,12 +950,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.3</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.4</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v7.3';
+(function(){ const BUILD='v7.4';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2127,7 +2127,7 @@ function buildPickups(){
   resetPickups();
 }
 function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpin=0; coinGrab=0;
-  boostPads.forEach(p=>p.hit=0); }
+  boostPads.forEach(p=>p.hit=0); if(typeof resetObstacles==='function') resetObstacles(); }
 function updateArcadeVisuals(dt){
   if(player&&player.rig&&player.rig.headSpot) player.rig.headSpot.visible=!!nightMode;
   if(updateArcadeVisuals._night!==nightMode){ updateArcadeVisuals._night=nightMode;
@@ -2142,6 +2142,7 @@ function updateArcadeVisuals(dt){
         else _M4.compose(_FAR,_Q,_S); coinGlow.setMatrixAt(i,_M4); } }
     coinMesh.instanceMatrix.needsUpdate=true; if(coinRim) coinRim.instanceMatrix.needsUpdate=true; if(coinGlow) coinGlow.instanceMatrix.needsUpdate=true; }
   if(padMat) padMat.opacity=0.72+0.24*Math.sin(raceTime*4.2);  // pulse pads (stays clearly visible)
+  if(obDebris && obDebris.length) obUpdateDebris(dt);
 }
 function arcadePickups(c, dt){       // player only, during a race
   for(let i=0;i<boostPads.length;i++){ const pd=boostPads[i]; if(pd.hit>0){ pd.hit-=dt; continue; }
@@ -2154,6 +2155,82 @@ function arcadePickups(c, dt){       // player only, during a race
       sparks.emit(co.x,1.2+(c.visY||0),co.z,(Math.random()-.5)*5,3.6,(Math.random()-.5)*5,0.35,16); audio&&audio.coin();
       const bd=document.getElementById('coinBadge'); if(bd){ bd.classList.remove('grab'); void bd.offsetWidth; bd.classList.add('grab'); } } }
 }
+/* ===== ROAD OBSTACLES: player-only hazards that break into pieces, launch ramps, AI steers around them ===== */
+let obstacles=[], obGroup=null, obDebris=[], _obDebI=0;
+const _OBM={};
+function _obMats(){ if(_OBM.done) return _OBM;
+  _OBM.metal =new THREE.MeshStandardMaterial({color:0x3f6b3a, metalness:0.55, roughness:0.5, envMapIntensity:1.0});   // dumpster green
+  _OBM.steel =new THREE.MeshStandardMaterial({color:0x2a2d33, metalness:0.75, roughness:0.4, envMapIntensity:1.2});  // bike / supports
+  _OBM.bag   =new THREE.MeshStandardMaterial({color:0x4a4640, roughness:0.92, metalness:0.0});                        // trash bags
+  _OBM.hazard=new THREE.MeshStandardMaterial({color:0xffc21e, metalness:0.3, roughness:0.5, emissive:0x241a00, emissiveIntensity:0.4});   // ramp
+  _OBM.dark  =new THREE.MeshStandardMaterial({color:0x08080a, roughness:1.0, metalness:0.0});                         // pothole
+  _OBM.done=true; return _OBM; }
+function _mkDumpster(M){ const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.BoxGeometry(2.0,1.2,1.3), M.metal); b.position.y=0.62; b.castShadow=true; g.add(b);
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(2.06,0.13,1.36), M.metal); lid.position.set(0,1.26,-0.22); lid.rotation.x=-0.34; g.add(lid); return g; }
+function _mkBike(M){ const g=new THREE.Group();
+  const wg=new THREE.TorusGeometry(0.42,0.075,8,16); const w1=new THREE.Mesh(wg,M.steel), w2=new THREE.Mesh(wg,M.steel);
+  w1.position.z=0.72; w2.position.z=-0.72; g.add(w1,w2);
+  const fr=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.5,1.5), M.steel); fr.position.y=0.05; fr.rotation.x=Math.PI/2; g.add(fr);
+  g.position.y=0.42; g.rotation.x=Math.PI*0.46; return g; }   // toppled on its side
+function _mkTrash(M,rng){ const g=new THREE.Group();
+  for(let i=0;i<4;i++){ const s=0.34+rng()*0.28; const b=new THREE.Mesh(new THREE.SphereGeometry(s,7,6), M.bag);
+    b.position.set((rng()-0.5)*1.5, s*0.78, (rng()-0.5)*1.5); b.scale.y=0.78; b.castShadow=true; g.add(b); } return g; }
+function _mkRamp(M){ const g=new THREE.Group();
+  const s=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.26,3.6), M.hazard); s.position.set(0,0.66,0.1); s.rotation.x=-0.34; s.castShadow=true; g.add(s);
+  const sup=new THREE.Mesh(new THREE.BoxGeometry(4.6,1.15,1.5), M.steel); sup.position.set(0,0.4,-0.95); g.add(sup); return g; }
+function _mkPothole(M){ const m=new THREE.Mesh(new THREE.CircleGeometry(1.55,18), M.dark.clone()); m.rotation.x=-Math.PI/2;
+  m.material.polygonOffset=true; m.material.polygonOffsetFactor=-4; m.material.polygonOffsetUnits=-4; return m; }
+function buildObstacles(){
+  if(obGroup&&obGroup.parent) obGroup.parent.remove(obGroup);
+  obstacles=[]; obDebris=[]; _obDebI=0; obGroup=new THREE.Group(); scene.add(obGroup);
+  if(typeof brActive!=='undefined' && brActive) return;                 // no hazards in battle royale
+  const M=_obMats(), rng=mulberry32(4242);
+  const dg=new THREE.BoxGeometry(0.32,0.32,0.32);                       // shared debris fragments (rebuilt per track)
+  for(let i=0;i<26;i++){ const m=new THREE.Mesh(dg, i%2?M.steel:M.bag); m.visible=false; m.castShadow=true; obGroup.add(m); obDebris.push({m,vx:0,vy:0,vz:0,spin:0,life:0}); }
+  const N=Math.max(9, Math.round(SAMPLES/55));
+  const seq=['pothole','trash','dumpster','ramp','pothole','bike','trash','pothole','dumpster','ramp','bike','trash'];
+  for(let k=0;k<N;k++){ const idx=Math.floor((k+0.5)/N*SAMPLES)%SAMPLES; if(idx<14||idx>SAMPLES-14) continue;
+    const type=seq[k%seq.length], p=samplePts[idx], n=sampleNorm[idx], el=sampleElev[idx]||0, t=sampleTan[idx];
+    let lat;
+    if(type==='pothole'||type==='trash') lat=(rng()-0.5)*CONFIG.roadHalfWidth*0.95;      // on the racing line
+    else if(type==='ramp') lat=(rng()-0.5)*CONFIG.roadHalfWidth*0.35;                     // centred
+    else lat=(rng()<0.5?-1:1)*CONFIG.roadHalfWidth*(0.5+rng()*0.32);                       // dumpster/bike to a shoulder
+    const x=p.x+n.x*lat, z=p.y+n.y*lat;
+    let mesh = type==='dumpster'?_mkDumpster(M) : type==='bike'?_mkBike(M) : type==='trash'?_mkTrash(M,rng) : type==='ramp'?_mkRamp(M) : _mkPothole(M);
+    mesh.position.set(x, el+0.02, z); if(type!=='bike') mesh.rotation.y=Math.atan2(t.x,t.y);
+    obGroup.add(mesh); obstacles.push({x,z,idx,type,mesh,alive:true,hitT:-9}); }
+}
+function resetObstacles(){ for(const o of obstacles){ o.alive=true; o.hitT=-9; if(o.mesh) o.mesh.visible=true; } }
+function obSpawnDebris(x,y,z){ for(let k=0;k<7;k++){ const d=obDebris[_obDebI]; _obDebI=(_obDebI+1)%(obDebris.length||1); if(!d) return;
+  d.m.visible=true; d.m.position.set(x,y,z); d.m.scale.setScalar(0.55+Math.random()*0.8);
+  d.vx=(Math.random()-0.5)*7; d.vy=3+Math.random()*4.5; d.vz=(Math.random()-0.5)*7; d.spin=(Math.random()-0.5)*11; d.life=0.85+Math.random()*0.5; } }
+function obUpdateDebris(dt){ for(const d of obDebris){ if(d.life<=0) continue; d.life-=dt; d.vy-=22*dt;
+  d.m.position.x+=d.vx*dt; d.m.position.y+=d.vy*dt; d.m.position.z+=d.vz*dt;
+  if(d.m.position.y<0.16){ d.m.position.y=0.16; d.vy*=-0.34; d.vx*=0.6; d.vz*=0.6; }
+  d.m.rotation.x+=d.spin*dt; d.m.rotation.z+=d.spin*0.7*dt; if(d.life<=0) d.m.visible=false; } }
+function updateObstacles(c, dt){ if(!obstacles.length) return;
+  for(const o of obstacles){ const dx=c.pos.x-o.x, dz=c.pos.y-o.z, d2=dx*dx+dz*dz;
+    if(o.type==='ramp'){ if(d2<11 && (c.air||0)<=0 && (c._airV||0)<=0 && c.vel.length()>22 && raceTime-o.hitT>0.6){
+        o.hitT=raceTime; c._airV=7.6; c.air=0.03; c._peak=0; c._rampJump=true; camShake=Math.min(camShake+0.3,1);
+        audio&&audio.boost&&audio.boost(); popup('⇗ RAMP','#7ce0ff'); } continue; }
+    if(o.type==='pothole'){ if(d2<5.4 && (c.air||0)<=0.2 && raceTime-o.hitT>0.8){ o.hitT=raceTime;
+        c.vel.multiplyScalar(0.8); camShake=Math.min(camShake+0.26,1); audio&&audio.thud&&audio.thud(0.4); popup('POTHOLE','#ff9a5a'); } continue; }
+    if(o.alive && d2<7.2){ o.alive=false; if(o.mesh) o.mesh.visible=false;
+      const slow=o.type==='dumpster'?0.42:o.type==='bike'?0.6:0.74; c.vel.multiplyScalar(slow);
+      camShake=Math.min(camShake+(o.type==='dumpster'?0.5:0.34),1);
+      obSpawnDebris(o.x,(sampleElev[o.idx]||0)+0.6,o.z);
+      if(typeof sparks!=='undefined'&&sparks) sparks.emit(o.x,(sampleElev[o.idx]||0)+0.6,o.z,(Math.random()-.5)*6,3.2,(Math.random()-.5)*6,0.4,14);
+      audio&&audio.thud&&audio.thud(0.75); popup('💥 SMASH','#ff6a4d'); combo=1; }
+  }
+}
+// AI: lateral offset to steer around a solid obstacle near the aim point
+function obstacleAvoid(c, aheadI, baseOff){ if(!obstacles.length) return baseOff;
+  const a=samplePts[aheadI], n=sampleNorm[aheadI], t=sampleTan[aheadI]; let off=baseOff;
+  for(const o of obstacles){ if(o.type==='pothole'||!o.alive) continue;
+    const ox=o.x-a.x, oz=o.z-a.y, fwd=ox*t.x+oz*t.y; if(fwd<-5||fwd>16) continue;
+    const latO=ox*n.x+oz*n.y; if(Math.abs(latO-off)<3.3) off = latO>=off ? off-3.6 : off+3.6; }
+  return clamp(off, -CONFIG.roadHalfWidth*0.96, CONFIG.roadHalfWidth*0.96); }
 function addScore(n, txt, color){ runScore+=Math.round(n*combo); comboTimer=2.6; if(txt) popup(txt+' +'+Math.round(n*combo), color); }
 
 // ---- floating popup pool (score / near-miss / overtake / boost) ----
@@ -2580,6 +2657,7 @@ function scatterProps(){ const rng=mulberry32(7777);
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
   buildRoadsideAmenities(rng, !(th==='city'||th==='docks'));   // benches everywhere + lamp posts where missing
+  buildObstacles();   // player-only road hazards + ramps
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
   if(th==='city'||th==='docks'||th==='coast'||th==='beach') buildParkedCars(rng);   // parked cars = street life
   buildTrackFurniture(rng);                            // Kenney Racing Kit: grandstands + pits + start gantry + banners
@@ -3607,6 +3685,7 @@ function updateCar(c, inp, dt){
     const wasAir=(c.air||0)>0; c._airV=(c._airV||0)-24*dt; c.air=(c.air||0)+c._airV*dt; c._peak=Math.max(c._peak||0, c.air);   // ballistic arc
     if(c.air<=0){ c.air=0; c._airV=0; c._landT=raceTime;                                          // landed (cooldown before next launch)
       if(wasAir && c.isPlayer){ camShake=Math.min(camShake+0.3,1); audio&&audio.thud&&audio.thud(0.55);
+        if(c._rampJump){ c._rampJump=false; c.boost=Math.min((c.boost||0)+CONFIG.boostMax*0.5, CONFIG.boostMax*(c.nosMax||1)); c._padBoost=0.5; audio&&audio.boost&&audio.boost(); popup&&popup('⚡ STOMP BOOST','#ffb14d'); }
         if((c._peak||0)>2 && raceTime-(c._airCue||-9)>1.2){ c._airCue=raceTime; addScore&&addScore(70+Math.round((c._peak||0)*22),'BIG AIR!','#7ce0ff'); } }
       c._peak=0;
     }
@@ -3721,7 +3800,7 @@ function updateCar(c, inp, dt){
   }
   // ----- arcade: pickups + drift style score (player, racing) -----
   if(c.isPlayer && state==='race'){
-    arcadePickups(c, dt);
+    arcadePickups(c, dt); updateObstacles(c, dt);
     // ----- DRIFT CHAIN: holding a drift scores + escalates the combo multiplier; clean exit pays out -----
     if(c.drifting && slip>1.6 && spd>8){
       runScore += slip*dt*8*combo; comboTimer=2.6;
@@ -3766,7 +3845,8 @@ function aiInput(c){
   // ADAPTIVE lookahead: far on straights, SHORT on sharp corners so we track the apex instead of aiming across it into the wall
   const aim=Math.round(clamp(15 + speed*0.5 - bend*32, 9, 44));
   const aheadI=(c.trackIdx+aim)%SAMPLES, a=samplePts[aheadI], n=sampleNorm[aheadI];
-  const tx=a.x+n.x*c.lineOffset, tz=a.y+n.y*c.lineOffset;
+  const _off = c.isPlayer ? c.lineOffset : obstacleAvoid(c, aheadI, c.lineOffset);   // AI weaves around dumpsters/bikes/trash
+  const tx=a.x+n.x*_off, tz=a.y+n.y*_off;
   const desired=Math.atan2(tx-c.pos.x, tz-c.pos.y);
   const diff=angleDiff(desired, c.heading);
   const steer=clamp(diff*2.3,-1,1);                                  // a touch more steering authority to make tight corners
