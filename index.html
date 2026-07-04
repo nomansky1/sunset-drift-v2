@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.0-->
+<!--BUILD:v6.1-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -773,12 +773,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.0</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.1</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.0';
+(function(){ const BUILD='v6.1';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1705,6 +1705,42 @@ function buildSideStrips(innerPad, outerPad, y, material){
     const mesh=new THREE.Mesh(g, material); mesh.receiveShadow=true; scene.add(mesh);
   });
 }
+// CITY CROSS-STREETS: perpendicular asphalt streets branching off the track (behind the sidewalk) so the
+// circuit reads as part of a street grid, not an isolated ribbon. Flat quads (no rotation math) + crosswalk + centre dashes.
+function buildCitySideStreets(rng){
+  const asphalt=new THREE.MeshStandardMaterial({color:0x2c2f36, roughness:0.94, metalness:0.0});
+  const paint=new THREE.MeshBasicMaterial({color:0xcdc7b4, fog:true});
+  const grp=new THREE.Group(); scene.add(grp);
+  const quad=(A,B,C,D,mat)=>{ const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([...A,...B,...C, ...B,...D,...C],3));
+    g.computeVertexNormals(); const m=new THREE.Mesh(g,mat); m.receiveShadow=true; grp.add(m); return m; };
+  const STEP=Math.max(16, Math.round(SAMPLES/14));           // ~14 candidate intersections
+  for(let i=0;i<SAMPLES;i+=STEP){
+    if((sampleHW[i]||CONFIG.roadHalfWidth) < CONFIG.roadHalfWidth-0.5) continue;   // straightaways only (not tight corners)
+    const p=samplePts[i], n=sampleNorm[i], t=sampleTan[i], hw=(sampleHW[i]||CONFIG.roadHalfWidth);
+    for(const side of [1,-1]){
+      if(rng()<0.4) continue;                                  // not every side, every time
+      const inner=hw+4.6, outer=hw+26+rng()*14, w=5.5+rng()*2.5, y=0.055;
+      const IL=[p.x+n.x*inner*side - t.x*w, y, p.y+n.y*inner*side - t.y*w];
+      const IR=[p.x+n.x*inner*side + t.x*w, y, p.y+n.y*inner*side + t.y*w];
+      const OL=[p.x+n.x*outer*side - t.x*w, y, p.y+n.y*outer*side - t.y*w];
+      const OR=[p.x+n.x*outer*side + t.x*w, y, p.y+n.y*outer*side + t.y*w];
+      quad(IL,IR,OL,OR, asphalt);
+      // centre dashes down the street
+      for(let d=0; d<6; d++){ const f0=inner+ (outer-inner)*(d+0.15)/6, f1=inner+(outer-inner)*(d+0.55)/6, dw=0.35;
+        const a=[p.x+n.x*f0*side - t.x*dw, y+0.01, p.y+n.y*f0*side - t.y*dw], b=[p.x+n.x*f0*side + t.x*dw, y+0.01, p.y+n.y*f0*side + t.y*dw];
+        const c=[p.x+n.x*f1*side - t.x*dw, y+0.01, p.y+n.y*f1*side - t.y*dw], e=[p.x+n.x*f1*side + t.x*dw, y+0.01, p.y+n.y*f1*side + t.y*dw];
+        quad(a,b,c,e, paint); }
+      // crosswalk stripes where the street meets the sidewalk (across the street, along the tangent)
+      for(let sK=-2; sK<=2; sK++){ const cw=hw+2.6, tw=0.5, off=sK*2.0;
+        const a=[p.x+n.x*(cw)*side + t.x*(off-tw), y+0.012, p.y+n.y*(cw)*side + t.y*(off-tw)];
+        const b=[p.x+n.x*(cw)*side + t.x*(off+tw), y+0.012, p.y+n.y*(cw)*side + t.y*(off+tw)];
+        const c=[p.x+n.x*(cw+3.4)*side + t.x*(off-tw), y+0.012, p.y+n.y*(cw+3.4)*side + t.y*(off-tw)];
+        const e=[p.x+n.x*(cw+3.4)*side + t.x*(off+tw), y+0.012, p.y+n.y*(cw+3.4)*side + t.y*(off+tw)];
+        quad(a,b,c,e, paint); }
+    }
+  }
+}
 function buildCurbFace(pad, yLow, yHigh, material){
   [1,-1].forEach(side=>{
     const pos=[], idx=[];
@@ -1782,6 +1818,7 @@ function buildTrackMeshes(){
     const walkMat=new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95});
     buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
     buildSideStrips(0, 4.5, 0.28, walkMat);             // sidewalk = road edge .. edge+4.5 (never inverts at corners)
+    buildCitySideStreets(mulberry32(4242));             // perpendicular cross-streets + crosswalks -> track blends into a city grid
   }
   buildBarriers();                                       // continuous visible barrier on EVERY track
 
