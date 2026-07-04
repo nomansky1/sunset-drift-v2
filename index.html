@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<!--BUILD:v5.2-->
+<!--BUILD:v5.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ff8c42">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%8C%87%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Sunset Drift — a neon low-poly arcade racer. Drift, upgrade your ride, and battle rivals across sunset city, coast, desert and snow tracks. Play free in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sunset Drift — Low-Poly Arcade Racer">
+<meta property="og:description" content="Neon outrun racing + car combat. Drift, upgrade, and race free in your browser.">
+<meta property="og:image" content="og-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Sunset Drift — Low-Poly Arcade Racer">
+<meta name="twitter:description" content="Neon outrun racing + car combat. Play free in your browser.">
 <title>Sunset Drift — Low-Poly Racer</title>
 <style>
   html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }   /* Android font boosting inflated panel text past the layout */
@@ -723,12 +732,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.2</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.3</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v5.2';
+(function(){ const BUILD='v5.3';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1287,11 +1296,14 @@ function playMusic(theme){
   applyMusicVol();
   if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
 }
-// mode music (menu / combat): play a dedicated local loop if the file exists, else fall back to the theme beat.
-// so audio/menu.mp3 + audio/combat.mp3 "just work" when dropped in, and nothing breaks if they're absent.
-let _missingMusic={};   // remember mode files that 404'd so we don't re-request them every menu return
+// mode music (menu / combat): play a dedicated local loop ONLY if the file is present, else the theme beat.
+// MODE_MUSIC_PRESENT is the manifest of files that actually exist — keeping absent files OUT of it means
+// the game never requests a missing file (zero 404s). Drop audio/menu.mp3 + audio/combat.mp3 in and flip
+// these to true to enable the dedicated loops.
+const MODE_MUSIC_PRESENT={ 'audio/menu.mp3':false, 'audio/combat.mp3':false };
+let _missingMusic={};
 function playModeMusic(url, fallbackTheme){
-  if(_missingMusic[url]){ if(fallbackTheme) playMusic(fallbackTheme); return; }
+  if(!MODE_MUSIC_PRESENT[url] || _missingMusic[url]){ if(fallbackTheme) playMusic(fallbackTheme); return; }   // absent file -> theme beat, no request (no 404)
   if(!bgMusic){ bgMusic=new Audio(); bgMusic.loop=true; bgMusic.preload='auto'; }
   if(musicTheme==='mode:'+url){ applyMusicVol(); if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} } return; }
   musicTheme='mode:'+url;
@@ -2272,7 +2284,7 @@ function buildParkedCars(rng){
   for(let k=0;k<22;k++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+5.8+rng()*1.8;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+5.3) continue;   // park BEYOND the raised sidewalk (was 2.4 -> cars sat ON the 4.5-wide sidewalk, half-sunk into it)
     const g=new THREE.Group(); const col=COLORS[Math.floor(rng()*COLORS.length)];
-    const bm=new THREE.MeshStandardMaterial({color:col, roughness:0.4, metalness:0.3, clearcoat:0.0});
+    const bm=new THREE.MeshStandardMaterial({color:col, roughness:0.4, metalness:0.3});   // (clearcoat isn't valid on StandardMaterial — was spamming console warnings; physical paint is applied later via physicalizeBody)
     g.add(new THREE.Mesh(bodyGeo,bm)); g.add(new THREE.Mesh(cabGeo, glassMat));
     for(const sx of [-1,1]) for(const sz of [-1,1]){ const w=new THREE.Mesh(wheelGeo,wMat); w.position.set(sx*1.02,0.42,sz*1.45); g.add(w); }
     g.position.set(x, terrainHeight(x,z), z); g.rotation.y=roadAngleAt(x,z)+(rng()<0.5?0:Math.PI); g.traverse(o=>o.castShadow=!isTouch); scene.add(g); }
@@ -2653,7 +2665,7 @@ function loadCarModels(){
   // fleet sports cars
   [['sport','models/cc0/kenney/sedan-sports.glb'],['super','models/cc0/kenney/race-future.glb'],
    ['hatch','models/cc0/kenney/hatchback-sports.glb'],['suv','models/cc0/kenney/suv-luxury.glb'],['pickup','models/cc0/kenney/van.glb'],
-   ['racer','models/cc0/kenney/race.glb'],['racecar','models/cc0/kenney/race-future.glb'],['muscle','models/cc0/kenney/suv.glb'],
+   ['racer','models/cc0/kenney/race.glb'],['racecar','models/cc0/kenney/race-future.glb'],['muscle','models/cc0/kenney/sedan-sports.glb'],
    ['roadster','models/cc0/kenney/sedan.glb'],['police','models/cc0/kenney/police.glb'],['taxi','models/cc0/kenney/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/cc0/kenney/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
    ['kartB','models/cc0/kenney/kart-oodi.glb'],
