@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.1-->
+<!--BUILD:v6.2-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -773,12 +773,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.1</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.2</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.1';
+(function(){ const BUILD='v6.2';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1362,10 +1362,16 @@ const MUSIC={
 };
 let musicVolume=0.12, musicMuted=false, bgMusic=null, musicTheme=null;   // background music sits well under the engine/SFX
 function applyMusicVol(){ if(bgMusic) bgMusic.volume = musicMuted?0:musicVolume; }
+// SUNO MUSIC PACK: drop your own tracks in audio/ and list them here to REPLACE the per-theme music.
+// e.g. MUSIC_FILE.city='audio/music-city.mp3'. Absent -> falls back to the streamed beat (no 404, no request).
+const MUSIC_FILE={ /* city:'audio/music-city.mp3', coast:'audio/music-coast.mp3', ... */ };
 function playMusic(theme){
-  if(!MUSIC[theme]) return;
+  const src = MUSIC_FILE[theme] || MUSIC[theme];
+  if(!src) return;
   if(!bgMusic){ bgMusic=new Audio(); bgMusic.loop=true; bgMusic.preload='auto'; }
-  if(musicTheme!==theme){ musicTheme=theme; bgMusic.src=MUSIC[theme]; }
+  if(musicTheme!==theme){ musicTheme=theme;
+    if(MUSIC_FILE[theme]) bgMusic.onerror=()=>{ bgMusic.onerror=null; if(MUSIC[theme]){ bgMusic.src=MUSIC[theme]; if(!musicMuted) try{bgMusic.play();}catch(e){} } };  // Suno file missing -> streamed beat
+    bgMusic.src=src; }
   applyMusicVol();
   if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
 }
@@ -1432,7 +1438,8 @@ class Particles {
    AUDIO  — tiny WebAudio engine hum + tyre screech + boost whoosh (guarded)
    ========================================================================= */
 class AudioEngine {
-  start(){ if(this.ok) { this.resume(); return; }
+  start(){ if(window.__auto) return;   // SIM: never init/resume audio during a headless simulation
+    if(this.ok) { this.resume(); return; }
     try{
       const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC(); const t=this.ctx.currentTime;
       this.master = this.ctx.createGain(); this.master.gain.value=0; this.master.connect(this.ctx.destination);
@@ -1458,7 +1465,7 @@ class AudioEngine {
   }
   setVolume(v){ if(this.ok) this.master.gain.setTargetAtTime(muted?0:v, this.ctx.currentTime, 0.04); }
   _fetchBuf(url){ return fetch(url).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>this.ctx.decodeAudioData(ab,res,rej))).catch(()=>null); }
-  update(speed01, throttle, drift){ if(!this.ok) return; const t=this.ctx.currentTime;
+  update(speed01, throttle, drift){ if(!this.ok) return; if(window.__auto){ if(this.master) this.master.gain.value=0; return; } const t=this.ctx.currentTime;
     // faux 5-speed gearbox: rpm climbs within a gear then "shifts" back down on the next
     const gv=[0,0.16,0.34,0.55,0.80,1.30]; let g=0; while(g<gv.length-2 && speed01>gv[g+1]) g++;
     let rpm=0.25+0.75*clamp((speed01-gv[g])/Math.max(gv[g+1]-gv[g],1e-3),0,1);
@@ -3221,7 +3228,7 @@ function placeGrid(){
       const rampT=(TRACKS.length>1 ? currentTrack/(TRACKS.length-1) : 0);        // 0 (easiest track) .. 1 (hardest track) — difficulty RAMPS along the unlock ladder
       const dLift=(difficulty==='easy'?-0.14:difficulty==='hard'?0.48:0.18);     // the easy/normal/hard toggle shifts the whole ramp — wider spread so the toggle is meaningful (easy = winnable by newcomers, hard = pushes a skilled player)
       let adapt=0; try{ adapt=parseFloat(localStorage.getItem('sd_adapt')||'0')||0; }catch(e){}
-      const pw=clamp(rampT*0.40 + 0.26 + dLift + adapt + (champ.active?0.04*champ.round:0), 0, 0.98);   // + ADAPTIVE win-streak pressure
+      const pw=clamp(rampT*0.46 + 0.33 + dLift + adapt + (champ.active?0.04*champ.round:0), 0, 0.99);   // HARDER: stronger base + ramp (grip-only AI, no drift) + ADAPTIVE win-streak pressure
       aiAccel=1 + pw*0.72; aiCap=1.12 + pw*0.46; aiAggro=0.96 + pw*0.38;         // strong top-end (challenges a skilled human) but a firmer floor
       c.aiBase=(0.95+((i*0.0185)%0.06)) * (1 + pw*0.33);                          // top-speed baseline
       c.aiMiss=clamp(0.055 - pw*0.05, 0.004, 0.055); }                           // fewer corner errors as it gets harder
