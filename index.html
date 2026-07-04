@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v7.5-->
+<!--BUILD:v7.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -972,12 +972,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.5</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.6</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v7.5';
+(function(){ const BUILD='v7.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2048,8 +2048,8 @@ function buildTrackMeshes(){
   roadMatRef=roadMat;
   const rth=currentTheme?currentTheme.theme:'city';        // per-theme road tint (same texture everywhere = consistent)
   if(rth==='desert'){ roadMat.color=new THREE.Color(0x554c3e); roadMat.emissiveIntensity=0.16; roadMat.roughness=0.78; }   // dark dusty desert highway (contrasts the sand)
-  else if(rth==='coast'){ roadMat.color=new THREE.Color(0x6f6a64); roadMat.emissiveIntensity=0.28; }
-  else if(rth==='forest'){ roadMat.color=new THREE.Color(0x6a6d74); roadMat.emissiveIntensity=0.3; }
+  else if(rth==='coast'){ roadMat.color=new THREE.Color(0x6f6a64); roadMat.emissiveIntensity=0.28; roadMat.roughness=0.34; roadMat.metalness=0.34; roadMat.envMapIntensity=1.05; }   // sea-damp asphalt reflects the sunset
+  else if(rth==='forest'){ roadMat.color=new THREE.Color(0x6a6d74); roadMat.emissiveIntensity=0.3; roadMat.roughness=0.44; roadMat.metalness=0.22; roadMat.envMapIntensity=0.9; }   // damp forest tarmac, subtle sheen
   if(rainOn){                                            // wet asphalt: darker + glossy reflective sheen
     roadMat.color=new THREE.Color(0x6e6e76); roadMat.roughness=0.16; roadMat.metalness=0.5; roadMat.emissiveIntensity=0.26;
     roadMat.envMapIntensity=1.9; roadMat.normalScale.set(0.4,0.4);   // mirror the captured sunset sky down the wet road
@@ -5263,6 +5263,7 @@ window.NETRACE=false;
   const nameBox=$('netName');
   try{ nameBox.value=localStorage.getItem('sd_name')||''; }catch(e){}
   const myName=()=>{ const v=(nameBox.value||'RACER').toUpperCase().slice(0,10); try{ localStorage.setItem('sd_name',v); }catch(e){} return v; };
+  const myAvatar=()=>{ try{ return localStorage.getItem('sd_avatar')||''; }catch(e){ return ''; } };
 
   let peerLib=null;
   function loadPeer(){ return peerLib || (peerLib=new Promise((res,rej)=>{
@@ -5279,10 +5280,12 @@ window.NETRACE=false;
     $('netStartBtn').classList.add('hidden'); $('netWait').classList.add('hidden');
     stand.classList.add('hidden'); window.NETRACE=false; }
 
-  function roster(){ const me={id:NET.myId,name:myName()};
-    const all=[me].concat(Object.keys(NET.players).map(id=>({id,name:NET.players[id].name})));
+  function roster(){ const me={id:NET.myId,name:myName(),avatar:myAvatar()};
+    const all=[me].concat(Object.keys(NET.players).map(id=>({id,name:NET.players[id].name,avatar:NET.players[id].avatar||''})));
     return all; }
-  function drawLobby(list){ $('netPlayers').innerHTML=list.map((p,i)=>(i===0?'\u2605 ':'')+p.name).join('<br>'); }
+  function drawLobby(list){ $('netPlayers').innerHTML=list.map((p,i)=>{
+      const av=p.avatar?'<img src="'+p.avatar+'" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:7px;border:1px solid rgba(255,255,255,.45)">':'';
+      return '<div style="display:flex;align-items:center;padding:3px 0">'+(i===0?'<span style="margin-right:4px">\u2605</span>':'')+av+'<span>'+p.name+'</span></div>'; }).join(''); }
 
   function bindConn(conn){
     conn.on('data',d=>onMsg(conn,d));
@@ -5324,7 +5327,7 @@ window.NETRACE=false;
     NET.peer.on('open',id=>{ NET.myId=id;
       const conn=NET.peer.connect('sundrift-v1-'+code,{reliable:true});
       NET.conns=[conn]; bindConn(conn);
-      conn.on('open',()=>{ conn.send({t:'hi',name:myName()}); say('');
+      conn.on('open',()=>{ conn.send({t:'hi',name:myName(),avatar:myAvatar()}); say('');
         $('netHome').classList.add('hidden'); $('netLobby').classList.remove('hidden');
         $('netRoomCode').textContent=code; $('netWait').classList.remove('hidden'); });
     });
@@ -5333,9 +5336,9 @@ window.NETRACE=false;
 
   // ---- messages ----
   function onMsg(conn,d){
-    if(d.t==='hi'){ NET.players[conn.peer]={name:d.name}; broadcast({t:'roster',list:roster()}); drawLobby(roster());
+    if(d.t==='hi'){ NET.players[conn.peer]={name:d.name,avatar:d.avatar||''}; broadcast({t:'roster',list:roster()}); drawLobby(roster());
       conn.send({t:'roster',list:roster()}); }
-    else if(d.t==='roster'){ d.list.forEach(p=>{ if(p.id!==NET.myId) NET.players[p.id]={name:p.name}; }); drawLobby(d.list); }
+    else if(d.t==='roster'){ d.list.forEach(p=>{ if(p.id!==NET.myId) NET.players[p.id]={name:p.name,avatar:p.avatar||''}; }); drawLobby(d.list); }
     else if(d.t==='start'){ beginNetRace(d.track); }
     else if(d.t==='s'){ applyState(d.id||conn.peer,d);
       if(NET.host) broadcast(Object.assign({},d,{id:conn.peer}),conn.peer); }
@@ -5351,14 +5354,20 @@ window.NETRACE=false;
   function makeRemote(id,ci){
     const rc=makeCar(REMOTE_COLORS[ci%REMOTE_COLORS.length],false);
     rc._tp=new THREE.Vector2(); rc._th=0; rc.lap=0; rc.air=0;
-    // floating name tag
-    const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const x=cv.getContext('2d');
-    x.font='900 34px system-ui'; x.textAlign='center'; x.fillStyle='#fff';
-    x.strokeStyle='rgba(0,0,0,.8)'; x.lineWidth=6;
+    // floating name tag + uploaded avatar
+    const cv=document.createElement('canvas'); cv.width=256; cv.height=150; const x=cv.getContext('2d');
+    const tex=new THREE.CanvasTexture(cv);
     const nm=(NET.players[id]&&NET.players[id].name)||'RACER';
-    x.strokeText(nm,128,42); x.fillText(nm,128,42);
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
-    sp.scale.set(4.4,1.1,1); sp.position.y=2.9; rc.rig.group.add(sp);
+    const av=(NET.players[id]&&NET.players[id].avatar)||'';
+    function _plate(img){ x.clearRect(0,0,256,150);
+      if(img){ x.save(); x.beginPath(); x.arc(128,54,46,0,6.283); x.closePath(); x.clip(); x.drawImage(img,82,8,92,92); x.restore();
+        x.beginPath(); x.arc(128,54,46,0,6.283); x.lineWidth=5; x.strokeStyle='rgba(255,255,255,.9)'; x.stroke(); }
+      const ty=img?135:100; x.font='900 34px system-ui'; x.textAlign='center'; x.lineWidth=6;
+      x.strokeStyle='rgba(0,0,0,.85)'; x.fillStyle='#fff'; x.strokeText(nm,128,ty); x.fillText(nm,128,ty); tex.needsUpdate=true; }
+    _plate(null);
+    if(av){ const im=new Image(); im.onload=()=>_plate(im); im.src=av; }
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    sp.scale.set(4.4, 4.4*150/256, 1); sp.position.y=3.1; rc.rig.group.add(sp);
     NET.remotes[id]=rc; return rc;
   }
   function removeRemote(id){ const rc=NET.remotes[id]; if(!rc) return;
