@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.9-->
+<!--BUILD:v7.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -350,6 +350,18 @@
   #actions{ right:calc(env(safe-area-inset-right,0px) + 16px); display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
   .actRow{ display:flex; align-items:flex-end; gap:12px; pointer-events:none; }
   .actRow>.btn{ pointer-events:auto; }
+  /* ---------- COCKPIT / INTERIOR POV ---------- */
+  #cockpit{ position:fixed; inset:0; z-index:7; pointer-events:none; }
+  #cockpit.hidden{ display:none; }
+  #ckDash{ position:absolute; left:0; right:0; bottom:0; height:30vh; min-height:150px;
+    background:linear-gradient(180deg, rgba(10,9,14,0) 0%, rgba(14,12,18,.78) 24%, rgba(9,8,12,.96) 60%);
+    border-top:2px solid rgba(255,255,255,.06); box-shadow:inset 0 14px 30px rgba(0,0,0,.5); }
+  #ckGauge{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(30vh - 20px); width:min(46vw,300px); height:auto; filter:drop-shadow(0 4px 14px rgba(0,0,0,.6)); }
+  #ckWheel{ position:absolute; left:50%; bottom:-26vh; width:52vh; height:52vh; transform:translateX(-50%); transition:transform .06s linear; will-change:transform; opacity:.96; }
+  #ckPillarL,#ckPillarR{ position:absolute; top:0; width:11vw; height:64vh; pointer-events:none; }
+  #ckPillarL{ left:0; background:linear-gradient(105deg, rgba(10,9,14,.9), rgba(10,9,14,0)); }
+  #ckPillarR{ right:0; background:linear-gradient(255deg, rgba(10,9,14,.9), rgba(10,9,14,0)); }
+  @media (orientation:landscape) and (max-height:520px){ #ckDash{ height:34vh; } #ckWheel{ bottom:-30vh; width:56vh; height:56vh; } #ckGauge{ bottom:calc(34vh - 16px); width:min(40vw,260px); } }
   /* ---- MODERN HUD: circular glass buttons, colored glow, springy press, attention pulse ---- */
   .btn{ width:76px; height:76px; border-radius:50%; pointer-events:auto;
         display:flex; align-items:center; justify-content:center; flex-direction:column;
@@ -676,6 +688,23 @@
 <div id="popups"></div>
 <div id="best">NEW BEST LAP!</div>
 
+<!-- COCKPIT dashboard overlay (shown only in COCKPIT view) -->
+<div id="cockpit" class="hidden">
+  <div id="ckPillarL"></div><div id="ckPillarR"></div>
+  <div id="ckDash">
+    <canvas id="ckGauge" width="300" height="140"></canvas>
+    <div id="ckWheel"><svg viewBox="0 0 100 100" width="100%" height="100%">
+      <circle cx="50" cy="50" r="45" fill="none" stroke="#0e0e12" stroke-width="11"/>
+      <circle cx="50" cy="50" r="45" fill="none" stroke="#33343c" stroke-width="2"/>
+      <circle cx="50" cy="50" r="39" fill="none" stroke="#1a1b21" stroke-width="3"/>
+      <rect x="46.5" y="50" width="7" height="42" rx="2" fill="#141519"/>
+      <rect x="12" y="46.5" width="38" height="7" rx="2" fill="#141519"/>
+      <rect x="50" y="46.5" width="38" height="7" rx="2" fill="#141519"/>
+      <circle cx="50" cy="50" r="12" fill="#1a1b21" stroke="#33343c" stroke-width="1.5"/>
+      <circle cx="50" cy="50" r="4" fill="#ff5a2c"/>
+    </svg></div>
+  </div>
+</div>
 <!-- TRACK EDITOR -->
 <div id="editor" class="hidden">
   <canvas id="edCanvas"></canvas>
@@ -887,12 +916,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.9</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.0</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.9';
+(function(){ const BUILD='v7.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3723,6 +3752,7 @@ const CAM_VIEWS=[                                              // press C / tap 
   {name:'LOW',   dist:4.9, height:2.1, look:11,  fov:84},     // near the road, immersive — pulled back so it never skims the car's trunk
   {name:'HOOD',  dist:-1.8, height:1.75, look:14, fov:84},    // FRONT POV — camera over the nose (raised so it's not flat on the ground), first-person forward
   {name:'FAR',   dist:10.5, height:5.0, look:8,  fov:66},     // wide overview (still pulled in a bit)
+  {name:'COCKPIT', dist:0.15, height:1.35, look:16, fov:82, cockpit:true},  // INTERIOR POV — driver's eye + dashboard overlay
 ];
 let camView=0;
 function loadCamView(){ try{ camView=Math.min(CAM_VIEWS.length-1, Math.max(0, parseInt(localStorage.getItem('sd_cam'))||0)); }catch(e){ camView=0; } }
@@ -3807,21 +3837,29 @@ function rankOf(c){ let r=1; const pc=prog(c);
 let speedoCtx;
 function initSpeedo(){ const cv=document.getElementById('speedo'); if(!cv) return; const dpr=Math.min(devicePixelRatio,2);
   cv.width=148*dpr; cv.height=148*dpr; speedoCtx=cv.getContext('2d'); speedoCtx.scale(dpr,dpr); }
-function drawSpeedo(kmh, maxKmh){
-  const x=speedoCtx; if(!x) return; const cx=74, cy=74, R=60, a0=Math.PI*0.72, a1=Math.PI*2.28;
-  x.clearRect(0,0,148,148);
-  x.lineCap='round'; x.lineWidth=9;
-  x.strokeStyle='rgba(255,255,255,.12)'; x.beginPath(); x.arc(cx,cy,R,a0,a1); x.stroke();        // track
-  for(let i=0;i<=8;i++){ const a=a0+(a1-a0)*i/8, r1=R-12, r2=R-3;                                 // ticks
-    x.strokeStyle='rgba(255,255,255,.4)'; x.lineWidth=2; x.beginPath();
-    x.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1); x.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2); x.stroke(); }
+// MODERN digital gauge cluster — neon bottom-open arc + big digital readout + gear + NOS ring (adapts to canvas)
+function drawGauge(x, W, H, kmh, maxKmh, boostFrac, boosting){
+  if(!x) return; x.clearRect(0,0,W,H);
+  const cx=W*0.5, cy=H*0.86, R=Math.min(W*0.44, H*0.82), a0=Math.PI*0.82, a1=Math.PI*2.18;
+  x.lineCap='round';
+  x.lineWidth=R*0.12; x.strokeStyle='rgba(255,255,255,.10)'; x.beginPath(); x.arc(cx,cy,R,a0,a1); x.stroke();     // track
+  for(let i=0;i<=10;i++){ const a=a0+(a1-a0)*i/10, big=i%2===0;                                                   // ticks
+    x.strokeStyle=big?'rgba(255,255,255,.5)':'rgba(255,255,255,.22)'; x.lineWidth=big?2.4:1.4; x.beginPath();
+    x.moveTo(cx+Math.cos(a)*(R-R*0.17),cy+Math.sin(a)*(R-R*0.17)); x.lineTo(cx+Math.cos(a)*(R-R*0.04),cy+Math.sin(a)*(R-R*0.04)); x.stroke(); }
   const f=Math.min(kmh/maxKmh,1), af=a0+(a1-a0)*f;
-  const grad=x.createLinearGradient(8,8,140,140); grad.addColorStop(0,'#37d6ff'); grad.addColorStop(0.55,'#ffd23b'); grad.addColorStop(1,'#ff3b3b');
-  x.lineWidth=9; x.strokeStyle=grad; x.beginPath(); x.arc(cx,cy,R,a0,af); x.stroke();             // fill arc
-  x.fillStyle='#fff'; x.shadowColor='#ffd23b'; x.shadowBlur=10;                                   // glow tip
-  x.beginPath(); x.arc(cx+Math.cos(af)*R, cy+Math.sin(af)*R, 4, 0, 7); x.fill(); x.shadowBlur=0;
-  x.lineCap='butt';
+  const g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#37d6ff'); g.addColorStop(.5,'#9b6bff'); g.addColorStop(1,'#ff3b6b');
+  x.lineWidth=R*0.12; x.strokeStyle=g; x.shadowColor='#9b6bff'; x.shadowBlur=boosting?20:11;
+  x.beginPath(); x.arc(cx,cy,R,a0,af); x.stroke(); x.shadowBlur=0;                                                // neon fill arc
+  const bf=Math.max(0,Math.min(boostFrac||0,1));                                                                  // inner NOS ring
+  if(bf>0){ x.lineWidth=R*0.055; x.strokeStyle=boosting?'#ffb45a':'rgba(255,138,60,.8)'; x.beginPath(); x.arc(cx,cy,R*0.76,a0,a0+(a1-a0)*bf); x.stroke(); }
+  const gear=kmh<3?0:Math.min(6, 1+Math.floor(f*5.2));                                                            // faux gear
+  x.textAlign='center'; x.fillStyle='#fff'; x.font='900 '+(R*0.66).toFixed(0)+'px system-ui,Arial';
+  x.fillText(kmh, cx, cy+R*0.02);                                                                                 // big digital speed
+  x.fillStyle='rgba(255,255,255,.55)'; x.font='700 '+(R*0.15).toFixed(0)+'px system-ui'; x.fillText('KM/H', cx, cy+R*0.22);
+  x.fillStyle=boosting?'#ffb45a':'#7ce0ff'; x.font='900 '+(R*0.22).toFixed(0)+'px system-ui'; x.fillText(gear?('D'+gear):'N', cx, cy-R*0.32);
+  x.lineCap='butt'; x.textAlign='start';
 }
+function drawSpeedo(kmh, maxKmh){ drawGauge(speedoCtx, 148, 148, kmh, maxKmh, 0, false); }
 function updateHUD(){
   elLapNow.textContent=Math.min(player.lap+1,CONFIG.laps);
   elCurTime.textContent=fmt(raceTime);
@@ -3836,6 +3874,16 @@ function updateHUD(){
     else elScore.style.display='none'; }
   const kmh=Math.round(Math.abs(player.vel.dot(_r.set(Math.sin(player.heading),Math.cos(player.heading))))*3.1);
   elSpeedNum.textContent=kmh; drawSpeedo(kmh, 250);
+  // COCKPIT interior overlay — live gauge cluster + steering wheel that tracks input
+  { const V=CAM_VIEWS[camView], ck=document.getElementById('cockpit');
+    if(ck){ const on=!!(V&&V.cockpit);
+      if(on){ ck.classList.remove('hidden');
+        if(!window._ckCtx){ const cg=document.getElementById('ckGauge'); if(cg) window._ckCtx=cg.getContext('2d'); }
+        drawGauge(window._ckCtx, 300, 140, kmh, 250, player.boost/(CONFIG.boostMax*(player.nosMax||1)), player.boosting);
+        const st=clamp((keys.left?1:0)-(keys.right?1:0)+joyX,-1,1);
+        window._ckW=(window._ckW||0)+(st-(window._ckW||0))*0.28;
+        const w=document.getElementById('ckWheel'); if(w) w.style.transform='translateX(-50%) rotate('+(-window._ckW*135).toFixed(1)+'deg)';
+      } else ck.classList.add('hidden'); } }
   elBoostBar.style.width=(player.boost/(CONFIG.boostMax*(player.nosMax||1))*100)+'%';   // scale by the (possibly bigger) NOS tank
   elBoostWrap.classList.toggle('charging', player.drifting && !player.boosting);
   // rival tag + pass callouts
@@ -3888,7 +3936,8 @@ function startGame(){
 }
 function hidePauseUI(){ const pb=document.getElementById('pauseBtn'); if(pb) pb.classList.remove('show');
   const cb=document.getElementById('camBtn'); if(cb) cb.classList.remove('show');
-  const pm=document.getElementById('pauseMenu'); if(pm) pm.classList.add('hidden'); }
+  const pm=document.getElementById('pauseMenu'); if(pm) pm.classList.add('hidden');
+  const ck=document.getElementById('cockpit'); if(ck) ck.classList.add('hidden'); }
 function pauseGame(){ if(state!=='race') return; state='paused'; document.getElementById('pauseMenu').classList.remove('hidden'); if(audio&&audio.ok) audio.update(0,0,false); }
 function resumeGame(){ if(state!=='paused') return; document.getElementById('pauseMenu').classList.add('hidden'); state='race'; }
 function showMenu(){                                       // back to the garage/menu (shop)
