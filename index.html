@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v5.8-->
+<!--BUILD:v5.9-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -758,12 +758,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.8</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.9</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v5.8';
+(function(){ const BUILD='v5.9';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3431,9 +3431,9 @@ function aiInput(c){
   else if(curve<0.28) c._inCorner=false;
   const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.3 : 0.85);   // miss = brake soft (wide line); very sharp = brake hard so it actually makes the turn
   const boostHard = (c.isRival ? 14 : 20) / aiAggro;                                          // aggression: deploy NITROUS readily (lower threshold) on hard
-  // drift ONLY on genuine hairpins — 0.62 made the AI handbrake-slide every medium corner
-  // (slow exits + sloppy look); gripped corners carry more exit speed = competitive
-  return { throttle:!brake, brake, brakeMul, steer, drift: curve>0.88 && speed>36, boost: !brake && c.boost>boostHard };
+  // AI COMPETITORS NEVER DRIFT (by request) — they corner on planted grip only (clean, fast lines).
+  // Drift is reserved for the human player + multiplayer humans (they use their own manual input, not aiInput).
+  return { throttle:!brake, brake, brakeMul, steer, drift: c.isPlayer && curve>0.88 && speed>36, boost: !brake && c.boost>boostHard };
 }
 
 /* =========================================================================
