@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v6.4-->
+<!--BUILD:v6.5-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -553,6 +553,15 @@
   .qRew{ font-size:11px; font-weight:900; color:#ffd23b; white-space:nowrap; }
   .qDone .qLbl{ color:#5fe08a; } .qDone .qRew{ color:#5fe08a; }
   #togQuests.questReady{ box-shadow:0 0 0 1px #ffd23b, 0 0 10px rgba(255,210,59,.5); }
+  /* ---------- TRACK EDITOR ---------- */
+  #editor{ position:fixed; inset:0; z-index:55; background:radial-gradient(120% 90% at 50% 30%, #171029, #0b0813); display:flex; flex-direction:column; }
+  #editor.hidden{ display:none; }
+  #edCanvas{ flex:1; width:100%; min-height:0; touch-action:none; display:block; }
+  #edBar{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:8px calc(env(safe-area-inset-right,0px)+8px) calc(env(safe-area-inset-bottom,8px)+10px); background:rgba(10,7,17,.92); border-top:1px solid rgba(255,255,255,.08); }
+  .edBtn{ background:rgba(42,32,58,.9); border:1px solid rgba(255,255,255,.14); color:#e7e1f2; font-weight:800; font-size:12px; letter-spacing:.4px; padding:10px 13px; border-radius:9px; cursor:pointer; pointer-events:auto; -webkit-user-select:none; user-select:none; }
+  .edBtn.edGo{ background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#160c06; }
+  .edBtn:active{ transform:scale(.95); }
+  #edHint{ position:absolute; top:calc(env(safe-area-inset-top,8px)+8px); left:50%; transform:translateX(-50%); z-index:2; font-size:11px; font-weight:600; color:#cfc8dd; background:rgba(10,7,17,.72); padding:6px 12px; border-radius:9px; text-align:center; max-width:92vw; pointer-events:none; }
   /* ---------- DAILY BOARD ---------- */
   #lbModal{ position:fixed; inset:0; z-index:60; background:rgba(8,5,14,.78); display:flex; align-items:center; justify-content:center; }
   #lbModal.hidden{ display:none; }
@@ -631,6 +640,19 @@
 <div id="popups"></div>
 <div id="best">NEW BEST LAP!</div>
 
+<!-- TRACK EDITOR -->
+<div id="editor" class="hidden">
+  <canvas id="edCanvas"></canvas>
+  <div id="edHint">Drag the dots to shape your track · ＋ adds a corner · TEST to drive · SHARE the link</div>
+  <div id="edBar">
+    <div class="edBtn" id="edBack">✕ EXIT</div>
+    <div class="edBtn" id="edTheme">🌆 CITY</div>
+    <div class="edBtn" id="edAdd">＋ NODE</div>
+    <div class="edBtn" id="edDel">🗑 NODE</div>
+    <div class="edBtn" id="edShare">⤴ SHARE</div>
+    <div class="edBtn edGo" id="edTest">▶ TEST DRIVE</div>
+  </div>
+</div>
 <!-- touch controls -->
 <div id="touch">
   <div id="joy" class="pad"><div id="joy-base"><div id="joy-knob"></div></div></div>
@@ -714,6 +736,7 @@
           <div class="tog" id="togTT">⏱ TIME TRIAL</div>
           <div class="tog" id="togQuests">🎯 QUESTS</div>
           <div class="tog" id="togBoard">🏁 DAILY BOARD</div>
+          <div class="tog" id="togEditor">🔧 TRACK EDITOR</div>
           <div class="tog" id="togLow">⚡ LITE</div>
         </div>
         <div id="sndRow">
@@ -799,12 +822,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.4</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v6.5</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v6.4';
+(function(){ const BUILD='v6.5';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1179,7 +1202,10 @@ function buyKit(i,key){ const lv=upgOf(i)[key]||0; if(lv>=3) return; const cost=
   upgradeCars(); renderKits(); audio&&audio.coin&&audio.coin(); }
 function loadSelCar(){ try{ selectedCar=Math.min(CARS.length-1, Math.max(0, parseInt(localStorage.getItem('sd_car'))||0)); }catch(e){ selectedCar=0; } }
 function saveSelCar(){ try{ localStorage.setItem('sd_car', selectedCar); }catch(e){} }
-let WORLD=null, currentTrack=0, currentTheme=null;                 // selectable themed tracks (rebuildable world)
+let WORLD=null, currentTrack=0, currentTheme=null;
+let customTrack=null; const CUSTOM_IDX=900;   // TRACK EDITOR: custom track injected at a sentinel index (out of TRACKS range -> stars/unlock/daily lookups safely default)
+function makeCustomTrack(theme, ctrl){ const tmpl=TRACKS.find(t=>t.theme===theme)||TRACKS[0];
+  return Object.assign({}, tmpl, { name:'CUSTOM', sub:'YOUR TRACK', ctrl:ctrl.map(pt=>[pt[0],pt[1]]) }); }                 // selectable themed tracks (rebuildable world)
 let camColliders=[];                                               // tall obstacles {x,z,r,top} the chase-cam must never clip THROUGH (rebuilt per world)
 let terrainNoise=null, terrainAmp=0, terrainBiome='flat';         // procedural terrain (elevated nature themes)
 const TERRAIN={ coast:{amp:15,biome:'coast'}, desert:{amp:44,biome:'desert'}, forest:{amp:66,biome:'forest'}, beach:{amp:34,biome:'beach'}, snow:{amp:58,biome:'snow'} };
@@ -4383,7 +4409,7 @@ function disposeGroup(g){ g.traverse(o=>{
     ms.forEach(m=>{ if(SHARED.has(m)) return; for(const k in m){ const v=m[k]; if(v && v.isTexture && !SHARED.has(v)) v.dispose(); } if(m.dispose) m.dispose(); }); }
 }); }
 function buildWorld(idx){
-  currentTrack=idx; currentTheme=TRACKS[idx];
+  currentTrack=idx; currentTheme=(idx===CUSTOM_IDX && customTrack)?customTrack:TRACKS[idx]; if(!currentTheme) return;
   const tp=TERRAIN[currentTheme.theme]; terrainAmp=tp?tp.amp:0; terrainBiome=tp?tp.biome:'flat'; terrainNoise=makeNoise(idx*131+7);
   beachSea = (currentTheme.water!==undefined) ? currentTheme.water : null; waterMat=null;   // seaside ocean (set before terrain build)
   const t=currentTheme.theme;                                       // tone per lighting mood
@@ -4447,7 +4473,7 @@ function selectTrack(idx){
   camera.position.set(player.pos.x-_f.x*CONFIG.camDist, CONFIG.camHeight, player.pos.y-_f.y*CONFIG.camDist);
   camera.lookAt(player.pos.x,1,player.pos.y);
   document.querySelectorAll('.trackBtn').forEach((b,i)=>b.classList.toggle('sel', i===idx));
-  const sub=document.querySelector('#menu .sub'); if(sub) sub.textContent=TRACKS[idx].sub;
+  const sub=document.querySelector('#menu .sub'); if(sub) sub.textContent=(TRACKS[idx]||currentTheme||{}).sub||'CUSTOM';
   if(currentTheme) playMusic(currentTheme.theme);   // switch background beat per environment
 }
 function init(){
@@ -4551,6 +4577,8 @@ function init(){
   if(togBoard) togBoard.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } renderBoard(); if(lbModal) lbModal.classList.remove('hidden'); });
   const lbClose=document.getElementById('lbClose'); if(lbClose) lbClose.addEventListener('click', e=>{ e.stopPropagation(); if(lbModal) lbModal.classList.add('hidden'); });
   const lbShareB=document.getElementById('lbShare'); if(lbShareB) lbShareB.addEventListener('click', e=>{ e.stopPropagation(); shareChallenge(); });
+  const togEditor=document.getElementById('togEditor');
+  if(togEditor) togEditor.addEventListener('click', e=>{ e.stopPropagation(); if(audio){ audio.start(); audio.ui(); } const t=TRACKS[currentTrack]||TRACKS[0]; if(window.openEditor) window.openEditor(t.ctrl, t.theme); });
   const togLow=document.getElementById('togLow');
   togLow.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     lowQuality=!lowQuality; togLow.classList.toggle('on',lowQuality);
@@ -5017,6 +5045,63 @@ window.NETRACE=false;
     }
   }
   requestAnimationFrame(frame);
+})();
+</script>
+<script>
+/* ============ TRACK EDITOR — drag nodes -> Catmull track -> TEST drive -> SHARE code (serverless UGC moat) ============ */
+(function(){
+  const overlay=document.getElementById('editor'), cv=document.getElementById('edCanvas'); if(!cv) return;
+  const x=cv.getContext('2d');
+  const THEMES=['city','coast','docks','desert','forest','snow','beach'];
+  const LBL={city:'\uD83C\uDF06 CITY',coast:'\uD83C\uDF05 COAST',docks:'\uD83C\uDFD7 DOCKS',desert:'\uD83C\uDFDC DESERT',forest:'\uD83C\uDF32 FOREST',snow:'\uD83C\uDFD4 SNOW',beach:'\uD83C\uDFD6 BEACH'};
+  let ctrl=[], theme='city', sel=-1, drag=false, view={s:1,ox:0,oy:0};
+  function oval(){ const R=150,p=[]; for(let i=0;i<10;i++){ const a=i/10*6.283; p.push([Math.round(Math.cos(a)*R*(0.9+0.22*Math.sin(a*2))), Math.round(Math.sin(a)*R)]); } return p; }
+  function open(seed, seedT){ ctrl=(seed&&seed.length>=4)?seed.map(p=>[p[0],p[1]]):oval(); theme=seedT||'city'; sel=-1;
+    overlay.classList.remove('hidden'); const m=document.getElementById('menu'); if(m) m.classList.add('hidden'); document.body.classList.remove('inmenu');
+    fit(); draw(); updTheme(); }
+  window.openEditor=open;
+  function close(){ overlay.classList.add('hidden'); try{ customTrack=null; currentTrack=0; }catch(e){} if(typeof showMenu==='function') showMenu(); }
+  function fit(){ cv.width=cv.clientWidth||innerWidth; cv.height=cv.clientHeight||(innerHeight-70);
+    let a=1e9,b=-1e9,c=1e9,d=-1e9; ctrl.forEach(p=>{ a=Math.min(a,p[0]);b=Math.max(b,p[0]);c=Math.min(c,p[1]);d=Math.max(d,p[1]); });
+    const pad=70,w=(b-a)||1,h=(d-c)||1,s=Math.min((cv.width-pad*2)/w,(cv.height-pad*2)/h);
+    view.s=s; view.ox=cv.width/2-(a+b)/2*s; view.oy=cv.height/2-(c+d)/2*s; }
+  const W2S=p=>[p[0]*view.s+view.ox, p[1]*view.s+view.oy];
+  const S2W=(sx,sy)=>[(sx-view.ox)/view.s, (sy-view.oy)/view.s];
+  function draw(){ x.clearRect(0,0,cv.width,cv.height);
+    const n=ctrl.length,N=n*20; x.strokeStyle='rgba(255,150,70,.92)'; x.lineWidth=Math.max(10, view.s*8.2); x.lineJoin='round'; x.lineCap='round'; x.beginPath();
+    for(let i=0;i<=N;i++){ const u=i/N*n, sg=Math.floor(u)%n, t=u-Math.floor(u);
+      const p0=ctrl[(sg-1+n)%n],p1=ctrl[sg],p2=ctrl[(sg+1)%n],p3=ctrl[(sg+2)%n], t2=t*t,t3=t2*t;
+      const px=0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3);
+      const pz=0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3);
+      const q=W2S([px,pz]); if(i===0) x.moveTo(q[0],q[1]); else x.lineTo(q[0],q[1]); }
+    x.closePath(); x.stroke();
+    ctrl.forEach((p,i)=>{ const q=W2S(p); x.beginPath(); x.arc(q[0],q[1], i===sel?12:9, 0,6.283);
+      x.fillStyle=i===sel?'#ffd23b':'#fff'; x.fill(); x.lineWidth=2.5; x.strokeStyle='#ff5a2c'; x.stroke(); });
+    const s0=W2S(ctrl[0]); x.fillStyle='#5fe08a'; x.beginPath(); x.arc(s0[0],s0[1],6,0,6.283); x.fill();   // start/finish
+  }
+  function pick(sx,sy){ for(let i=0;i<ctrl.length;i++){ const q=W2S(ctrl[i]); if(Math.hypot(q[0]-sx,q[1]-sy)<24) return i; } return -1; }
+  cv.addEventListener('pointerdown',e=>{ const r=cv.getBoundingClientRect(); sel=pick(e.clientX-r.left,e.clientY-r.top); drag=sel>=0; draw(); e.preventDefault(); });
+  cv.addEventListener('pointermove',e=>{ if(!drag||sel<0) return; const r=cv.getBoundingClientRect(); const w=S2W(e.clientX-r.left,e.clientY-r.top); ctrl[sel]=[Math.round(w[0]),Math.round(w[1])]; draw(); e.preventDefault(); });
+  cv.addEventListener('pointerup',()=>drag=false); cv.addEventListener('pointercancel',()=>drag=false);
+  function updTheme(){ const b=document.getElementById('edTheme'); if(b) b.textContent=LBL[theme]; }
+  document.getElementById('edTheme').onclick=()=>{ theme=THEMES[(THEMES.indexOf(theme)+1)%THEMES.length]; updTheme(); };
+  document.getElementById('edAdd').onclick=()=>{ let gi=0,gd=-1; for(let i=0;i<ctrl.length;i++){ const a=ctrl[i],b=ctrl[(i+1)%ctrl.length],dd=Math.hypot(a[0]-b[0],a[1]-b[1]); if(dd>gd){gd=dd;gi=i;} }
+    const a=ctrl[gi],b=ctrl[(gi+1)%ctrl.length]; ctrl.splice(gi+1,0,[Math.round((a[0]+b[0])/2),Math.round((a[1]+b[1])/2)]); sel=gi+1; draw(); };
+  document.getElementById('edDel').onclick=()=>{ if(ctrl.length<=4||sel<0){ document.getElementById('edHint').textContent=(ctrl.length<=4?'A track needs at least 4 nodes.':'Tap a node first, then delete.'); return; } ctrl.splice(sel,1); sel=-1; draw(); };
+  document.getElementById('edBack').onclick=close;
+  document.getElementById('edTest').onclick=()=>{ try{ customTrack=makeCustomTrack(theme, ctrl); overlay.classList.add('hidden'); document.body.classList.remove('inmenu');
+      currentTrack=CUSTOM_IDX; selectTrack(CUSTOM_IDX); if(typeof ownedCars!=='undefined' && !ownedCars[selectedCar]) ownedCars[selectedCar]=true; startGame();
+    }catch(e){ document.getElementById('edHint').textContent='Track too tangled \u2014 spread the nodes out and retry.'; overlay.classList.remove('hidden'); } };
+  document.getElementById('edShare').onclick=()=>{ try{ const code=btoa(JSON.stringify({t:theme,c:ctrl})).replace(/=+$/,'');
+      const url=location.origin+location.pathname+'?track='+encodeURIComponent(code);
+      if(navigator.share){ navigator.share({title:'My Sunset Drift track', url}); } else navigator.clipboard.writeText(url);
+      document.getElementById('edHint').textContent='\u2714 Track link copied \u2014 send it to a friend!';
+    }catch(e){} };
+  addEventListener('resize',()=>{ if(!overlay.classList.contains('hidden')){ fit(); draw(); } });
+  // load an incoming shared track link
+  const m=/[?&]track=([^&]+)/.exec(location.search);
+  if(m){ addEventListener('load',()=>{ try{ let _r=decodeURIComponent(m[1]).replace(/[^A-Za-z0-9+/]/g,''); _r+='='.repeat((4-_r.length%4)%4); const o=JSON.parse(atob(_r));
+    if(o&&o.c&&o.c.length>=4){ setTimeout(()=>{ if(typeof popup==='function') popup('\uD83D\uDD27 Shared track loaded \u2014 TEST to drive','#5fe08a'); openEditor(o.c, o.t||'city'); }, 900); } }catch(e){} }); }
 })();
 </script>
 </body>
