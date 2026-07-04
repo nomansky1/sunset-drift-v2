@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v5.0-->
+<!--BUILD:v5.1-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -722,12 +722,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.0</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v5.1</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v5.0';
+(function(){ const BUILD='v5.1';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2955,14 +2955,16 @@ function attachUpgrades(rig, carIdx, forceU){
       // SPLIT-MESH measure: some wheel objects (SUV fronts) bundle fender geometry with the tire -
       // the whole-object box read ~25% too big, so the rim rendered as a giant disc swallowing the wheel.
       // The TIRE is the lowest child mesh (it touches the ground); measure THAT mesh alone.
-      { let tb=null, low=1e9; wo.traverse(o=>{ if(o.isMesh){ const b=new THREE.Box3().setFromObject(o);
-          if(b.min.y<low-1e-3){ low=b.min.y; tb=b; } } });
+      { let tb=null, big=-1, ts=new THREE.Vector3(); wo.traverse(o=>{ if(o.isMesh){ const b=new THREE.Box3().setFromObject(o); b.getSize(ts); const v=ts.x*ts.y*ts.z;
+          if(v>big){ big=v; tb=b.clone(); } } });                          // LARGEST child mesh = the tyre (a hub/brake sub-mesh was under-measuring the SUV)
         if(tb){ _bb.copy(tb); _bb.getSize(_bs); } }
-      const wr=clamp(Math.max(_bs.y,_bs.z)/2, H*0.10, RADMAX);          // TRUE post-scale tire radius
+      // TRUE rendered wheel radius from the VERTICAL extent (a grounded round wheel's height IS its diameter;
+      // min(y,z) guards against fender/arch geometry inflating the depth on cluster-fallback cars like the SUV)
+      const wr=clamp(Math.min(_bs.y,_bs.z)/2, H*0.10, RADMAX);
       kit.getWorldQuaternion(_kq); wo.getWorldQuaternion(_wq); const q=_wq.clone().invert().multiply(_kq);
       // WORLD scale, not local: GLB wheels sit inside the ~3x normalization group — local scale (1)
       // made every added tire/rim ~3x oversized (tires nearly as tall as the car on RACER/EXOTIC)
-      const _ws=new THREE.Vector3(); wo.getWorldScale(_ws); const inv=1/Math.max(_ws.x,1e-4);
+      const _ws=new THREE.Vector3(); wo.getWorldScale(_ws); const S=Math.max(_ws.x,1e-4), inv=1/S;
       // CLUSTER-FALLBACK cars (COUPE/HATCH/SUV: no named wheel meshes) measured the BODY, so w.x/outerX
       // sat at the fender line - the rim rendered as a detached disc floating outside the tire.
       // Trust the matched wheel OBJECT instead: its true center + outboard edge in kit space.
@@ -2973,9 +2975,12 @@ function attachUpgrades(rig, carIdx, forceU){
           vv.set(X,Y,Z); kit.worldToLocal(vv); outX=Math.max(outX,Math.abs(vv.x)); } }
       const mount=(mesh,kx)=>{ const p=new THREE.Vector3(kx, cy, cz); kit.localToWorld(p); wo.worldToLocal(p);
         mesh.position.copy(p); mesh.quaternion.copy(q); if(cx<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
-      const tire=new THREE.Mesh(new THREE.TorusGeometry(wr*0.66, wr*0.32, 12, 22), tireMat); tire.geometry.rotateY(Math.PI/2);   // outer 0.98*wr
-      tire.scale.setScalar(inv); mount(tire, cx);                                     // centered ON the wheel -> the visible tire IS the black treaded ring
-      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((wr*0.70)/(rsz.y||1)*inv);   // rim sits INSIDE the tire ring (1.02 poked past the rubber = hubcap-bigger-than-tire look)
+      // tire = black tread ring that WRAPS the wheel (outer ~= wheel radius); rim = chrome disc filling the hub.
+      // /S bakes the wheel's world-scale compensation into the geometry so sizes are exact in WORLD units.
+      const tOuter=wr*1.12, tTube=wr*0.32, tRing=tOuter-tTube;                        // fat tread that WRAPS the wheel (even the SUV whose box measures a touch large)
+      const tire=new THREE.Mesh(new THREE.TorusGeometry(tRing/S, tTube/S, 14, 26), tireMat); tire.geometry.rotateY(Math.PI/2);
+      mount(tire, cx);                                                                // centered ON the wheel -> the visible fat tire
+      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((tOuter*1.24)/(rsz.y||1)/S);   // rim diameter ~0.62x the tire diameter (fills the hub inside the tread)
         mount(rm, Math.sign(cx)*(outX+0.02)); }
     });
     wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
