@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v8.0-->
+<!--BUILD:v8.1-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -995,12 +995,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.0</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.1</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v8.0';
+(function(){ const BUILD='v8.1';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1144,7 +1144,21 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'PATRIOT',     kind:'glb', raw:'kartB',    yaw:0, spd:82, grip:93, price:2600},
              {name:'BOLT',        kind:'glb', raw:'kartC',    yaw:0, spd:84, grip:94, price:2800},
              {name:'VORTEX',      kind:'glb', raw:'kartD',    yaw:0, spd:86, grip:92, price:3000},
-             {name:'PHANTOM',     kind:'glb', raw:'kartE',    yaw:0, spd:88, grip:90, price:3200} ];
+             {name:'PHANTOM',     kind:'glb', raw:'kartE',    yaw:0, spd:88, grip:90, price:3200},
+             {name:'MOUNTIE',  kind:'glb', raw:'suv',     yaw:0, spd:82, grip:86, price:3400},
+             {name:'SPITFIRE', kind:'glb', raw:'sport',   yaw:0, spd:92, grip:76, price:3700},
+             {name:'BOLIDE',   kind:'glb', raw:'racer',   yaw:0, spd:94, grip:74, price:4000},
+             {name:'AUTOBAHN', kind:'glb', raw:'racecar', yaw:0, spd:100,grip:72, price:4400},
+             {name:'ROSSO',    kind:'glb', raw:'super',   yaw:0, spd:102,grip:66, price:4800},
+             {name:'TORO',     kind:'glb', raw:'muscle',  yaw:0, spd:96, grip:68, price:5000},
+             {name:'SAMURAI',  kind:'glb', raw:'racecar', yaw:0, spd:99, grip:78, price:5200},
+             {name:'TIGER',    kind:'glb', raw:'racer',   yaw:0, spd:93, grip:80, price:5400},
+             {name:'DRAGON',   kind:'glb', raw:'super',   yaw:0, spd:104,grip:66, price:5600},
+             {name:'MAHARAJA', kind:'glb', raw:'suv',     yaw:0, spd:86, grip:84, price:5700},
+             {name:'OUTBACK',  kind:'glb', raw:'pickup',  yaw:0, spd:88, grip:82, price:5800},
+             {name:'SAVANNA',  kind:'glb', raw:'suv',     yaw:0, spd:87, grip:83, price:5900},
+             {name:'PHARAOH',  kind:'glb', raw:'muscle',  yaw:0, spd:95, grip:67, price:6000},
+             {name:'FALCON',   kind:'glb', raw:'super',   yaw:0, spd:106,grip:64, price:6500} ];
 // Latin-American nationality theme: each car flies a country flag + the flag's colour resonates on the car (Puerto Rico first)
 const COUNTRIES=[
   {name:'PUERTO RICO', key:'pr', col:0xed1c24}, {name:'DOMINICAN REP.', key:'do', col:0x002d62}, {name:'BRAZIL', key:'br', col:0x009b3a},
@@ -1153,7 +1167,12 @@ const COUNTRIES=[
   {name:'CUBA', key:'cu', col:0x002a8f}, {name:'ECUADOR', key:'ec', col:0xffdd00}, {name:'URUGUAY', key:'uy', col:0x0038a8},
   {name:'BOLIVIA', key:'bo', col:0x007a3d}, {name:'PANAMA', key:'pa', col:0x005293}, {name:'GUATEMALA', key:'gt', col:0x4997d0}, {name:'PARAGUAY', key:'py', col:0xd52b1e},
   {name:'USA', key:'us', col:0x002868},
-  {name:'HONDURAS', key:'hn', col:0x0073cf}, {name:'COSTA RICA', key:'cr', col:0x002b7f}, {name:'NICARAGUA', key:'ni', col:0x0067c6} ];
+  {name:'HONDURAS', key:'hn', col:0x0073cf}, {name:'COSTA RICA', key:'cr', col:0x002b7f}, {name:'NICARAGUA', key:'ni', col:0x0067c6},
+  {name:'CANADA', key:'ca', col:0xd52b1e}, {name:'UNITED KINGDOM', key:'gb', col:0x012169}, {name:'FRANCE', key:'fr', col:0x0055a4},
+  {name:'GERMANY', key:'de', col:0x222222}, {name:'ITALY', key:'it', col:0x009246}, {name:'SPAIN', key:'es', col:0xaa151b},
+  {name:'JAPAN', key:'jp', col:0xbc002d}, {name:'SOUTH KOREA', key:'kr', col:0x0047a0}, {name:'CHINA', key:'cn', col:0xde2910},
+  {name:'INDIA', key:'in', col:0xff9933}, {name:'AUSTRALIA', key:'au', col:0x012169}, {name:'SOUTH AFRICA', key:'za', col:0x007a4d},
+  {name:'EGYPT', key:'eg', col:0xce1126}, {name:'U.A.E.', key:'ae', col:0x00732f} ];
 const PAINTS=[ {name:'Stock',hex:null}, {name:'Red',hex:0xe0202a}, {name:'Orange',hex:0xf07315}, {name:'Gold',hex:0xf2c021},
   {name:'Lime',hex:0x7ac81e}, {name:'Green',hex:0x18a558}, {name:'Teal',hex:0x12a39a}, {name:'Cyan',hex:0x18b5d6},
   {name:'Blue',hex:0x1e6cff}, {name:'Navy',hex:0x23306e}, {name:'Purple',hex:0x7b3ff2}, {name:'Pink',hex:0xe84f9c},
@@ -1170,6 +1189,20 @@ function flagCanvas(key){
     case 'do': x.fillStyle='#002d62'; x.fillRect(0,0,W,H); x.fillStyle='#ce1126'; x.fillRect(W/2,0,W/2,H/2); x.fillRect(0,H/2,W/2,H/2); x.fillStyle='#fff'; x.fillRect(W*0.42,0,W*0.16,H); x.fillRect(0,H*0.4,W,H*0.2); break;
     case 'br': x.fillStyle='#009b3a'; x.fillRect(0,0,W,H); x.fillStyle='#fedf00'; x.beginPath(); x.moveTo(W/2,H*0.13); x.lineTo(W*0.87,H/2); x.lineTo(W/2,H*0.87); x.lineTo(W*0.13,H/2); x.closePath(); x.fill(); x.fillStyle='#002776'; x.beginPath(); x.arc(W/2,H/2,H*0.2,0,7); x.fill(); break;
     case 'mx': vs(['#006847','#fff','#ce1126']); x.fillStyle='#7a5230'; x.beginPath(); x.arc(W/2,H/2,H*0.13,0,7); x.fill(); break;
+    case 'ca': vs(['#d52b1e','#fff','#d52b1e']); x.fillStyle='#d52b1e'; x.beginPath(); for(let i=0;i<12;i++){const a=-Math.PI/2+i*Math.PI/6, r=i%2?H*0.2:H*0.08; x.lineTo(W/2+Math.cos(a)*r,H/2+Math.sin(a)*r);} x.closePath(); x.fill(); break;
+    case 'gb': x.fillStyle='#012169'; x.fillRect(0,0,W,H); x.strokeStyle='#fff'; x.lineWidth=H*0.26; x.beginPath(); x.moveTo(0,0);x.lineTo(W,H);x.moveTo(W,0);x.lineTo(0,H); x.stroke(); x.fillStyle='#fff'; x.fillRect(W*0.42,0,W*0.16,H); x.fillRect(0,H*0.36,W,H*0.28); x.fillStyle='#c8102e'; x.fillRect(W*0.45,0,W*0.1,H); x.fillRect(0,H*0.42,W,H*0.16); break;
+    case 'fr': vs(['#0055a4','#fff','#ef4135']); break;
+    case 'de': hs(['#000','#dd0000','#ffce00']); break;
+    case 'it': vs(['#009246','#fff','#ce2b37']); break;
+    case 'es': hs(['#aa151b','#f1bf00','#f1bf00','#f1bf00','#aa151b']); break;
+    case 'jp': x.fillStyle='#fff'; x.fillRect(0,0,W,H); x.fillStyle='#bc002d'; x.beginPath(); x.arc(W/2,H/2,H*0.3,0,7); x.fill(); break;
+    case 'kr': x.fillStyle='#fff'; x.fillRect(0,0,W,H); x.fillStyle='#cd2e3a'; x.beginPath(); x.arc(W/2,H/2,H*0.2,Math.PI,0,true); x.fill(); x.fillStyle='#0047a0'; x.beginPath(); x.arc(W/2,H/2,H*0.2,0,Math.PI,true); x.fill(); break;
+    case 'cn': x.fillStyle='#de2910'; x.fillRect(0,0,W,H); star(W*0.16,H*0.3,H*0.16,'#ffde00'); for(let i=0;i<4;i++) star(W*0.32,H*(0.13+i*0.14),H*0.05,'#ffde00'); break;
+    case 'in': hs(['#ff9933','#fff','#138808']); x.strokeStyle='#000080'; x.lineWidth=2; x.beginPath(); x.arc(W/2,H/2,H*0.11,0,7); x.stroke(); break;
+    case 'au': x.fillStyle='#012169'; x.fillRect(0,0,W,H); x.fillStyle='#012169'; x.fillRect(0,0,W*0.5,H*0.5); x.strokeStyle='#fff'; x.lineWidth=H*0.12; x.beginPath(); x.moveTo(0,0);x.lineTo(W*0.5,H*0.5);x.moveTo(W*0.5,0);x.lineTo(0,H*0.5); x.stroke(); star(W*0.75,H*0.62,H*0.14,'#fff'); star(W*0.22,H*0.7,H*0.07,'#fff'); break;
+    case 'za': x.fillStyle='#007a4d'; x.fillRect(0,0,W,H); x.fillStyle='#de3831'; x.fillRect(0,0,W,H*0.32); x.fillStyle='#002395'; x.fillRect(0,H*0.68,W,H*0.32); x.fillStyle='#000'; x.beginPath(); x.moveTo(0,0); x.lineTo(W*0.4,H/2); x.lineTo(0,H); x.closePath(); x.fill(); break;
+    case 'eg': hs(['#ce1126','#fff','#000']); x.fillStyle='#c09300'; x.beginPath(); x.arc(W/2,H/2,H*0.1,0,7); x.fill(); break;
+    case 'ae': x.fillStyle='#00732f'; x.fillRect(0,0,W,H*0.34); x.fillStyle='#fff'; x.fillRect(0,H*0.33,W,H*0.34); x.fillStyle='#000'; x.fillRect(0,H*0.66,W,H*0.34); x.fillStyle='#ff0000'; x.fillRect(0,0,W*0.24,H); break;
     case 'ar': hs(['#75aadb','#fff','#75aadb']); x.fillStyle='#f6b40e'; x.beginPath(); x.arc(W/2,H/2,H*0.13,0,7); x.fill(); break;
     case 'co': x.fillStyle='#fcd116'; x.fillRect(0,0,W,H/2); x.fillStyle='#003893'; x.fillRect(0,H/2,W,H/4); x.fillStyle='#ce1126'; x.fillRect(0,H*0.75,W,H/4); break;
     case 've': hs(['#ffcc00','#00247d','#cf142b']); for(let i=0;i<7;i++){ const a=Math.PI*1.18+i*0.105; star(W/2+Math.cos(a)*W*0.2,H*0.5+Math.sin(a)*H*0.16,3.5,'#fff'); } break;
@@ -5696,7 +5729,12 @@ window.NETRACE=false;
     {lat:22,lon:-79,theme:'city'},{lat:-1.5,lon:-78,theme:'forest'},{lat:-33,lon:-56,theme:'coast'},
     {lat:-17,lon:-65,theme:'snow'},{lat:9,lon:-80,theme:'docks'},{lat:15.5,lon:-90,theme:'forest'},
     {lat:-23,lon:-58,theme:'forest'},{lat:39,lon:-98,theme:'city'},{lat:15,lon:-86,theme:'beach'},
-    {lat:10,lon:-84,theme:'tropical'},{lat:13,lon:-85,theme:'coast'}
+    {lat:10,lon:-84,theme:'tropical'},{lat:13,lon:-85,theme:'coast'},
+    {lat:56,lon:-106,theme:'snow'},{lat:54,lon:-2,theme:'city'},{lat:47,lon:2,theme:'city'},
+    {lat:51,lon:10,theme:'city'},{lat:42,lon:12,theme:'coast'},{lat:40,lon:-4,theme:'coast'},
+    {lat:36,lon:138,theme:'city'},{lat:37,lon:127,theme:'city'},{lat:35,lon:103,theme:'city'},
+    {lat:22,lon:79,theme:'desert'},{lat:-25,lon:133,theme:'desert'},{lat:-29,lon:24,theme:'desert'},
+    {lat:26,lon:30,theme:'desert'},{lat:24,lon:54,theme:'desert'}
   ];
   let sc=null,cam=null,ren=null,raf=0,grp=null,markers=[],picked=-1,rot=0.5,drag=null,vel=0,ray=null,mouse=null,moved=0;
   function llToVec(lat,lon,rad){ const phi=(90-lat)*Math.PI/180, th=(lon+180)*Math.PI/180;
