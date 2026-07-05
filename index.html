@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v8.6-->
+<!--BUILD:v8.7-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1021,12 +1021,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v8.6</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v8.7</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v8.6';
+(function(){ const BUILD='v8.7';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1054,6 +1054,7 @@
 <script src="https://unpkg.com/three@0.137.5/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <!-- model + HDRI loaders -->
 <script src="https://unpkg.com/three@0.137.5/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://unpkg.com/three@0.137.5/examples/js/loaders/DRACOLoader.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/loaders/RGBELoader.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/math/SimplexNoise.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/shaders/SSAOShader.js"></script>
@@ -3331,6 +3332,7 @@ function makeCar(color, isPlayer){
 function loadCarModels(){
   if(typeof THREE.GLTFLoader==='undefined') return;
   const L=new THREE.GLTFLoader();
+  try{ if(THREE.DRACOLoader){ const dl=new THREE.DRACOLoader(); dl.setDecoderPath('https://unpkg.com/three@0.137.5/examples/js/libs/draco/gltf/'); L.setDRACOLoader(dl); } }catch(e){}
   try{ L.load('models/car-body.glb', gb=>{ carBodyRaw=gb.scene;
     L.load('models/car-wheel.glb', gw=>{ carWheelRaw=gw.scene; carReady=true; if(cars&&cars.length) upgradeCars(); },
       undefined, ()=>{ carReady=true; if(cars&&cars.length) upgradeCars(); });   // body-only if wheels fail
