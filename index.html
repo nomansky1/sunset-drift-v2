@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v7.9-->
+<!--BUILD:v8.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -995,12 +995,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.9</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.0</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v7.9';
+(function(){ const BUILD='v8.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1417,6 +1417,12 @@ const TRACKS=[
   { name:'TIDE LINE', sub:'BEACH · SHORELINE ARC', theme:'beach', groundHex:'#ecd8a8', fog:0xc2e4ec, water:-6,
     sky:{top:0x2a95dc,bot:0xd6f0ff,sun:0xfff6d6}, sun:[0.34,0.18,-0.9],
     ctrl:[[-180,-70],[180,-70],[186,40],[150,60],[180,96],[110,140],[40,96],[-40,96],[-110,140],[-180,96],[-150,60],[-186,40]] },   // shoreline: long top straight into a scalloped chicane run along the tide
+  { name:'PARADISE COVE', sub:'TROPICAL · LAGOON RUN', theme:'beach', label:'tropical', groundHex:'#79a758', fog:0x8fe6cf, water:-6,
+    sky:{top:0x14b2da,bot:0xd8fff5,sun:0xfff6d0}, sun:[0.3,0.2,-0.88],
+    ctrl:[[-150,-170],[150,-170],[184,-140],[176,-104],[130,-96],[178,-40],[178,150],[110,150],[120,96],[-120,96],[-110,150],[-178,150],[-178,-40],[-130,-96],[-176,-104],[-184,-140]] },   // lush lagoon — palms + bright turquoise water
+  { name:'BAYOU', sub:'SWAMP · MANGROVE MAZE', theme:'forest', label:'swamp', groundHex:'#37472b', fog:0x5f6f48,
+    sky:{top:0x5a6a55,bot:0xa6b298,sun:0xe8dfbe}, sun:[-0.4,0.28,-0.7],
+    ctrl:[[-175,-110],[-60,-150],[35,-105],[62,-30],[135,-60],[186,-6],[130,45],[170,105],[60,150],[-40,118],[-96,150],[-172,96],[-120,34],[-152,-30],[-186,-64]] },   // murky bayou — cypress + reeds
 ];
 let state = 'menu';           // menu | countdown | race | finished | paused
 let countdown = 0, goTimer = 0, raceTime = 0, lastBeepN = 99, menuT = 0;
@@ -2691,6 +2697,30 @@ function buildTrackBuildings(rng){
     m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true;
     m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); });
 }
+function buildVariantVeg(){
+  const v=currentTheme?currentTheme.label:null; if(!v) return;
+  const rng=mulberry32(6161), hasT=(typeof terrainHeight==='function');
+  const spot=()=>{ for(let tr=0;tr<8;tr++){ const i=(Math.floor(rng()*SAMPLES))%SAMPLES, pt=samplePts[i], n=sampleNorm[i];
+      const side=rng()<0.5?-1:1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+5+rng()*30, x=pt.x+n.x*off*side, z=pt.y+n.y*off*side;
+      if(distToTrackApprox(x,z) > (sampleHW[i]||CONFIG.roadHalfWidth)+4){ const gy=hasT?terrainHeight(x,z):0; if(gy>-3) return [x,gy,z]; } } return null; };
+  const instMany=(geo,mat,n,yLift,sy,shadow)=>{ const P=[]; for(let k=0;k<n;k++){ const s=spot(); if(s) P.push(s); } if(!P.length) return;
+    const im=new THREE.InstancedMesh(geo,mat,P.length), q=new THREE.Quaternion(),pv=new THREE.Vector3(),sv=new THREE.Vector3(),m=new THREE.Matrix4();
+    P.forEach((s,k)=>{ q.setFromAxisAngle(_UP,rng()*6.283); const sc=0.7+rng()*1.0; sv.set(sc,(sy||1)*sc,sc); pv.set(s[0],s[1]+yLift*sc,s[2]); m.compose(pv,q,sv); im.setMatrixAt(k,m); });
+    im.instanceMatrix.needsUpdate=true; im.castShadow=!!shadow&&!isTouch; scene.add(im); };
+  if(v==='tropical'){
+    const leaf=new THREE.MeshStandardMaterial({color:0x2fa348,roughness:0.7,flatShading:true,side:THREE.DoubleSide});
+    const trunk=new THREE.MeshStandardMaterial({color:0x7a5330,roughness:0.9});
+    for(let k=0;k<24;k++){ const s=spot(); if(!s) continue; const g=new THREE.Group();
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.24,5.4,6),trunk); t.position.y=2.7; t.rotation.z=(rng()-0.5)*0.3; g.add(t);
+      for(let f=0;f<6;f++){ const fr=new THREE.Mesh(new THREE.ConeGeometry(0.42,2.6,4),leaf); fr.position.y=5.2; fr.rotation.y=(f/6)*6.283; fr.rotation.x=1.15; g.add(fr); }
+      g.position.set(s[0],s[1],s[2]); g.scale.setScalar(0.8+rng()*0.6); if(!isTouch) g.traverse(o=>{o.castShadow=true;}); scene.add(g); }
+    instMany(new THREE.SphereGeometry(0.8,7,6), new THREE.MeshStandardMaterial({color:0x38b24a,roughness:0.8,flatShading:true}), 60, 0.42, 0.7, false);
+  } else if(v==='swamp'){
+    instMany(new THREE.ConeGeometry(1.1,7,6), new THREE.MeshStandardMaterial({color:0x2c3a24,roughness:0.9,flatShading:true}), 46, 3.3, 1.0, true);
+    const reed=new THREE.ConeGeometry(0.09,1.4,4); reed.translate(0,0.7,0);
+    instMany(reed, new THREE.MeshStandardMaterial({color:0x5a7a3a,roughness:1}), 220, 0.02, 1.0, false);
+  }
+}
 function buildGrassFill(){
   const th=currentTheme?currentTheme.theme:'city';
   if(th==='desert'||th==='snow') return;                                   // dry themes keep their own ground
@@ -2727,6 +2757,7 @@ function scatterProps(){ const rng=mulberry32(7777);
   buildRoadsideAmenities(rng, !(th==='city'||th==='docks'));   // benches everywhere + lamp posts where missing
   buildObstacles();   // player-only road hazards + ramps
   buildGrassFill();   // grass tufts fill the empty ground around buildings + verges
+  buildVariantVeg();  // tropical palms / swamp cypress+reeds for the new environment variants
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
   if(th==='city'||th==='docks'||th==='coast'||th==='beach') buildParkedCars(rng);   // parked cars = street life
   buildTrackFurniture(rng);                            // Kenney Racing Kit: grandstands + pits + start gantry + banners
@@ -5659,13 +5690,13 @@ window.NETRACE=false;
 (function(){
   // index-aligned to COUNTRIES: real-ish lat/lon + the environment theme each country races in
   const GLOBE=[
-    {lat:18.2,lon:-66.5,theme:'beach'},{lat:18.7,lon:-70.2,theme:'beach'},{lat:-10,lon:-52,theme:'forest'},
+    {lat:18.2,lon:-66.5,theme:'tropical'},{lat:18.7,lon:-70.2,theme:'tropical'},{lat:-10,lon:-52,theme:'swamp'},
     {lat:23,lon:-102,theme:'desert'},{lat:-34,lon:-64,theme:'city'},{lat:4,lon:-73,theme:'forest'},
     {lat:8,lon:-66,theme:'coast'},{lat:-10,lon:-76,theme:'desert'},{lat:-33,lon:-71,theme:'coast'},
     {lat:22,lon:-79,theme:'city'},{lat:-1.5,lon:-78,theme:'forest'},{lat:-33,lon:-56,theme:'coast'},
     {lat:-17,lon:-65,theme:'snow'},{lat:9,lon:-80,theme:'docks'},{lat:15.5,lon:-90,theme:'forest'},
     {lat:-23,lon:-58,theme:'forest'},{lat:39,lon:-98,theme:'city'},{lat:15,lon:-86,theme:'beach'},
-    {lat:10,lon:-84,theme:'forest'},{lat:13,lon:-85,theme:'coast'}
+    {lat:10,lon:-84,theme:'tropical'},{lat:13,lon:-85,theme:'coast'}
   ];
   let sc=null,cam=null,ren=null,raf=0,grp=null,markers=[],picked=-1,rot=0.5,drag=null,vel=0,ray=null,mouse=null,moved=0;
   function llToVec(lat,lon,rad){ const phi=(90-lat)*Math.PI/180, th=(lon+180)*Math.PI/180;
@@ -5728,7 +5759,7 @@ window.NETRACE=false;
   document.getElementById('globeRace').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return; const gd=GLOBE[picked];
     selectedCar=picked; try{ if(typeof saveSelCar==='function') saveSelCar(); else localStorage.setItem('sd_car',selectedCar); }catch(_){}
     if(typeof renderShop==='function') renderShop(); if(typeof upgradeCars==='function') upgradeCars();
-    let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>t.theme===gd.theme):-1; if(ti<0) ti=0; currentTrack=ti;
+    let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; currentTrack=ti;
     try{ if(typeof selectTrack==='function') selectTrack(currentTrack); }catch(_){}
     close();
     if(typeof ownedCars!=='undefined' && ownedCars[selectedCar]){ const sb=document.getElementById('startBtn'); if(sb) sb.click(); }
