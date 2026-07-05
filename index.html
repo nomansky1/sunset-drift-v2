@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v8.2-->
+<!--BUILD:v8.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -427,6 +427,13 @@
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); white-space:nowrap; }
   .gaBtn:active{ transform:scale(.93); }
   .gaBtn.primary{ background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#160c06; }
+  #globeBack{ width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.3);
+    color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; flex:0 0 auto; }
+  #globeBack:active{ transform:scale(.9); }
+  #menuBack{ position:absolute; top:calc(env(safe-area-inset-top,8px) + 46px); left:12px; z-index:6; pointer-events:auto;
+    background:rgba(24,20,40,.78); border:1px solid rgba(255,255,255,.25); color:#e8e2f4; font-weight:900; font-size:12px;
+    letter-spacing:.6px; padding:9px 13px; border-radius:10px; cursor:pointer; }
+  #menuBack:active{ transform:scale(.93); }
   /* ---- MODERN HUD: circular glass buttons, colored glow, springy press, attention pulse ---- */
   .btn{ width:72px; height:72px; border-radius:50%; pointer-events:auto;
         display:flex; align-items:center; justify-content:center; flex-direction:column;
@@ -816,6 +823,7 @@
 <div id="hitMark">✕</div>
 <div id="killFeed"></div>
 <div id="menu" class="overlay">
+<div id="menuBack">← 🌍 WORLD</div>
   <canvas id="menuFx"></canvas>
   <div id="coinBadge">🪙 0</div>
   <div id="topBar">
@@ -1002,12 +1010,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.2</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.3</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v8.2';
+(function(){ const BUILD='v8.3';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5730,6 +5738,7 @@ window.NETRACE=false;
   <div id="globeCard" class="hidden">
     <img id="globeFlag" alt="">
     <div id="globeInfo"><div id="globeCountry">—</div><div id="globeMeta">—</div></div>
+    <div id="globeBack">✕</div>
     <div id="globeRace">RACE ▶</div>
   </div>
 </div>
@@ -5751,7 +5760,7 @@ window.NETRACE=false;
     {lat:22,lon:79,theme:'desert'},{lat:-25,lon:133,theme:'desert'},{lat:-29,lon:24,theme:'desert'},
     {lat:26,lon:30,theme:'desert'},{lat:24,lon:54,theme:'desert'}
   ];
-  let sc=null,cam=null,ren=null,raf=0,grp=null,markers=[],picked=-1,rot=0.5,drag=null,vel=0,ray=null,mouse=null,moved=0;
+  let sc=null,cam=null,ren=null,raf=0,grp=null,markers=[],picked=-1,rot=0.5,tilt=-0.32,drag=null,vel=0,velT=0,ray=null,mouse=null,moved=0;
   function llToVec(lat,lon,rad){ const phi=(90-lat)*Math.PI/180, th=(lon+180)*Math.PI/180;
     return new THREE.Vector3(-rad*Math.sin(phi)*Math.cos(th), rad*Math.cos(phi), rad*Math.sin(phi)*Math.sin(th)); }
   function earthTex(){ const W=1024,H=512,c=document.createElement('canvas'); c.width=W;c.height=H; const x=c.getContext('2d');
@@ -5767,7 +5776,7 @@ window.NETRACE=false;
     const t=new THREE.CanvasTexture(c); if('encoding' in t) t.encoding=THREE.sRGBEncoding; return t; }
   function init(){ if(sc) return; const cv=document.getElementById('globeCanvas');
     ren=new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true}); ren.setPixelRatio(Math.min(devicePixelRatio,2));
-    sc=new THREE.Scene(); cam=new THREE.PerspectiveCamera(45,1,0.1,120); cam.position.set(0,0,4.7);
+    sc=new THREE.Scene(); cam=new THREE.PerspectiveCamera(45,1,0.1,120); cam.position.set(0,0.18,6.1);
     grp=new THREE.Group(); grp.rotation.x=-0.32; sc.add(grp);
     const em=new THREE.MeshStandardMaterial({map:earthTex(), roughness:1, metalness:0, emissive:0x0b1526, emissiveIntensity:0.5});
     const earth=new THREE.Mesh(new THREE.SphereGeometry(1.7,64,64), em);
@@ -5790,13 +5799,15 @@ window.NETRACE=false;
   function resize(){ const cv=document.getElementById('globeCanvas'); const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
     if(ren){ ren.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); } }
   function loop(){ raf=requestAnimationFrame(loop);
-    if(drag===null) rot+=0.0024; rot+=vel; vel*=0.9; grp.rotation.y=rot;
+    if(drag===null) rot+=0.0024; rot+=vel; vel*=0.9; tilt=Math.max(-1.15,Math.min(1.15,tilt+velT)); velT*=0.9; grp.rotation.y=rot; grp.rotation.x=tilt;
     const t=performance.now()*0.004;
     markers.forEach(m=>{ const pulse=0.9+0.4*Math.sin(t+m.i*1.3); m.ring.scale.setScalar(m.i===picked?2.1:pulse); m.pin.scale.setScalar(m.i===picked?2.0:1); });
     ren.render(sc,cam); }
   function bind(cv){
-    cv.addEventListener('pointerdown',e=>{ drag=e.clientX; moved=0; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
-    cv.addEventListener('pointermove',e=>{ if(drag===null) return; const dx=e.clientX-drag; moved+=Math.abs(dx); vel=dx*0.0004; rot+=dx*0.006; drag=e.clientX; });
+    cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; moved=0; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
+    cv.addEventListener('pointermove',e=>{ if(drag===null) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+      moved+=Math.abs(dx)+Math.abs(dy); vel=dx*0.0004; velT=dy*0.0003;
+      rot+=dx*0.006; tilt=Math.max(-1.15,Math.min(1.15, tilt+dy*0.005)); drag={x:e.clientX,y:e.clientY}; });
     cv.addEventListener('pointerup',e=>{ const wasDrag=moved>6; drag=null; if(!wasDrag){ const r=cv.getBoundingClientRect();
       mouse.x=((e.clientX-r.left)/r.width)*2-1; mouse.y=-((e.clientY-r.top)/r.height)*2+1; ray.setFromCamera(mouse,cam);
       const hits=ray.intersectObjects(markers.map(m=>m.hit)); if(hits.length) select(hits[0].object.userData.i); } });
@@ -5826,6 +5837,8 @@ window.NETRACE=false;
   act('gaOnline', ()=>{ close(); const b=document.getElementById('onlineBtn'); if(b) b.click(); });
   act('gaSettings',()=>{ close(); const t=document.querySelector('.tab[data-tab="settings"]'); if(t) t.click(); });
   const tw=document.getElementById('tabWorld'); if(tw) tw.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });
+  const gb=document.getElementById('globeBack'); if(gb) gb.addEventListener('click', e=>{ e.stopPropagation(); picked=-1; document.getElementById('globeCard').classList.add('hidden'); });
+  const mb=document.getElementById('menuBack'); if(mb) mb.addEventListener('click', e=>{ e.stopPropagation(); if(window.audio&&audio.ui) audio.ui(); window.openGlobe(); });
   // GLOBE IS THE MAIN MENU: auto-open on boot + every return to the menu (races/battles end -> back to the globe)
   let _prevInm=document.body.classList.contains('inmenu');
   try{ new MutationObserver(()=>{ const inm=document.body.classList.contains('inmenu');
