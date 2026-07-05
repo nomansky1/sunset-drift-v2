@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v8.9-->
+<!--BUILD:v9.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1021,12 +1021,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v8.9</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.0</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v8.9';
+(function(){ const BUILD='v9.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4372,6 +4372,31 @@ function mountGun(rig){ if(rig.gun||!rig.group) return;
   g.scale.setScalar(clamp((d.W||2)*0.56, 0.95, 1.35));
   g.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; });
   rig.group.add(g); rig.gun=g; rig.gunYaw=yaw; rig.gunSpin=spin; rig.muzzle=mzl; rig.rocketMuz=rmuz; rig.rocketPod=pod; }
+// BATTLE ARMOR — bolted plating scaled to each car's real dims (bull-bar, side skirts, roll cage, rear guard)
+function mountArmor(rig, lvl){ if(!rig.group || rig.armor) return; lvl=clamp(lvl||1,1,3);
+  const M=gunMats(), d=rig.dims||{W:2,H:1.5,Lz:4.6}, W=d.W,H=d.H,Lz=d.Lz, a=new THREE.Group();
+  const barY=clamp(H*0.34,0.28,0.72), fz=Lz/2-0.02;
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,W*0.94,10), M.steel); bar.rotation.z=Math.PI/2; bar.position.set(0,barY,fz); a.add(bar);   // front push-bar
+  for(const sx of [-1,1]){ const up=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,barY*0.95,8), M.dark); up.position.set(sx*W*0.34, barY*0.55, fz-0.05); a.add(up); }
+  if(lvl>=2){ const grille=new THREE.Mesh(new THREE.BoxGeometry(W*0.68,barY*0.66,0.05), M.dark); grille.position.set(0,barY*0.56,fz-0.03); a.add(grille); }
+  for(const sx of [-1,1]){ const plate=new THREE.Mesh(new THREE.BoxGeometry(0.06,H*0.26,Lz*0.52), M.trim); plate.position.set(sx*W*0.5, H*0.29, -Lz*0.02); a.add(plate);   // side skirt armor
+    for(let r=0;r<4;r++){ const rv=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.06,6), M.steel); rv.rotation.z=Math.PI/2; rv.position.set(sx*W*0.53, H*0.29, -Lz*0.22+r*Lz*0.14); a.add(rv); } }
+  if(lvl>=2){ const cageY=Math.min(H,2.4)*0.92, cz=-Lz*0.1;                                              // roll cage bar behind the cabin
+    const rb=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,W*0.74,8), M.steel); rb.rotation.z=Math.PI/2; rb.position.set(0,cageY,cz); a.add(rb);
+    for(const sx of [-1,1]){ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,cageY*0.55,8), M.dark); leg.position.set(sx*W*0.33,cageY*0.74,cz); leg.rotation.x=0.14; a.add(leg); } }
+  if(lvl>=3){ const rear=new THREE.Mesh(new THREE.BoxGeometry(W*0.88,H*0.2,0.08), M.trim); rear.position.set(0,barY*0.82,-Lz/2+0.02); a.add(rear); }   // rear guard
+  a.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); rig.group.add(a); rig.armor=a; }
+// NITRO KIT — twin glowing NOS bottles strapped to the rear deck
+function mountNitro(rig){ if(!rig.group || rig.nitroKit) return;
+  const d=rig.dims||{W:2,H:1.5,Lz:4.6}, W=d.W,H=d.H,Lz=d.Lz, g=new THREE.Group();
+  const bmat=new THREE.MeshStandardMaterial({color:0x1a6bff, metalness:0.5, roughness:0.3, emissive:0x0e3a8c, emissiveIntensity:0.6});
+  const cmat=new THREE.MeshStandardMaterial({color:0xd0d4da, metalness:0.9, roughness:0.2});
+  const deckY=clamp(H*0.5,0.42,1.15), dz=-Lz*0.26, bl=clamp(H*0.6,0.5,1.0);
+  for(const sx of [-1,1]){ const b=new THREE.Group();
+    b.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,bl,12), bmat));
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.065,0.1,10), cmat); cap.position.y=bl*0.52; b.add(cap);
+    b.rotation.x=0.55; b.position.set(sx*W*0.19, deckY, dz); g.add(b); }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); rig.group.add(g); rig.nitroKit=g; }
 function buildZone(){ if(zoneMesh){ scene.remove(zoneMesh); zoneMesh.geometry.dispose(); }
   const geo=new THREE.CylinderGeometry(1,1,80,64,1,true);
   zoneMesh=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x3aa0ff, transparent:true, opacity:0.13, side:THREE.DoubleSide, depthWrite:false}));
@@ -4573,6 +4598,8 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
     c.rkAmmo = c.isPlayer ? (BR.rkAmmo + (warsenal.rkt||0)) : 0;                          // ROCKETS upgrade grants extra starting ammo
     c.brName = c.isPlayer ? 'YOU' : (RACER_NAMES[1+((i-1)%(RACER_NAMES.length-1))]+' '+i);  // stable kill-feed name
     mountGun(c.rig);
+    mountArmor(c.rig, c.isPlayer ? Math.max(1, warsenal.arm||0) : (1+(i%2)));
+    mountNitro(c.rig);
     const a=(i/cars.length)*6.283, rr=trackRadius*0.5; c.pos.set(zoneCX+Math.cos(a)*rr, zoneCZ+Math.sin(a)*rr); c.heading=Math.atan2(zoneCX-c.pos.x, zoneCZ-c.pos.y); c.vel.set(0,0); c.air=0; c.trackIdx=i*47; syncCarMesh(c); });
   buildHpBars(); for(let i=0;i<3;i++) spawnPickup(i%2?'rkt':'heal'); brSupplyT=9;   // seed the arena with crates + arm the first supply drop
   brAlive=cars.length;
@@ -4593,7 +4620,7 @@ function endBattle(){ brActive=false; document.body.classList.remove('inbattle')
   if(zoneMesh){ scene.remove(zoneMesh); zoneMesh=null; }
   brTracers.forEach(t=>{ scene.remove(t.ln); }); brTracers=[];
   const h=document.getElementById('brHud'); if(h) h.classList.remove('show');
-  cars.forEach(c=>{ c.alive=true; c.hp=BR.maxHP; if(c.rig.gun){ c.rig.group.remove(c.rig.gun); c.rig.gun=c.rig.gunYaw=c.rig.muzzle=null; } if(c.rig.group) c.rig.group.visible=true; if(c.shadowMesh) c.shadowMesh.visible=true; });
+  cars.forEach(c=>{ c.alive=true; c.hp=BR.maxHP; if(c.rig.gun){ c.rig.group.remove(c.rig.gun); c.rig.gun=c.rig.gunYaw=c.rig.muzzle=null; } if(c.rig.armor){ c.rig.group.remove(c.rig.armor); c.rig.armor=null; } if(c.rig.nitroKit){ c.rig.group.remove(c.rig.nitroKit); c.rig.nitroKit=null; } if(c.rig.group) c.rig.group.visible=true; if(c.shadowMesh) c.shadowMesh.visible=true; });
   while(cars.length > CONFIG.aiCount+1){ const c=cars.pop(); if(c.rig&&c.rig.group){ scene.remove(c.rig.group); disposeGroup(c.rig.group); } if(c.shadowMesh) scene.remove(c.shadowMesh); }   // remove the extra battle fighters (back to the race grid)
 }
 function brFinish(place){ state='finished'; hidePauseUI();
