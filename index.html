@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v8.4-->
+<!--BUILD:v8.5-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1006,12 +1006,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.4</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v8.5</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v8.4';
+(function(){ const BUILD='v8.5';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1739,19 +1739,30 @@ class AudioEngine {
       this.turboG=this.ctx.createGain(); this.turboG.gain.value=0;
       this.turbo.connect(this.turboF); this.turboF.connect(this.turboG); this.turboG.connect(this.comp); try{this.turbo.start();}catch(e){}
       this.engChar=this.engChar||{pitch:1, turbo:0.5}; this._prevThr=false;
-      const LAYERS=[['audio/engine-idle.mp3',0.10],['audio/eng2.wav',0.42],['audio/eng4.wav',0.72],['audio/eng5.wav',1.0]];  // cleaner CC0 idle at the low end
+      const LAYERS=[['audio/gd-engine-idle.wav',0.10],['audio/gd-engine-rev.wav',0.90]];  // GLOBAL DRIFT premium engine loop (idle -> rev, crossfaded by rpm + pitch-shifted)
       LAYERS.forEach((L,i)=>{ this._fetchBuf(L[0]).then(buf=>{ if(!buf||!this.ctx) return;
         const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=true;
         const g=this.ctx.createGain(); g.gain.value=0; src.connect(g); g.connect(this.engGain); try{src.start();}catch(e){}
         this.layers[i]={src,g,center:L[1]}; }); });
-      this._fetchBuf('audio/skid.mp3').then(b=>this.buffers.skid=b);
-      this._fetchBuf('audio/nitro2.mp3').then(b=>this.buffers.boost=b);   // clean CC0 air-hiss NOS purge (replaces the harsh whoosh)
+      this._fetchBuf('audio/gd-screech.wav').then(b=>this.buffers.skid=b);
+      this._fetchBuf('audio/gd-nitrous.wav').then(b=>this.buffers.boost=b);
+      this._fetchBuf('audio/gd-crash.wav').then(b=>this.buffers.crash=b);
+      this._fetchBuf('audio/gd-explosion.wav').then(b=>this.buffers.explosion=b);
+      this._fetchBuf('audio/gd-rocket.wav').then(b=>this.buffers.rocket=b);
+      this._fetchBuf('audio/gd-gatling.wav').then(b=>this.buffers.gat=b);
+      this._fetchBuf('audio/gd-ui.wav').then(b=>this.buffers.ui=b);
+      this._fetchBuf('audio/gd-hover.wav').then(b=>this.buffers.hover=b);
+      this._fetchBuf('audio/gd-victory.wav').then(b=>this.buffers.victory=b);
       this.master.gain.linearRampToValueAtTime(muted?0:sfxVolume, t+0.4);
       this.ok=true;
     }catch(e){ this.ok=false; }
   }
   setVolume(v){ if(this.ok) this.master.gain.setTargetAtTime(muted?0:v, this.ctx.currentTime, 0.04); }
   _fetchBuf(url){ return fetch(url).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>this.ctx.decodeAudioData(ab,res,rej))).catch(()=>null); }
+  _play(buf, vol, rate){ if(!this.ok||!buf) return; try{ const s=this.ctx.createBufferSource(); s.buffer=buf; if(rate) s.playbackRate.value=rate;
+    const g=this.ctx.createGain(); g.gain.value=(vol==null?0.7:vol); s.connect(g); g.connect(this.comp); s.start(); }catch(e){} }
+  victory(){ if(this.buffers&&this.buffers.victory) this._play(this.buffers.victory, 0.7); }
+  hover(){ if(this.buffers&&this.buffers.hover) this._play(this.buffers.hover, 0.28); }
   update(speed01, throttle, drift, boosting){ if(!this.ok) return; if(window.__auto){ if(this.master) this.master.gain.value=0; return; } const t=this.ctx.currentTime;
     // faux 5-speed gearbox: rpm climbs within a gear then "shifts" back down on the next
     const gv=[0,0.16,0.34,0.55,0.80,1.30]; let g=0; while(g<gv.length-2 && speed01>gv[g+1]) g++;
@@ -1791,7 +1802,7 @@ class AudioEngine {
       const lp=this.ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=4200;   // shave the harsh top end
       s.connect(lp); lp.connect(g); g.connect(this.comp); try{s.start();}catch(e){} }
   }
-  thud(v){ if(!this.ok) return; v=clamp(v||0.5,0.2,1); try{ const t=this.ctx.currentTime, o=this.comp;
+  thud(v){ if(!this.ok) return; v=clamp(v||0.5,0.2,1); if(this.buffers.crash){ this._play(this.buffers.crash, 0.35+0.4*v); return; } try{ const t=this.ctx.currentTime, o=this.comp;
     const so=this.ctx.createOscillator(); so.type='sine'; so.frequency.setValueAtTime(150,t); so.frequency.exponentialRampToValueAtTime(46,t+0.18);
     const sg=this.ctx.createGain(); sg.gain.setValueAtTime(0.55*v,t); sg.gain.exponentialRampToValueAtTime(0.001,t+0.26);
     so.connect(sg); sg.connect(o); so.start(); so.stop(t+0.3);
@@ -1815,7 +1826,7 @@ class AudioEngine {
       a.connect(g); g.connect(o); a.start(t+t0); a.stop(t+t0+dur+0.02); };
     mk(1318,0,0.08); mk(1976,0.05,0.13);                  // bright B->E ding (coin pickup)
   }catch(e){} }
-  boom(v){ if(!this.ok) return; v=clamp(v||0.7,0.15,1); try{ const t=this.ctx.currentTime, o=this.comp;
+  boom(v){ if(!this.ok) return; v=clamp(v||0.7,0.15,1); if(this.buffers.explosion){ this._play(this.buffers.explosion, 0.4+0.5*v); return; } try{ const t=this.ctx.currentTime, o=this.comp;
     const so=this.ctx.createOscillator(); so.type='sine'; so.frequency.setValueAtTime(95,t); so.frequency.exponentialRampToValueAtTime(28,t+0.5);   // sub thump
     const sg=this.ctx.createGain(); sg.gain.setValueAtTime(0.8*v,t); sg.gain.exponentialRampToValueAtTime(0.001,t+0.6);
     so.connect(sg); sg.connect(o); so.start(); so.stop(t+0.65);
@@ -1828,14 +1839,14 @@ class AudioEngine {
     const cg=this.ctx.createGain(); cg.gain.setValueAtTime(0.5*v,t); cg.gain.exponentialRampToValueAtTime(0.001,t+0.07);
     c2.connect(cf); cf.connect(cg); cg.connect(o); c2.start(); c2.stop(t+0.09);
   }catch(e){} }
-  launch(){ if(!this.ok) return; try{ const t=this.ctx.currentTime, o=this.comp;
+  launch(){ if(!this.ok) return; if(this.buffers.rocket){ this._play(this.buffers.rocket, 0.6); return; } try{ const t=this.ctx.currentTime, o=this.comp;
     const n=this.ctx.createBufferSource(); n.buffer=this.noiseBuf;                                    // rocket WHOOSH: band-swept air
     const bf=this.ctx.createBiquadFilter(); bf.type='bandpass'; bf.Q.value=1.1;
     bf.frequency.setValueAtTime(420,t); bf.frequency.exponentialRampToValueAtTime(2600,t+0.12); bf.frequency.exponentialRampToValueAtTime(700,t+0.5);
     const g=this.ctx.createGain(); g.gain.setValueAtTime(0.0,t); g.gain.linearRampToValueAtTime(0.5,t+0.05); g.gain.exponentialRampToValueAtTime(0.001,t+0.55);
     n.connect(bf); bf.connect(g); g.connect(o); n.start(); n.stop(t+0.6);
   }catch(e){} }
-  gat(){ if(!this.ok) return; try{ const t=this.ctx.currentTime, o=this.comp;                        // tight mechanical TICK (called every other round)
+  gat(){ if(!this.ok) return; if(this.buffers.gat){ const tn=this.ctx.currentTime; if(tn-(this._gatT||0)>0.2){ this._gatT=tn; this._play(this.buffers.gat, 0.4); } return; } try{ const t=this.ctx.currentTime, o=this.comp;                        // tight mechanical TICK (called every other round)
     const n=this.ctx.createBufferSource(); n.buffer=this.noiseBuf;
     const hf=this.ctx.createBiquadFilter(); hf.type='highpass'; hf.frequency.value=2400;
     const g=this.ctx.createGain(); g.gain.setValueAtTime(0.16,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.045);
@@ -1844,7 +1855,7 @@ class AudioEngine {
     const pg=this.ctx.createGain(); pg.gain.setValueAtTime(0.10,t); pg.gain.exponentialRampToValueAtTime(0.001,t+0.05);
     p.connect(pg); pg.connect(o); p.start(); p.stop(t+0.06);
   }catch(e){} }
-  ui(){ if(!this.ok) return; try{ const t=this.ctx.currentTime, o=this.comp;   // soft menu tick (tab switch / selection)
+  ui(){ if(!this.ok) return; if(this.buffers.ui){ this._play(this.buffers.ui, 0.45); return; } try{ const t=this.ctx.currentTime, o=this.comp;   // soft menu tick (tab switch / selection)
     const a=this.ctx.createOscillator(); a.type='triangle'; a.frequency.setValueAtTime(1200,t); a.frequency.exponentialRampToValueAtTime(760,t+0.05);
     const g=this.ctx.createGain(); g.gain.setValueAtTime(0.09,t); g.gain.exponentialRampToValueAtTime(0.0008,t+0.09);
     a.connect(g); g.connect(o); a.start(); a.stop(t+0.11);
@@ -4587,6 +4598,7 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
 function finishRace(){
   player.finished=true; state='finished'; hidePauseUI();
   const r=rankOf(player), won=r===1;
+  if(won && window.audio && audio.victory) audio.victory();
   if(!timeTrial){ questProgress('finish',1); if(won) questProgress('win',1); }   // DAILY QUEST progress
   // ADAPTIVE AI: every win permanently sharpens the field (+0.07 power, cap +0.35);
   // finishing 3rd+ relaxes it. Beating everyone stops being possible to do on autopilot.
