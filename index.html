@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v7.6-->
+<!--BUILD:v7.7-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -972,12 +972,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.6</b> — built with Three.js</div>
+<div class="credit">Sunset Drift <b id="buildTag" style="color:#ffb45a">v7.7</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v7.6';
+(function(){ const BUILD='v7.7';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5058,12 +5058,21 @@ init();
 // Backend-ready adapter: times live in localStorage today; swap LB.submit/LB.top to a Vercel endpoint later for a
 // truly global board (Supabase REST is quota-blocked, so global must route through the backend pooler). The
 // CHALLENGE link is real async competition NOW — encodes {track,time,name} in the URL, no server needed.
+const SD_LB_DEFAULT = '';   // <- baked-in global-leaderboard backend URL (empty = local-only; set once deployed)
+const SD_LB_URL = (function(){ try{ return ((localStorage.getItem('sd_lb_url')||SD_LB_DEFAULT)||'').replace(/\/+$/,''); }catch(e){ return SD_LB_DEFAULT; } })();
 const LB={
+  remote: !!SD_LB_URL,
+  _post(board,name,ms){ if(!SD_LB_URL) return; try{ let ava=''; try{ ava=localStorage.getItem('sd_avatar')||''; }catch(e){}
+    fetch(SD_LB_URL+'/api/score',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({board:board,name:name,ms:ms,avatar:(ava&&ava.length<20000)?ava:''})}).catch(()=>{}); }catch(e){} },
+  _top(board,cb){ if(!SD_LB_URL){ cb(null); return; }
+    fetch(SD_LB_URL+'/api/top?board='+encodeURIComponent(board)+'&n=12&ava=1')
+      .then(r=>r.json()).then(d=>cb(d&&d.rows?d:null)).catch(()=>cb(null)); },
   _k(day,track){ return 'sd_lb_'+day+'_'+track; },
   get(day,track){ try{ return JSON.parse(localStorage.getItem(this._k(day,track))||'[]'); }catch(e){ return []; } },
   _save(day,track,b){ try{ localStorage.setItem(this._k(day,track), JSON.stringify(b.slice(0,50))); }catch(e){} },
   submit(day,track,name,ms){ const b=this.get(day,track); const me=b.find(r=>r.self);
-    if(me){ if(ms<me.ms){ me.ms=ms; me.name=name; } } else b.push({name,ms,self:true}); this._save(day,track,b); },
+    if(me){ if(ms<me.ms){ me.ms=ms; me.name=name; } } else b.push({name,ms,self:true}); this._save(day,track,b); this._post('d.'+day+'.'+track,name,ms); },
   addChallenge(day,track,name,ms){ const b=this.get(day,track);
     if(!b.some(r=>!r.self && r.name===name && Math.abs(r.ms-ms)<50)){ b.push({name,ms,self:false}); this._save(day,track,b); } },
   top(day,track){ return this.get(day,track).slice().sort((a,b)=>a.ms-b.ms); },
@@ -5071,7 +5080,7 @@ const LB={
   tget(k){ try{ return JSON.parse(localStorage.getItem(this._tk(k))||'[]'); }catch(e){ return []; } },
   submitTrack(k,name,ms){ const b=this.tget(k); const me=b.find(r=>r.self);
     if(me){ if(ms<me.ms){ me.ms=ms; me.name=name; } } else b.push({name,ms,self:true});
-    try{ localStorage.setItem(this._tk(k), JSON.stringify(b.slice(0,50))); }catch(e){} },
+    try{ localStorage.setItem(this._tk(k), JSON.stringify(b.slice(0,50))); }catch(e){} this._post(k,name,ms); },
   topTrack(k){ return this.tget(k).slice().sort((a,b)=>a.ms-b.ms); }
 };
 // stable per-track key: normal tracks by index, custom tracks by an FNV hash of theme+nodes (same track = same board)
@@ -5087,7 +5096,13 @@ function renderTrackBoard(){ const list=document.getElementById('lbList'); if(!l
   const sh=document.getElementById('lbShare'); if(sh) sh.style.display=(currentTrack===CUSTOM_IDX)?'block':'none';
   list.innerHTML = rows.length ? rows.slice(0,12).map((r,i)=>
     '<div class="lbRow'+(r.self?' me':'')+'"><div class="rk">'+(i+1)+'</div><div class="nm">'+(r.self?'YOU':r.name)+'</div><div class="tm">'+lbFmt(r.ms)+'</div></div>').join('')
-    : '<div style="font-size:12px;color:#9a90ae;padding:14px">Be the first to set a time on this track!</div>'; }
+    : '<div style="font-size:12px;color:#9a90ae;padding:14px">Be the first to set a time on this track!</div>';
+  if(LB.remote){ const boardKey=trackKeyNow(), me=lbName();
+    LB._top(boardKey, d=>{ if(!d||!d.rows||!d.rows.length||!_lbTrackMode) return;
+      const sub2=document.getElementById('lbSub'); if(sub2) sub2.textContent=tname+' \u00b7 \uD83C\uDF10 GLOBAL best';
+      list.innerHTML = d.rows.slice(0,12).map((r,i)=>{ const isMe=r.name===me;
+        const av=(d.avatars&&d.avatars[r.name])?('<img src="'+d.avatars[r.name]+'" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;border:1px solid rgba(255,255,255,.4)">'):'';
+        return '<div class="lbRow'+(isMe?' me':'')+'"><div class="rk">'+(i+1)+'</div><div class="nm">'+av+(isMe?'YOU':r.name)+'</div><div class="tm">'+lbFmt(r.ms)+'</div></div>'; }).join(''); }); } }
 function openTrackBoard(){ renderTrackBoard(); const m=document.getElementById('lbModal'); if(m) m.classList.remove('hidden'); }
 window.openTrackBoard=openTrackBoard;
 function lbName(){ try{ return (localStorage.getItem('sd_name')||'YOU').toUpperCase().slice(0,12); }catch(e){ return 'YOU'; } }
