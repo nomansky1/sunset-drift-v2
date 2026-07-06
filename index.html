@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.2-->
+<!--BUILD:v9.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -425,10 +425,20 @@
   #globeClose{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 8px); right:14px; z-index:3; width:40px; height:40px; border-radius:50%;
     background:rgba(20,16,34,.72); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:19px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; pointer-events:auto; }
-  #globeCard{ position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,10px) + 76px); transform:translateX(-50%);
-    width:min(94vw,440px); background:linear-gradient(160deg,rgba(30,24,48,.94),rgba(14,10,26,.94));
-    border:1px solid rgba(255,255,255,.18); border-radius:15px; padding:12px 14px; display:flex; align-items:center; gap:12px;
-    box-shadow:0 16px 48px rgba(0,0,0,.6); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px); }
+  #globeCard{ position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,10px) + 14px); transform:translateX(-50%);
+    width:min(94vw,420px); background:linear-gradient(160deg,rgba(30,24,48,.95),rgba(14,10,26,.96));
+    border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; z-index:5;
+    box-shadow:0 16px 48px rgba(0,0,0,.65); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  #gcTop{ display:flex; align-items:center; gap:12px; }
+  #gcMid{ display:flex; align-items:center; gap:14px; }
+  #gcTrack{ width:120px; height:88px; flex:0 0 auto; background:rgba(0,0,0,.32); border:1px solid rgba(255,255,255,.12); border-radius:10px;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  #gcTrack svg{ width:104px; height:80px; }
+  #gcInfo2{ flex:1; text-align:left; min-width:0; }
+  #gcDiff{ font-size:12px; font-weight:800; letter-spacing:1px; color:#cfc6ea; }
+  #gcDiff .on{ color:#ffd23b; letter-spacing:1px; } #gcDiff .off{ color:rgba(255,255,255,.22); letter-spacing:1px; }
+  #gcCar{ font-size:12px; color:#bcb0e4; margin-top:7px; font-weight:700; }
+  #globeRace{ text-align:center; }
   #globeCard.hidden{ display:none; }
   #globeFlag{ width:48px; height:32px; border-radius:5px; border:1px solid rgba(255,255,255,.45); object-fit:cover; flex:0 0 auto; }
   #globeInfo{ flex:1; text-align:left; min-width:0; }
@@ -1024,12 +1034,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.2</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.3</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.2';
+(function(){ const BUILD='v9.3';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1488,6 +1498,15 @@ const TRACKS=[
     sky:{top:0x5a6a55,bot:0xa6b298,sun:0xe8dfbe}, sun:[-0.4,0.28,-0.7],
     ctrl:[[-175,-110],[-60,-150],[35,-105],[62,-30],[135,-60],[186,-6],[130,45],[170,105],[60,150],[-40,118],[-96,150],[-172,96],[-120,34],[-152,-30],[-186,-64]] },   // murky bayou — cypress + reeds
 ];
+let _trackDiffCache=null;
+function trackDifficulties(){ if(_trackDiffCache) return _trackDiffCache;
+  const curv=(ctrl)=>{ try{ const v=ctrl.map(pt=>new THREE.Vector3(pt[0],0,pt[1]));
+    const pts=new THREE.CatmullRomCurve3(v,true,'centripetal',0.5).getSpacedPoints(160); let sm=0, n=pts.length;
+    for(let i=0;i<n;i++){ const a=pts[(i-1+n)%n],b=pts[i],c=pts[(i+1)%n];
+      let ang=Math.atan2(c.z-b.z,c.x-b.x)-Math.atan2(b.z-a.z,b.x-a.x); while(ang>Math.PI)ang-=6.283185; while(ang<-Math.PI)ang+=6.283185; sm+=Math.abs(ang); }
+    return sm; }catch(e){ return 0; } };
+  const raw=TRACKS.map(t=>curv(t.ctrl)), mn=Math.min.apply(null,raw), mx=Math.max.apply(null,raw);
+  _trackDiffCache=raw.map(r=> mx>mn ? Math.max(1,Math.min(5,Math.round(1+4*(r-mn)/(mx-mn)))) : 3 ); return _trackDiffCache; }
 let state = 'menu';           // menu | countdown | race | finished | paused
 let countdown = 0, goTimer = 0, raceTime = 0, lastBeepN = 99, menuT = 0;
 let champ = { active:false, order:[0,3,5,2,6,4,1], round:0, points:[] };   // championship: 7-track sequence (incl. DUST DEVIL desert) + points per car
@@ -5798,9 +5817,15 @@ window.NETRACE=false;
     <div class="gaBtn" id="gaSettings">⚙</div>
   </div>
   <div id="globeCard" class="hidden">
-    <img id="globeFlag" alt="">
-    <div id="globeInfo"><div id="globeCountry">—</div><div id="globeMeta">—</div></div>
-    <div id="globeBack">✕</div>
+    <div id="gcTop">
+      <img id="globeFlag" alt="">
+      <div id="globeInfo"><div id="globeCountry">—</div><div id="globeMeta">—</div></div>
+      <div id="globeBack">✕</div>
+    </div>
+    <div id="gcMid">
+      <div id="gcTrack"></div>
+      <div id="gcInfo2"><div id="gcDiff"></div><div id="gcCar"></div></div>
+    </div>
     <div id="globeRace">RACE ▶</div>
   </div>
 </div>
@@ -5894,10 +5919,17 @@ window.NETRACE=false;
   function select(i){ picked=i; const co=COUNTRIES[i], gd=GLOBE[i], car=(typeof CARS!=='undefined'&&CARS[i])?CARS[i].name:'CAR';
     const fl=document.getElementById('globeFlag'); if(typeof flagURL==='function') fl.src=flagURL(co.key);
     document.getElementById('globeCountry').textContent=co.name;
-    document.getElementById('globeMeta').textContent=gd.theme.toUpperCase()+' · '+car;
-    document.getElementById('globeCard').classList.remove('hidden'); }
+    let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; const trk=TRACKS[ti]||{};
+    document.getElementById('globeMeta').textContent=(trk.name||gd.theme.toUpperCase());
+    const gt=document.getElementById('gcTrack'); if(gt && typeof trackThumb==='function' && trk.ctrl){ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b'; gt.innerHTML=trackThumb(trk.ctrl, acc); }
+    const dd=document.getElementById('gcDiff'); if(dd){ let d=3; try{ d=trackDifficulties()[ti]||3; }catch(e){} dd.innerHTML='DIFFICULTY  <span class="on">'+'\u2605'.repeat(d)+'</span><span class="off">'+'\u2605'.repeat(5-d)+'</span>'; }
+    const cc=document.getElementById('gcCar'); if(cc) cc.textContent='\uD83C\uDFCE '+car+'  \u00b7  '+gd.theme.toUpperCase();
+    document.getElementById('globeCard').classList.remove('hidden');
+    const ga=document.getElementById('globeActions'); if(ga) ga.style.display='none'; }
   function close(){ document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
-  window.openGlobe=function(){ if(window.audio){ audio.start&&audio.start(); audio.ui&&audio.ui(); } init(); document.getElementById('globeModal').classList.add('show'); resize(); if(!raf) loop(); };
+  window.openGlobe=function(){ if(window.audio){ audio.start&&audio.start(); audio.ui&&audio.ui(); } init(); picked=-1;
+    const gc=document.getElementById('globeCard'); if(gc) gc.classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display='';
+    document.getElementById('globeModal').classList.add('show'); resize(); if(!raf) loop(); };
   window.addEventListener('resize', ()=>{ if(document.getElementById('globeModal').classList.contains('show')) resize(); });
   document.getElementById('globeClose').addEventListener('click', e=>{ e.stopPropagation(); close(); });
   document.getElementById('globeRace').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return; const gd=GLOBE[picked];
@@ -5916,7 +5948,7 @@ window.NETRACE=false;
   act('gaOnline', ()=>{ close(); const b=document.getElementById('onlineBtn'); if(b) b.click(); });
   act('gaSettings',()=>{ close(); const t=document.querySelector('.tab[data-tab="settings"]'); if(t) t.click(); });
   const tw=document.getElementById('tabWorld'); if(tw) tw.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });
-  const gb=document.getElementById('globeBack'); if(gb) gb.addEventListener('click', e=>{ e.stopPropagation(); picked=-1; document.getElementById('globeCard').classList.add('hidden'); });
+  const gb=document.getElementById('globeBack'); if(gb) gb.addEventListener('click', e=>{ e.stopPropagation(); picked=-1; document.getElementById('globeCard').classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display=''; });
   // GLOBE IS THE MAIN MENU: auto-open on boot + every return to the menu (races/battles end -> back to the globe)
   let _prevInm=document.body.classList.contains('inmenu');
   try{ new MutationObserver(()=>{ const inm=document.body.classList.contains('inmenu');
