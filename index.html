@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.0-->
+<!--BUILD:v9.1-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -398,6 +398,8 @@
   #profName:focus{ outline:none; border-color:rgba(124,224,255,.6); }
   #resetData{ background:rgba(120,30,30,.5); border-color:rgba(255,120,120,.5); }
   #resetData.arm{ background:rgba(210,40,40,.92); border-color:#ff8a8a; }
+  #supportBtn{ background:linear-gradient(95deg,rgba(255,196,59,.28),rgba(255,120,44,.28)); border-color:rgba(255,210,120,.55); }
+  #supportBtn:active{ transform:scale(.95); }
   /* ---------- GLOBAL DRIFT 3D neon logo ---------- */
   .gdLogo{ font-family:"Arial Black","Archivo Black",system-ui,sans-serif; font-weight:900; font-style:italic; text-transform:uppercase;
     line-height:.8; letter-spacing:-1px; text-align:center; pointer-events:none; user-select:none; -webkit-user-select:none; }
@@ -906,6 +908,7 @@
             <input id="avaFile" type="file" accept="image/*">
           </label>
           <input id="profName" type="text" maxlength="12" placeholder="YOUR NAME" aria-label="your name">
+          <div class="tog" id="supportBtn" style="display:none">💛 SUPPORT</div>
           <div class="tog" id="resetData">🗑 RESET DATA</div>
         </div>
         <div id="sndRow">
@@ -1021,12 +1024,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.0</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.1</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.0';
+(function(){ const BUILD='v9.1';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5142,7 +5145,12 @@ function init(){
   // ---- PROFILE: name + uploaded avatar (identity for leaderboards / multiplayer) + RESET DATA ----
   (function(){
     const nameI=document.getElementById('profName'), avaImg=document.getElementById('avaImg'),
-          avaWrap=document.getElementById('avaWrap'), avaFile=document.getElementById('avaFile'), reset=document.getElementById('resetData');
+          avaWrap=document.getElementById('avaWrap'), avaFile=document.getElementById('avaFile'), reset=document.getElementById('resetData'),
+          support=document.getElementById('supportBtn');
+    const SD_TIP_DEFAULT='';   // <- paste a Stripe Payment Link (or Ko-fi/BMC URL) here once created; empty = button stays hidden
+    const SD_TIP_URL=(function(){ try{ return (localStorage.getItem('sd_tip_url')||SD_TIP_DEFAULT)||''; }catch(e){ return SD_TIP_DEFAULT; } })();
+    if(support && SD_TIP_URL){ support.style.display='flex';
+      support.addEventListener('click', e=>{ e.stopPropagation(); if(window.audio&&audio.ui) audio.ui(); window.open(SD_TIP_URL,'_blank','noopener'); }); }
     function loadAva(){ let a=''; try{ a=localStorage.getItem('sd_avatar')||''; }catch(e){} if(a){ avaImg.src=a; avaWrap.classList.add('has'); } else avaWrap.classList.remove('has'); }
     try{ if(nameI) nameI.value=localStorage.getItem('sd_name')||''; }catch(e){}
     loadAva();
