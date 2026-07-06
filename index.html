@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.4-->
+<!--BUILD:v9.5-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -925,7 +925,7 @@
           <div class="tog" id="muteBtn">🔊</div>
           <input id="volSlider" type="range" min="0" max="100" value="55" aria-label="sfx volume">
           <div class="tog" id="musMuteBtn">🎵</div>
-          <input id="musSlider" type="range" min="0" max="100" value="12" aria-label="music volume">
+          <input id="musSlider" type="range" min="0" max="100" value="5" aria-label="music volume">
         </div>
       </div>
       <div class="keys" id="keysHint">
@@ -1034,12 +1034,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.4</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.5</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.4';
+(function(){ const BUILD='v9.5';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1680,7 +1680,8 @@ const MUSIC={
   beach:'https://storage.googleapis.com/oneilbeats-media/beats/1776564966479_Perreo_en_la_Pista-TAGGED.mp3',     // SUNSET BEACH — sunny D-major "on the track"
   snow:'https://storage.googleapis.com/oneilbeats-media/beats/1776708333434_Luna-TAGGED.mp3',                    // ALPINE — atmospheric "moon"
 };
-let musicVolume=0.12, musicMuted=false, bgMusic=null, musicTheme=null;   // background music sits well under the engine/SFX
+let musicVolume=0.05, musicMuted=false, bgMusic=null, musicTheme=null;   // background music sits well under the engine/SFX (persisted; streamed beats are mastered hot)
+try{ const _mv=localStorage.getItem("sd_musvol"); if(_mv!=null){ musicVolume=Math.max(0,Math.min(1,parseFloat(_mv)||0)); } }catch(e){}
 function applyMusicVol(){ if(bgMusic) bgMusic.volume = musicMuted?0:musicVolume; }
 // SUNO MUSIC PACK: drop your own tracks in audio/ and list them here to REPLACE the per-theme music.
 // e.g. MUSIC_FILE.city='audio/music-city.mp3'. Absent -> falls back to the streamed beat (no 404, no request).
@@ -5203,8 +5204,9 @@ function init(){
   muteBtn.addEventListener('click', e=>{ e.stopPropagation(); muted=!muted; applyVol(); });
   applyVol();
   const musSlider=document.getElementById('musSlider'), musMuteBtn=document.getElementById('musMuteBtn');
+  try{ musSlider.value=Math.round(musicVolume*100); }catch(e){}
   const applyMus=()=>{ musMuteBtn.textContent=(musicMuted||musicVolume<=0)?'🔈':'🎵'; musMuteBtn.classList.toggle('on',!musicMuted&&musicVolume>0); applyMusicVol(); };
-  ['input','change'].forEach(ev=> musSlider.addEventListener(ev, e=>{ e.stopPropagation(); musicVolume=(+musSlider.value)/100; musicMuted=false; applyMus(); if(currentTheme) playMusic(currentTheme.theme); }));
+  ['input','change'].forEach(ev=> musSlider.addEventListener(ev, e=>{ e.stopPropagation(); musicVolume=(+musSlider.value)/100; musicMuted=false; try{ localStorage.setItem('sd_musvol', musicVolume); }catch(_){} applyMus(); if(currentTheme) playMusic(currentTheme.theme); }));
   musSlider.addEventListener('pointerdown', e=>e.stopPropagation());
   musMuteBtn.addEventListener('click', e=>{ e.stopPropagation(); musicMuted=!musicMuted; applyMus(); if(!musicMuted && currentTheme) playMusic(currentTheme.theme); });
   applyMus();
