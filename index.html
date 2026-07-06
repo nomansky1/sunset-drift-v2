@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.1-->
+<!--BUILD:v9.2-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -419,8 +419,8 @@
     background:radial-gradient(circle at 50% 38%, #0d1030 0%, #060414 62%, #030209 100%); }
   #globeModal.show{ display:block; }
   #globeCanvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; display:block; }
-  #globeHint{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 122px); left:0; right:0; text-align:center;
-    color:#9fb4ff; font-size:12px; font-weight:800; letter-spacing:1.5px; pointer-events:none; text-shadow:0 2px 8px #000; opacity:.85; }
+  #globeHint{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 122px); left:0; right:0; text-align:center; z-index:4;
+    color:#bfe6ff; font-size:12px; font-weight:800; letter-spacing:1.5px; pointer-events:none; text-shadow:0 1px 2px #000,0 2px 10px #000; opacity:.95; }
   @media (orientation:landscape) and (max-height:520px){ .gdLogo .l1{ font-size:34px; } .gdLogo .l2{ font-size:42px; } .gdLogo .sub{ font-size:11px; } #globeHint{ top:calc(env(safe-area-inset-top,6px) + 92px); } }
   #globeClose{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 8px); right:14px; z-index:3; width:40px; height:40px; border-radius:50%;
     background:rgba(20,16,34,.72); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:19px; cursor:pointer;
@@ -1024,12 +1024,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.1</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.2</b> — built with Three.js</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.1';
+(function(){ const BUILD='v9.2';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1058,6 +1058,7 @@
 <!-- model + HDRI loaders -->
 <script src="https://unpkg.com/three@0.137.5/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/loaders/DRACOLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/loaders/RGBELoader.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/math/SimplexNoise.js"></script>
 <script src="https://unpkg.com/three@0.137.5/examples/js/shaders/SSAOShader.js"></script>
@@ -5843,20 +5844,31 @@ window.NETRACE=false;
     const earth=new THREE.Mesh(new THREE.SphereGeometry(1.7,64,64), em);
     grp.add(earth);
     try{ new THREE.TextureLoader().load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
-      t=>{ if('encoding' in t) t.encoding=THREE.sRGBEncoding; t.anisotropy=8; em.map=t; em.emissiveIntensity=0.22; em.needsUpdate=true; }, undefined, ()=>{}); }catch(e){}
+      t=>{ if('encoding' in t) t.encoding=THREE.sRGBEncoding; t.anisotropy=8; em.map=t; em.emissiveIntensity=0.4; em.emissive.setHex(0x223a5e); em.needsUpdate=true; }, undefined, ()=>{}); }catch(e){}
     grp.add(new THREE.Mesh(new THREE.SphereGeometry(1.9,32,32), new THREE.MeshBasicMaterial({color:0x3f83ff,transparent:true,opacity:0.14,side:THREE.BackSide})));
     const sp=[]; let ss=7; const sr=()=>{ ss=(ss*16807)%2147483647; return ss/2147483647-0.5; };
     for(let i=0;i<650;i++){ const v=new THREE.Vector3(sr(),sr(),sr()); if(v.length()<0.05) continue; v.normalize().multiplyScalar(34+sr()*24); sp.push(v.x,v.y,v.z); }
     const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
     sc.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xdfe8ff,size:0.16,sizeAttenuation:true})));
-    sc.add(new THREE.AmbientLight(0x8899cc,0.95)); const dl=new THREE.DirectionalLight(0xffffff,1.5); dl.position.set(5,3,6); sc.add(dl);
+    sc.add(new THREE.AmbientLight(0xaebbe0,1.35)); const dl=new THREE.DirectionalLight(0xffffff,1.7); dl.position.set(5,3,6); sc.add(dl);
     const mg=new THREE.SphereGeometry(0.05,10,10);
     GLOBE.forEach((gd,i)=>{ const co=(typeof COUNTRIES!=='undefined'&&COUNTRIES[i])||{col:0xffffff}; const pos=llToVec(gd.lat,gd.lon,1.73);
       const pin=new THREE.Mesh(mg,new THREE.MeshBasicMaterial({color:co.col})); pin.position.copy(pos); pin.userData.i=i; grp.add(pin);
       const ring=new THREE.Mesh(new THREE.SphereGeometry(0.085,12,12),new THREE.MeshBasicMaterial({color:co.col,transparent:true,opacity:0.35})); ring.position.copy(pos); grp.add(ring);
       const hit=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),new THREE.MeshBasicMaterial({visible:false})); hit.position.copy(pos); hit.userData.i=i; grp.add(hit);
       markers.push({pin,ring,hit,i}); });
+    buildBorders(grp);
     ray=new THREE.Raycaster(); mouse=new THREE.Vector2(); bind(cv); resize(); }
+  function buildBorders(grp){ if(typeof topojson==='undefined') return;
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r=>r.json()).then(function(topo){
+      const geo=topojson.feature(topo, topo.objects.countries), R=1.706, pts=[];
+      const ring=(rg)=>{ for(let k=0;k<rg.length-1;k++){ const a=llToVec(rg[k][1],rg[k][0],R), b=llToVec(rg[k+1][1],rg[k+1][0],R); pts.push(a.x,a.y,a.z,b.x,b.y,b.z); } };
+      geo.features.forEach(function(f){ const g=f.geometry; if(!g) return;
+        if(g.type==='Polygon') g.coordinates.forEach(ring);
+        else if(g.type==='MultiPolygon') g.coordinates.forEach(function(poly){ poly.forEach(ring); }); });
+      const bg=new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+      grp.add(new THREE.LineSegments(bg, new THREE.LineBasicMaterial({color:0xbfeeff, transparent:true, opacity:0.55})));
+    }).catch(function(){}); }
   function resize(){ const cv=document.getElementById('globeCanvas'); const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
     if(ren){ ren.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); } }
   function loop(){ raf=requestAnimationFrame(loop);
