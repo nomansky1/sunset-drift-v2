@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.16-->
+<!--BUILD:v9.17-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.16';
+(function(){ const BUILD='v9.17';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5109,6 +5109,9 @@ function dynRes(dt){ _fpsAcc+=dt; _fpsN++; _scaleCd-=dt;
 }
 
 function animate(){ requestAnimationFrame(animate);
+  if(state==='menu'){ const gm=document.getElementById('globeModal');
+    if(gm && gm.classList.contains('show')) return;                 // globe main-menu covers the scene -> skip the wasted game render
+    if((window.__mf=(window.__mf||0)+1)&1) return; }                // garage showcase renders at ~30fps (slow orbit -> half the GPU + battery)
   if(Math.abs(camera.aspect - innerWidth/Math.max(1,innerHeight)) > 0.02) onResize();   // self-heal a missed resize (mobile URL-bar / orientation) so the composer never renders at a stale aspect
   const dt=Math.min(clock.getDelta(),0.05); update(dt);
   updateFxLights(dt); dynRes(dt);
