@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.7-->
+<!--BUILD:v9.8-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1039,7 +1039,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.7';
+(function(){ const BUILD='v9.8';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2860,6 +2860,7 @@ function scatterProps(){ const rng=mulberry32(7777);
   buildGrassFill();   // grass tufts fill the empty ground around buildings + verges
   buildVariantVeg();  // tropical palms / swamp cypress+reeds for the new environment variants
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
+  buildBalloons(rng);                                  // drifting hot-air balloons fill the sky on EVERY track
   if(th==='city'||th==='docks'||th==='coast'||th==='beach') buildParkedCars(rng);   // parked cars = street life
   buildTrackFurniture(rng);                            // Kenney Racing Kit: grandstands + pits + start gantry + banners
   buildLandmark(rng);                                  // ONE oversized hero landmark per biome (visible across the loop)
@@ -2934,7 +2935,7 @@ function buildTrackFurniture(rng){
     xf.push(propMat(p.x+n.x*off*side, p.y+n.y*off*side, 9, rng()*6.28, 0)); }
     instProp(propModels.bannertower, xf); }
 }
-let birdFlock=null;
+let birdFlock=null, balloonGrp=null;
 // flying bird flock that circles high above the track (animated in the render loop)
 function buildBirds(rng){
   birdFlock=new THREE.Group(); const birds=[];
@@ -2945,6 +2946,25 @@ function buildBirds(rng){
     b.add(lw,rw); b.userData={ph:rng()*6.28, lw, rw, sp:0.7+rng()*0.7, rad:70+rng()*120, h:58+rng()*40, a0:rng()*6.28, dir:rng()>0.5?1:-1};
     birdFlock.add(b); birds.push(b); }
   birdFlock.userData={birds}; scene.add(birdFlock);
+}
+// drifting hot-air balloons that fill the sky over every track (animated in the render loop, like the birds)
+function buildBalloons(rng){
+  balloonGrp=new THREE.Group(); const items=[];
+  const N = lowQuality ? 2 : 3;
+  const PAL=[0xff5a5a,0x4da6ff,0xffd23b,0x5fe08a,0xc46bff,0xff8a3d];
+  const envGeo=new THREE.SphereGeometry(6,12,10); envGeo.scale(1,1.28,1); envGeo.translate(0,9,0);   // teardrop envelope
+  const basketGeo=new THREE.BoxGeometry(2.2,2,2.2); basketGeo.translate(0,-2.5,0);                    // wicker basket slung below
+  const basketMat=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
+  const cordMat=new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.85});
+  for(let i=0;i<N;i++){ const b=new THREE.Group();
+    const c1=PAL[Math.floor(rng()*PAL.length)], c2=PAL[(Math.floor(rng()*PAL.length)+3)%PAL.length], em=nightMode?0.55:0.12;
+    b.add(new THREE.Mesh(envGeo, new THREE.MeshStandardMaterial({color:c1, roughness:0.55, emissive:c1, emissiveIntensity:em})));
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(5.6,0.55,6,18), new THREE.MeshStandardMaterial({color:c2, roughness:0.55, emissive:c2, emissiveIntensity:em})); ring.rotation.x=Math.PI/2; ring.position.y=5; b.add(ring);
+    b.add(new THREE.Mesh(basketGeo, basketMat));
+    for(const sx of [-1,1]) for(const sz of [-1,1]){ const cd=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,3.4,4), cordMat); cd.position.set(sx*0.95,-0.1,sz*0.95); cd.rotation.x=sz*0.13; cd.rotation.z=-sx*0.13; b.add(cd); }
+    b.userData={a0:rng()*6.283, rad:120+rng()*150, h:86+rng()*48, sp:0.6+rng()*0.6, dir:rng()>0.5?1:-1, ph:rng()*6.283};
+    b.traverse(o=>{o.castShadow=false;}); balloonGrp.add(b); items.push(b); }
+  balloonGrp.userData={items}; scene.add(balloonGrp);
 }
 // procedural dock gantry cranes (legs + boom + cab) for the docks
 function buildCranes(rng){
@@ -4911,6 +4931,9 @@ function animate(){ requestAnimationFrame(animate);
     b.position.set(trackCentroid.x+Math.cos(ang)*u.rad, u.h+Math.sin(bt*0.5+u.ph)*3, trackCentroid.y+Math.sin(ang)*u.rad);   // slow circling flight + gentle bob
     b.rotation.y = -ang*u.dir + (u.dir>0?-Math.PI/2:Math.PI/2);
     const flap=Math.sin(bt*7*u.sp + u.ph)*0.7; u.lw.rotation.z=flap; u.rw.rotation.z=-flap; }); }   // flapping wings
+  if(balloonGrp){ const bt=clock.getElapsedTime(); balloonGrp.userData.items.forEach(b=>{ const u=b.userData, ang=u.a0+bt*0.012*u.sp*u.dir;
+    b.position.set(trackCentroid.x+Math.cos(ang)*u.rad, u.h+Math.sin(bt*0.25+u.ph)*2.2, trackCentroid.y+Math.sin(ang)*u.rad);
+    b.rotation.y+=dt*0.05*u.dir; b.rotation.z=Math.sin(bt*0.35+u.ph)*0.05; }); }   // slow sky drift + gentle bob & sway
   if(ferrisWheel&&ferrisWheel.userData.wheel) ferrisWheel.userData.wheel.rotation.z += dt*0.18;   // slow-turning Ferris wheel landmark
   if(rainOn) updateRain(dt);
   if(composer) composer.render(); else renderer.render(scene,camera); }
