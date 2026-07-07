@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.20-->
+<!--BUILD:v9.21-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.20';
+(function(){ const BUILD='v9.21';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3022,6 +3022,13 @@ function buildTrackFurniture(rng){
   if(circuit && propModels.bannertower){ const xf=[]; for(let k=0;k<6;k++){ const i=Math.floor(k/6*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=k%2?1:-1, off=CONFIG.roadHalfWidth+9;
     xf.push(propMat(p.x+n.x*off*side, p.y+n.y*off*side, 9, rng()*6.28, 0)); }
     instProp(propModels.bannertower, xf); }
+  if(circuit && propModels.tirebarrier){ const xf=[];                 // tyre safety walls line the OUTSIDE of corners (real-circuit run-off protection)
+    for(let i=0;i<SAMPLES;i+=(isTouch?5:3)){ const a=sampleTan[(i-5+SAMPLES)%SAMPLES], b=sampleTan[(i+5)%SAMPLES];   // thinner on mobile
+      if((1-(a.x*b.x+a.y*b.y))>0.05){ const p=samplePts[i], n=sampleNorm[i], t=sampleTan[i];   // a corner
+        const out=((p.x-trackCentroid.x)*n.x+(p.y-trackCentroid.y)*n.y)>=0?1:-1;                // side facing away from track centre
+        const off=CONFIG.roadHalfWidth+2.6;
+        xf.push(propMat(p.x+n.x*off*out, p.y+n.y*off*out, 8, Math.atan2(t.x,t.y), 0)); } }
+    if(xf.length) instProp(propModels.tirebarrier, xf); }
 }
 let birdFlock=null, balloonGrp=null;
 // flying bird flock that circles high above the track (animated in the render loop)
@@ -3960,6 +3967,7 @@ const PROP_SPECS={
   pitgarage:{file:'models/cc0/racing/pitsGarage.glb', fit:'xz'},
   gantry:{file:'models/cc0/racing/overhead.glb', fit:'xz'},
   bannertower:{file:'models/cc0/racing/bannerTowerRed.glb', fit:'height'},
+  tirebarrier:{file:'models/cc0/racing/tirebarrier.glb', fit:'xz'},   // Blender-made drop-in (baked-AO vertex colours) -> tyre safety wall
 };
 function prepProp(root, fit){           // bake -> normalize (base y=0, centred XZ, ref dim = 1); returns [{geometry,material}]
   root.updateMatrixWorld(true);
