@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.5-->
+<!--BUILD:v9.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1039,7 +1039,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.5';
+(function(){ const BUILD='v9.6';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1663,7 +1663,7 @@ let composer = null, bloomPass = null, cinePass = null, fxaaPass = null, ssaoPas
 let aoPref = (function(){ try{ const v=localStorage.getItem('sd_ao'); return v===null ? !('ontouchstart' in window) : v==='1'; }catch(e){ return true; } })();  // ambient occlusion — default desktop-on / mobile opt-in
 function saveAO(){ try{ localStorage.setItem('sd_ao', aoPref?'1':'0'); }catch(e){} }
 let roadMatRef = null;                                    // road material -> scrolling chevrons (sense of speed)
-let nightMode = false, rainOn = false, lowQuality = false; // weather / time-of-day / perf toggles
+let nightMode = false, rainOn = false, lowQuality = isTouch; // weather / time-of-day / perf toggles (LITE on by default on phones for smoother FPS)
 let timeTrial = false;                                     // TIME TRIAL mode: solo run, no AI, chase your ghost / best lap
 let sfxVolume = 0.55, muted = false;                     // user audio volume (turned down by default) + mute
 let coins = 0;                                           // reward currency (persisted)
@@ -3476,6 +3476,7 @@ function buildDogeCar(rig, color){
   body.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=false;
     if(o.material){ const isBody=o.material.name==='body'; o.material=carPaint(o.material);     // glossy clear-coat paint
       if(isBody){ o.material.color.set(color); o.material.metalness=0.42; o.material.roughness=0.34; o.material.normalMap=flakeTex(); o.material.normalScale=new THREE.Vector2(0.22,0.22); rig.paintMats.push(o.material); } } } });   // metallic-flake paint under the clear coat (paintMats = recolourable body for the paint job)
+  if(!rig.paintMats.length){ let big=null, ba=-1; body.traverse(o=>{ if(o.isMesh && o.material && !o.material.transparent && !/glass|window|light|lamp|plate|badge|tint/i.test(o.material.name||'')){ let g=o.geometry; if(g){ if(!g.boundingBox) g.computeBoundingBox(); const sz=new THREE.Vector3(); g.boundingBox.getSize(sz); const v=sz.x*sz.y*sz.z; if(v>ba){ ba=v; big=o; } } } }); if(big){ big.material.color.set(color); big.material.metalness=0.42; big.material.roughness=0.34; rig.paintMats.push(big.material); } }   // fallback: no 'body'-named material -> recolour the largest body panel so the DRIFTER is paintable
   chassis.add(body); asm.add(chassis);
   const wheels=[], front=[];
   CAR_WHEELS.forEach(wp=>{ const wg=new THREE.Group(); wg.position.set(wp.x,wp.y,wp.z); wg.rotation.order='YXZ';
@@ -5054,9 +5055,9 @@ function init(){
   scene.fog=new THREE.Fog(CONFIG.colors.fog, 120, 760);
   camera=new THREE.PerspectiveCamera(CONFIG.fovBase, innerWidth/innerHeight, 0.15, 3000);   // low near plane so the close/hood cam doesn't clip the road on a crest (was 0.5 -> background showed at the bottom)
   renderer=new THREE.WebGLRenderer({canvas:document.getElementById('game'), antialias:!isTouch, powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch?1.5:2));
+  renderer.setPixelRatio(lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2));
   renderer.setSize(innerWidth, innerHeight);
-  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled=!lowQuality; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.18;
   if('outputEncoding' in renderer) renderer.outputEncoding=THREE.sRGBEncoding; // r137 sRGB output
   // GPU CONTEXT-LOSS RECOVERY: Android Chrome reclaims WebGL memory under pressure (many open tabs) mid-game.
