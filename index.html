@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.18-->
+<!--BUILD:v9.19-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.18';
+(function(){ const BUILD='v9.19';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1818,6 +1818,7 @@ class Particles {
 /* =========================================================================
    AUDIO  — tiny WebAudio engine hum + tyre screech + boost whoosh (guarded)
    ========================================================================= */
+const AUDIO_VER = 919;   // bump when any audio/gd-*.wav changes -> forces browsers past GitHub Pages 10-min cache
 class AudioEngine {
   start(){ if(window.__auto) return;   // SIM: never init/resume audio during a headless simulation
     if(this.ok) { this.resume(); return; }
@@ -1870,7 +1871,7 @@ class AudioEngine {
     }catch(e){ this.ok=false; }
   }
   setVolume(v){ if(this.ok) this.master.gain.setTargetAtTime(muted?0:v, this.ctx.currentTime, 0.04); }
-  _fetchBuf(url){ return fetch(url).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>this.ctx.decodeAudioData(ab,res,rej))).catch(()=>null); }
+  _fetchBuf(url){ return fetch(url + (url.indexOf("?")<0?"?":"&") + "v=" + AUDIO_VER).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>this.ctx.decodeAudioData(ab,res,rej))).catch(()=>null); }
   _play(buf, vol, rate){ if(!this.ok||!buf) return; try{ const s=this.ctx.createBufferSource(); s.buffer=buf; if(rate) s.playbackRate.value=rate;
     const g=this.ctx.createGain(); g.gain.value=(vol==null?0.7:vol); s.connect(g); g.connect(this.comp); s.start(); }catch(e){} }
   victory(){ if(this.buffers&&this.buffers.victory) this._play(this.buffers.victory, 0.7); }
