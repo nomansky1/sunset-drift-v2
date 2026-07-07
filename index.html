@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.12-->
+<!--BUILD:v9.13-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.12';
+(function(){ const BUILD='v9.13';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4563,17 +4563,28 @@ function mountGun(rig){ if(rig.gun||!rig.group) return;
 // BATTLE ARMOR — bolted plating scaled to each car's real dims (bull-bar, side skirts, roll cage, rear guard)
 function mountArmor(rig, lvl){ if(!rig.group || rig.armor) return; lvl=clamp(lvl||1,1,3);
   const M=gunMats(), d=rig.dims||{W:2,H:1.5,Lz:4.6}, W=d.W,H=d.H,Lz=d.Lz, a=new THREE.Group();
+  rig.group.add(a); rig.armor=a; rig.group.updateWorldMatrix(true,true);   // add first so raycasts can mold to the real body
+  const bodyM=rig.chassis, _ray=new THREE.Raycaster(), _o=new THREE.Vector3(), _t=new THREE.Vector3(), _dn=new THREE.Vector3(0,-1,0);
+  const surfX=(sign,lz,ly,fb)=>{ if(!bodyM) return fb; a.localToWorld(_o.set(sign*(W/2+1.5),ly,lz)); a.localToWorld(_t.set(0,ly,lz)); _ray.set(_o,_t.sub(_o).normalize()); const h=_ray.intersectObject(bodyM,true); return h.length? Math.abs(a.worldToLocal(h[0].point.clone()).x) : fb; };
+  const surfY=(lx,lz,fb)=>{ if(!bodyM) return fb; a.localToWorld(_o.set(lx,H+3,lz)); _ray.set(_o,_dn); const h=_ray.intersectObject(bodyM,true); return h.length? a.worldToLocal(h[0].point.clone()).y : fb; };
   const barY=clamp(H*0.34,0.28,0.72), fz=Lz/2-0.02;
   const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,W*0.94,10), M.steel); bar.rotation.z=Math.PI/2; bar.position.set(0,barY,fz); a.add(bar);   // front push-bar
   for(const sx of [-1,1]){ const up=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,barY*0.95,8), M.dark); up.position.set(sx*W*0.34, barY*0.55, fz-0.05); a.add(up); }
   if(lvl>=2){ const grille=new THREE.Mesh(new THREE.BoxGeometry(W*0.68,barY*0.66,0.05), M.dark); grille.position.set(0,barY*0.56,fz-0.03); a.add(grille); }
-  for(const sx of [-1,1]){ const plate=new THREE.Mesh(new THREE.BoxGeometry(0.06,H*0.26,Lz*0.52), M.trim); plate.position.set(sx*W*0.5, H*0.29, -Lz*0.02); a.add(plate);   // side skirt armor
-    for(let r=0;r<4;r++){ const rv=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.06,6), M.steel); rv.rotation.z=Math.PI/2; rv.position.set(sx*W*0.53, H*0.29, -Lz*0.22+r*Lz*0.14); a.add(rv); } }
-  if(lvl>=2){ const cageY=Math.min(H,2.4)*0.92, cz=-Lz*0.1;                                              // roll cage bar behind the cabin
-    const rb=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,W*0.74,8), M.steel); rb.rotation.z=Math.PI/2; rb.position.set(0,cageY,cz); a.add(rb);
+  // MOLDED side skirt armor: a plate CONTOURED to the real body side (raycast per-z) + rivets that sit on the true surface
+  const plateMat=M.trim.clone(); plateMat.side=THREE.DoubleSide; const pTop=H*0.42, pBot=H*0.15;
+  for(const side of [-1,1]){ const pos=[], idx=[], NZ=10;
+    for(let i=0;i<=NZ;i++){ const lz=-Lz*0.32 + (Lz*0.64)*(i/NZ), ex=surfX(side, lz, H*0.29, W*0.5), b=pos.length/3;
+      pos.push(side*(ex+0.03), pTop, lz,  side*(ex+0.04), pBot, lz);   // top hugs the body; bottom flares slightly to a sill
+      if(i>0){ const a2=b-2; if(side>0) idx.push(a2,a2+1,b, a2+1,b+1,b); else idx.push(a2,b,a2+1, a2+1,b,b+1); } }
+    const gp=new THREE.BufferGeometry(); gp.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); gp.setIndex(idx); gp.computeVertexNormals();
+    const m=new THREE.Mesh(gp, plateMat); m.castShadow=!isTouch; a.add(m);
+    for(let r=0;r<4;r++){ const lz=-Lz*0.22+r*Lz*0.14, ex=surfX(side,lz,H*0.29,W*0.5); const rv=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.06,6), M.steel); rv.rotation.z=Math.PI/2; rv.position.set(side*(ex+0.05), H*0.29, lz); a.add(rv); } }
+  if(lvl>=2){ const cz=-Lz*0.1, cageY=clamp(surfY(0,cz,H*0.9), H*0.55, 2.5);                              // roll cage bar MOLDED to the real roofline
+    const rb=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,W*0.74,8), M.steel); rb.rotation.z=Math.PI/2; rb.position.set(0,cageY+0.06,cz); a.add(rb);
     for(const sx of [-1,1]){ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,cageY*0.55,8), M.dark); leg.position.set(sx*W*0.33,cageY*0.74,cz); leg.rotation.x=0.14; a.add(leg); } }
-  if(lvl>=3){ const rear=new THREE.Mesh(new THREE.BoxGeometry(W*0.88,H*0.2,0.08), M.trim); rear.position.set(0,barY*0.82,-Lz/2+0.02); a.add(rear); }   // rear guard
-  a.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); rig.group.add(a); rig.armor=a; }
+  if(lvl>=3){ const ry=clamp(surfY(0,-Lz*0.44,barY*0.82), 0.3, H*0.95); const rear=new THREE.Mesh(new THREE.BoxGeometry(W*0.88,H*0.2,0.08), M.trim); rear.position.set(0,ry,-Lz/2+0.02); a.add(rear); }   // rear guard at the real tail height
+  a.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); }
 // NITRO KIT — twin glowing NOS bottles strapped to the rear deck
 function mountNitro(rig){ if(!rig.group || rig.nitroKit) return;
   const d=rig.dims||{W:2,H:1.5,Lz:4.6}, W=d.W,H=d.H,Lz=d.Lz, g=new THREE.Group();
