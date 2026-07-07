@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.17-->
+<!--BUILD:v9.18-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.17';
+(function(){ const BUILD='v9.18';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1841,7 +1841,8 @@ class AudioEngine {
       this.engChar=this.engChar||{pitch:1, turbo:0.5}; this._prevThr=false;
       // PROCEDURAL ENGINE — detuned oscillator stack + intake noise through a lowpass that opens with revs.
       // Smooth across the whole rev range, no loop clicks / chipmunk pitch-shift (the old 1s sample loop sounded fake).
-      this.engLP=this.ctx.createBiquadFilter(); this.engLP.type='lowpass'; this.engLP.frequency.value=600; this.engLP.Q.value=3.5; this.engLP.connect(this.engGain);
+      this.engProcG=this.ctx.createGain(); this.engProcG.gain.value=1; this.engProcG.connect(this.engGain);   // procedural stack routes here so real loops can mute it
+      this.engLP=this.ctx.createBiquadFilter(); this.engLP.type='lowpass'; this.engLP.frequency.value=600; this.engLP.Q.value=3.5; this.engLP.connect(this.engProcG);
       this.engOscs=[];
       const _EL=[['sawtooth',0.5,0.34],['sawtooth',1,0.5],['sawtooth',2,0.28],['square',3,0.12],['sawtooth',1.5,0.11]];
       for(let ei=0;ei<_EL.length;ei++){ const L2=_EL[ei];
@@ -1850,7 +1851,7 @@ class AudioEngine {
       { const nn=this.ctx.createBufferSource(); nn.buffer=this.noiseBuf; nn.loop=true;
         this.engNF=this.ctx.createBiquadFilter(); this.engNF.type='bandpass'; this.engNF.frequency.value=500; this.engNF.Q.value=1.3;
         this.engNG=this.ctx.createGain(); this.engNG.gain.value=0;
-        nn.connect(this.engNF); this.engNF.connect(this.engNG); this.engNG.connect(this.engGain); try{nn.start();}catch(e){} }
+        nn.connect(this.engNF); this.engNF.connect(this.engNG); this.engNG.connect(this.engProcG); try{nn.start();}catch(e){} }
       this._fetchBuf('audio/gd-screech.wav').then(b=>this.buffers.skid=b);
       this._fetchBuf('audio/gd-nitrous.wav').then(b=>this.buffers.boost=b);
       this._fetchBuf('audio/gd-crash.wav').then(b=>this.buffers.crash=b);
@@ -1860,6 +1861,10 @@ class AudioEngine {
       this._fetchBuf('audio/gd-ui.wav').then(b=>this.buffers.ui=b);
       this._fetchBuf('audio/gd-hover.wav').then(b=>this.buffers.hover=b);
       this._fetchBuf('audio/gd-victory.wav').then(b=>this.buffers.victory=b);
+      // REAL engine: two looping onboard recordings (idle + rev) crossfaded by RPM + pitched -> a real car, not a synth
+      Promise.all([this._fetchBuf('audio/gd-eng-idle.wav'), this._fetchBuf('audio/gd-eng-rev.wav')]).then(([bi,br])=>{
+        if(!bi||!br||!this.ok) return; const mk=(buf)=>{ const s2=this.ctx.createBufferSource(); s2.buffer=buf; s2.loop=true; const g2=this.ctx.createGain(); g2.gain.value=0; s2.connect(g2); g2.connect(this.engGain); try{s2.start();}catch(e){} return {s:s2,g:g2}; };
+        this.engLayers={ idle:mk(bi), rev:mk(br) }; }).catch(()=>{});
       this.master.gain.linearRampToValueAtTime(muted?0:sfxVolume, t+0.4);
       this.ok=true;
     }catch(e){ this.ok=false; }
@@ -1878,21 +1883,30 @@ class AudioEngine {
     this._rpm += (rpm-this._rpm)*0.18;
     const ch=this.engChar||{pitch:1,turbo:0.5};
     const f0=(46 + this._rpm*150)*ch.pitch;                    // firing fundamental: idle ~46Hz -> redline ~196Hz, per-car pitch
-    if(this.engOscs) for(const e of this.engOscs){ try{ e.o.frequency.setTargetAtTime(f0*e.mult, t, 0.03); }catch(_){} }
-    if(this.engLP) this.engLP.frequency.setTargetAtTime(300 + this._rpm*3600*ch.pitch, t, 0.05);   // filter opens with revs
-    if(this.engNF) this.engNF.frequency.setTargetAtTime(f0*4.5, t, 0.06);
-    if(this.engNG) this.engNG.gain.setTargetAtTime((throttle?0.12:0.04)*(0.4+this._rpm*0.6), t, 0.06);
+    if(this.engLayers){                                       // REAL sample engine: crossfade idle<->rev by rpm + narrow per-car pitch (no chipmunk)
+      const r=this._rpm, thr=throttle?1:0.6;
+      this.engLayers.idle.g.gain.setTargetAtTime(clamp(1-r*1.7,0,1)*0.5, t, 0.08);
+      this.engLayers.rev.g.gain.setTargetAtTime(clamp((r-0.08)*1.35,0,1)*0.62*thr, t, 0.08);
+      this.engLayers.idle.s.playbackRate.setTargetAtTime((0.85+r*0.35)*ch.pitch, t, 0.06);
+      this.engLayers.rev.s.playbackRate.setTargetAtTime((0.78+r*0.8)*ch.pitch, t, 0.06);
+      if(this.engProcG) this.engProcG.gain.setTargetAtTime(0, t, 0.12);   // silence the synth stack once real loops play
+    } else {                                                  // procedural fallback (until loops load / if they 404)
+      if(this.engOscs) for(const e of this.engOscs){ try{ e.o.frequency.setTargetAtTime(f0*e.mult, t, 0.03); }catch(_){} }
+      if(this.engLP) this.engLP.frequency.setTargetAtTime(300 + this._rpm*3600*ch.pitch, t, 0.05);
+      if(this.engNF) this.engNF.frequency.setTargetAtTime(f0*4.5, t, 0.06);
+      if(this.engNG) this.engNG.gain.setTargetAtTime((throttle?0.12:0.04)*(0.4+this._rpm*0.6), t, 0.06);
+    }
     // TURBO spool: whine rises with revs under throttle, louder on boost
     const tf=1100 + this._rpm*3000*ch.pitch;
     this.turbo.frequency.setTargetAtTime(tf, t, 0.08);
-    const tg = ch.turbo*( (throttle?clamp((this._rpm-0.32)/0.68,0,1):0)*0.045 + (boosting?0.05:0) );
+    const tg = ch.turbo*0.5*( (throttle?clamp((this._rpm-0.32)/0.68,0,1):0)*0.045 + (boosting?0.05:0) );
     this.turboG.gain.setTargetAtTime(tg, t, 0.12);
     // EXHAUST POP / backfire crackle when you lift off the throttle at high revs
     if(this._prevThr && !throttle && this._rpm>0.5) this._exhaustPop(0.4+this._rpm*0.6);
     this._prevThr=throttle;
     if(this._gear!=null && g!==this._gear) this._shift=1;                       // gear changed -> brief clutch-cut (punchier shift feel)
     this._gear=g; const shiftDuck=1-(this._shift||0)*0.55;
-    this.engGain.gain.setTargetAtTime((0.16 + (throttle?0.16:0.04) + this._rpm*0.13)*shiftDuck, t, 0.05);   // procedural engine level (fuller than the old sample -> lower base)
+    this.engGain.gain.setTargetAtTime((this.engLayers ? 0.9 : (0.16 + (throttle?0.16:0.04) + this._rpm*0.13))*shiftDuck, t, 0.05);   // sample engine = steady bus; procedural = leveled by revs
     this._shift=(this._shift||0)*0.8;
     if(drift) this._startSkid(); else this._stopSkid();
   }
@@ -1984,6 +1998,11 @@ class AudioEngine {
     police:{pitch:0.95,turbo:0.6}, taxi:{pitch:0.92,turbo:0.3} };
     let c=M[raw] || {pitch:1.0,turbo:0.5}; if(/^kart/.test(raw)) c={pitch:1.34,turbo:0.1};
     this.engChar={pitch:c.pitch, turbo:c.turbo}; }
+  silence(){ if(!this.ok) return; const t=this.ctx.currentTime;   // cut the engine/skid/turbo so they don't bleed into the menu
+    try{ this.engGain.gain.setTargetAtTime(0,t,0.15); }catch(_){}
+    try{ this.turboG.gain.setTargetAtTime(0,t,0.15); }catch(_){}
+    if(this.engLayers){ try{ this.engLayers.idle.g.gain.setTargetAtTime(0,t,0.15); this.engLayers.rev.g.gain.setTargetAtTime(0,t,0.15); }catch(_){} }
+    this._stopSkid(); this._rpm=0.1; }
   resume(){ if(this.ok && this.ctx.state==='suspended') this.ctx.resume(); }
 }
 
@@ -4496,6 +4515,7 @@ function pauseGame(){ if(state!=='race') return; state='paused'; document.getEle
 function resumeGame(){ if(state!=='paused') return; document.getElementById('pauseMenu').classList.add('hidden'); state='race'; }
 function showMenu(){                                       // back to the garage/menu (shop)
   state='menu'; menuT=0; champ.active=false; hidePauseUI(); document.body.classList.add('inmenu');
+  if(window.audio&&audio.silence) audio.silence();   // no engine/skid bleed into the garage
   if(brActive) endBattle();                               // clear any Battle Royale state (guns, zone, HP)
   if(ghostMesh) ghostMesh.visible=false; ghostActive=false;   // no ghost in the garage
   elResults.classList.add('hidden'); document.getElementById('champ').classList.add('hidden'); elMenu.classList.remove('hidden');
@@ -5096,10 +5116,12 @@ function updateFxLights(dt){ for(let i=fxLights.length-1;i>=0;i--){ const f=fxLi
 
 // ---- DYNAMIC RESOLUTION SCALER — auto-drops render scale when FPS sags, restores when there's headroom (the perf moat) ----
 let renderScale=1, _fpsAcc=0, _fpsN=0, _scaleCd=0;
-function baseP(){ return lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2); }
+function baseP(){ if(typeof state!=='undefined' && state==='menu') return Math.min(devicePixelRatio,2);   // garage showcase = crisp (light scene, not gameplay)
+  return lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2); }
 function applyRenderScale(){ renderer.setPixelRatio(baseP()*renderScale); renderer.setSize(innerWidth,innerHeight);
   if(composer){ composer.setSize(innerWidth,innerHeight); if(fxaaPass){ const pr=renderer.getPixelRatio(); fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr),1/(innerHeight*pr)); } } }
-function dynRes(dt){ _fpsAcc+=dt; _fpsN++; _scaleCd-=dt;
+function dynRes(dt){ if(typeof state!=='undefined' && state==='menu'){ if(renderScale!==1){ renderScale=1; applyRenderScale(); } _fpsAcc=0; _fpsN=0; return; }   // menu preview stays crisp, never shed
+  _fpsAcc+=dt; _fpsN++; _scaleCd-=dt;
   if(_fpsN<48 || _scaleCd>0) return;
   const fps=_fpsN/Math.max(_fpsAcc,1e-3); _fpsAcc=0; _fpsN=0;
   let ns=renderScale;
