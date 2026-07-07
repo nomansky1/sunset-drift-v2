@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.8-->
+<!--BUILD:v9.9-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1039,7 +1039,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.8';
+(function(){ const BUILD='v9.9';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1317,15 +1317,14 @@ const PAINT_STYLES=[ {key:'gloss',name:'Gloss',rough:0.34,metal:0.42,cc:0.9}, {k
 let paintStyles={}; try{ paintStyles=JSON.parse(localStorage.getItem('sd_pstyle')||'{}'); }catch(e){ paintStyles={}; }
 function savePaintStyle(){ try{ localStorage.setItem('sd_pstyle', JSON.stringify(paintStyles)); }catch(e){} }
 // the paintable body mesh(es): prefer a 'body'-named mesh, else any textured non-wheel/glass/driver mesh (karts name theirs '<model>_1')
-function carBodyMeshes(chassis){ const named=[], fallback=[];
-  chassis.traverse(o=>{ if(!o.isMesh) return; const n=o.name||'';
-    if(/wheel|tyre|tire|character|driver|glass|window|light|lamp/i.test(n)) return;
-    if(/body/i.test(n)) named.push(o); else if(o.material && o.material.map) fallback.push(o); });
-  return named.length ? named : fallback; }
+function carBodyMeshes(chassis){ const named=[], textured=[], solid=[];
+  chassis.traverse(o=>{ if(!o.isMesh) return; const n=o.name||''; const m=o.material;
+    if(/wheel|tyre|tire|character|driver|glass|window|light|lamp/i.test(n)) return; if(!m) return;
+    if(/body/i.test(n)) named.push(o); else if(m.map) textured.push(o); else solid.push(o); });
+  return named.length ? named : (textured.length ? textured : solid); }   // solid = untextured Quaternius bodies (were unpaintable)
 function finishCar(rig, styleKey){ const s=PAINT_STYLES.find(p=>p.key===styleKey); if(!s||!rig.chassis) return;
   const apply=m=>{ if(!m) return; m.roughness=s.rough; m.metalness=s.metal; if('clearcoat' in m){ m.clearcoat=s.cc; m.clearcoatRoughness=s.rough*0.5; } m.needsUpdate=true; };
-  if(rig.paintMats && rig.paintMats.length){ rig.paintMats.forEach(apply); return; }   // doge
-  carBodyMeshes(rig.chassis).forEach(o=>apply(o.material)); }
+  carBodyMeshes(rig.chassis).forEach(o=>{ if(Array.isArray(o.material)) o.material.forEach(apply); else apply(o.material); }); }   // LIVE materials (physicalizeBody orphaned rig.paintMats)
 // REAL automotive paint: convert body panels from MeshStandard -> MeshPhysical with a clearcoat lacquer,
 // so the captured sunset IBL reflects in the panels AND the Gloss/Chrome/Pearl finishes (which need
 // clearcoat) finally work. Only touches body meshes (carBodyMeshes excludes glass/wheels/lights).
@@ -1361,15 +1360,21 @@ function bodyDomColor(body, cm, key){ if(_bodyCol[key]) return _bodyCol[key];
   let best=null,bc=0; for(const k in area){ if(area[k]>bc){ bc=area[k]; best=k; } }
   _bodyCol[key]=best?best.split(',').map(Number):null; return _bodyCol[key]; }
 function paintCar(rig, hex, modelKey){ if(hex==null||!rig.chassis) return;
-  if(rig.paintMats && rig.paintMats.length){ const col=new THREE.Color(hex); rig.paintMats.forEach(m=>m.color.copy(col)); return; }   // procedural (doge) car: recolour body materials directly, glass untouched
-  const body=carBodyMeshes(rig.chassis)[0];
-  if(!body||!body.material.map||!body.material.map.image) return;
+  const col=new THREE.Color(hex), meshes=carBodyMeshes(rig.chassis); if(!meshes.length) return;
+  const solids=meshes.filter(o=>{ const m=o.material; return m && m.color && !m.map; });   // solid-colour panels = the real paintable body (doge 'Body', Quaternius 'body'); textured detail (badges/grill) is NOT the body
+  if(solids.length){   // SOLID-COLOUR body: set the material colour directly (glass/lights/wheels already excluded by carBodyMeshes)
+    solids.forEach(o=>{ const set=m=>{ if(m&&m.color&&!m.map) m.color.copy(col); }; if(Array.isArray(o.material)) o.material.forEach(set); else set(o.material); });
+    return; }
+  // TEXTURED body (Kenney palette / premium GLB, no solid panel): recolour the dominant paint pixels in the largest textured panel
+  let body=meshes[0], mv=-1; meshes.forEach(o=>{ if(!o.material||!o.material.map) return; const g=o.geometry; if(!g) return; if(!g.boundingBox) g.computeBoundingBox(); const sz=new THREE.Vector3(); g.boundingBox.getSize(sz); const v=sz.x*sz.y*sz.z; if(v>mv){ mv=v; body=o; } });
+  if(!body.material||!body.material.map||!body.material.map.image) return;
   const cm=colormapCanvas(body.material.map); if(!cm) return; const from=bodyDomColor(body, cm, modelKey); if(!from) return;
   const to=[(hex>>16)&255,(hex>>8)&255,hex&255], ck=modelKey+':'+hex; let tex=_paintTex[ck];
   if(!tex){ const c=document.createElement('canvas'); c.width=cm.width; c.height=cm.height; const x=c.getContext('2d'); x.drawImage(cm,0,0);
     const id=x.getImageData(0,0,c.width,c.height), d=id.data; for(let i=0;i<d.length;i+=4){ if(Math.abs(d[i]-from[0])<36&&Math.abs(d[i+1]-from[1])<36&&Math.abs(d[i+2]-from[2])<36){ d[i]=to[0];d[i+1]=to[1];d[i+2]=to[2]; } } x.putImageData(id,0,0);
     tex=new THREE.CanvasTexture(c); if('encoding' in tex) tex.encoding=THREE.sRGBEncoding; tex.flipY=body.material.map.flipY; tex.anisotropy=body.material.map.anisotropy; _paintTex[ck]=tex; }
-  body.material=body.material.clone(); body.material.map=tex; body.material.needsUpdate=true; }
+  body.material=body.material.clone(); body.material.map=tex; body.material.needsUpdate=true;
+}
 let fleetRaw={}, selectedCar=0, ownedCars=[];
 let kitPartGeo={};                         // Blender-sculpted upgrade parts (spoiler/diffuser/lip/skirt) loaded from parts.glb
 function loadOwned(){ try{ const o=JSON.parse(localStorage.getItem('sd_owned')); ownedCars=Array.isArray(o)?o:[]; }catch(e){ ownedCars=[]; }
