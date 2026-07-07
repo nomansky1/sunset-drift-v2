@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.13-->
+<!--BUILD:v9.14-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.13';
+(function(){ const BUILD='v9.14';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3739,6 +3739,7 @@ function attachUpgrades(rig, carIdx, forceU){
       const gs=new THREE.Vector3(); geo.boundingBox.getSize(gs); const k=W*0.86*(s>=2?1:0.82)/(gs.x||1);
       const m=new THREE.Mesh(geo, bodyKit); m.castShadow=sh; m.scale.setScalar(k);
       m.position.set(0, deckY - geo.boundingBox.min.y*k - H*0.06, wingZ); kit.add(m);   // uprights sink slightly INTO the real deck = bolted, no gap
+      if(s>=2) for(const sx of [-1,1]){ const ep=new THREE.Mesh(rbox(0.03,H*0.42,0.44,0.05), carbon); ep.castShadow=sh; ep.position.set(sx*W*0.45, deckY+H*0.22, wingZ); kit.add(ep); }   // tall carbon GT endplates -> aggressive super-racer wing
     } else { const span=W*0.84;                                         // procedural fallback if the GLB hasn't loaded
       const af=new THREE.Shape(); af.moveTo(-0.5,0); af.quadraticCurveTo(0,0.17,0.5,0.03); af.quadraticCurveTo(0,-0.07,-0.5,0);
       const wingGeo=new THREE.ExtrudeGeometry(af,{depth:span,bevelEnabled:true,bevelThickness:0.02,bevelSize:0.02,bevelSegments:2,steps:1});
