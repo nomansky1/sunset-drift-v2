@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.10-->
+<!--BUILD:v9.11-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1039,7 +1039,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.10';
+(function(){ const BUILD='v9.11';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2873,6 +2873,8 @@ function scatterProps(){ const rng=mulberry32(7777);
   buildVariantVeg();  // tropical palms / swamp cypress+reeds for the new environment variants
   buildBirds(rng);                                     // flying bird flock (animated) on EVERY track
   buildBalloons(rng);                                  // drifting hot-air balloons fill the sky on EVERY track
+  buildPark(rng);                                      // park + playground on green/urban tracks
+  buildBusStops(rng);                                  // bus + bus-stop shelters = street life on every track
   if(th==='city'||th==='docks'||th==='coast'||th==='beach') buildParkedCars(rng);   // parked cars = street life
   buildTrackFurniture(rng);                            // Kenney Racing Kit: grandstands + pits + start gantry + banners
   buildLandmark(rng);                                  // ONE oversized hero landmark per biome (visible across the loop)
@@ -2977,6 +2979,70 @@ function buildBalloons(rng){
     b.userData={a0:rng()*6.283, rad:120+rng()*150, h:86+rng()*48, sp:0.6+rng()*0.6, dir:rng()>0.5?1:-1, ph:rng()*6.283};
     b.traverse(o=>{o.castShadow=false;}); balloonGrp.add(b); items.push(b); }
   balloonGrp.userData={items}; scene.add(balloonGrp);
+}
+// PARK + PLAYGROUND: one green park with a swing/slide/roundabout, benches, a pond + real shade trees, on flat infield (green/urban tracks)
+function buildPark(rng){
+  const th=currentTheme?currentTheme.theme:'city'; if(th==='desert'||th==='snow') return;   // dry biomes keep their own ground
+  const cx0=trackCentroid.x, cz0=trackCentroid.y, hw=CONFIG.roadHalfWidth;
+  let cx=null, cz=null;
+  for(let a=0;a<26;a++){ const ang=rng()*6.283, rad=trackRadius+34+rng()*95, x=cx0+Math.cos(ang)*rad, z=cz0+Math.sin(ang)*rad;
+    if(distToTrackApprox(x,z)>hw+14 && terrainSlope(x,z)<0.16 && heightFrac(x,z)>-0.05){ cx=x; cz=z; break; } }
+  if(cx==null) return;
+  const sh=!isTouch, y0=terrainHeight(cx,cz), g=new THREE.Group(); g.position.set(cx,y0,cz); g.rotation.y=rng()*6.283; scene.add(g);
+  { const lawn=new THREE.Mesh(new THREE.BoxGeometry(26,0.2,26), new THREE.MeshStandardMaterial({color:0x3f7a3a, roughness:1, flatShading:true})); lawn.position.y=0.08; lawn.receiveShadow=true; g.add(lawn); }
+  const path=new THREE.Mesh(new THREE.BoxGeometry(3,0.06,24), new THREE.MeshStandardMaterial({color:0xb9a88a, roughness:0.95})); path.position.set(0,0.2,0); path.rotation.y=0.4; g.add(path);
+  const pond=new THREE.Mesh(new THREE.CylinderGeometry(3.6,3.6,0.2,18), new THREE.MeshStandardMaterial({color:0x2f6f8a, roughness:0.15, metalness:0.4})); pond.position.set(7,0.16,-6); g.add(pond);
+  const wood=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
+  const mkBench=(bx,bz,ry)=>{ const b=new THREE.Group(); const seat=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.14,0.5),wood); seat.position.y=0.45; const back=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.5,0.12),wood); back.position.set(0,0.72,-0.2); b.add(seat,back); for(const sx of[-1,1]){ const leg=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.45,0.45),wood); leg.position.set(sx*0.85,0.22,0); b.add(leg); } b.position.set(bx,0.2,bz); b.rotation.y=ry; b.traverse(o=>o.castShadow=sh); g.add(b); };
+  mkBench(-6,4,0.4); mkBench(5,7,-1.1);
+  const steel=new THREE.MeshStandardMaterial({color:0x9aa6b0, metalness:0.5, roughness:0.4}), red=new THREE.MeshStandardMaterial({color:0xd94f4f, roughness:0.6, flatShading:true}), blue=new THREE.MeshStandardMaterial({color:0x3f7fd0, roughness:0.6, flatShading:true}), yellow=new THREE.MeshStandardMaterial({color:0xf2c94c, roughness:0.6, flatShading:true});
+  const pg=new THREE.Group(); pg.position.set(-5,0.2,-5); g.add(pg);
+  { const sw=new THREE.Group();   // swing set
+    for(const sx of[-1,1]){ const l1=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.11,3.2,6),steel); l1.position.set(sx*1.5,1.55,0.4); l1.rotation.z=sx*0.3; l1.rotation.x=-0.16; sw.add(l1); const l2=l1.clone(); l2.position.z=-0.4; l2.rotation.x=0.16; sw.add(l2); }
+    const beam=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.14,0.14),steel); beam.position.y=3.0; sw.add(beam);
+    for(const sx of[-1,1]){ for(const cz of[-0.15,0.15]){ const ch=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,2.0,4),steel); ch.position.set(sx*0.7,1.95,cz); sw.add(ch); } const seat=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.08,0.24),red); seat.position.set(sx*0.7,0.95,0); sw.add(seat); }
+    sw.traverse(o=>o.castShadow=sh); pg.add(sw); }
+  { const sl=new THREE.Group(); sl.position.set(4,0,2.5);   // slide
+    const tower=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.7,1.1),blue); tower.position.y=0.85; sl.add(tower);
+    const chute=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.1,3.0),yellow); chute.position.set(0,0.9,-1.7); chute.rotation.x=0.6; sl.add(chute);
+    for(let r=0;r<3;r++){ const rung=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.0,5),steel); rung.rotation.z=Math.PI/2; rung.position.set(0,0.35+r*0.45,0.7); sl.add(rung); }
+    sl.traverse(o=>o.castShadow=sh); pg.add(sl); }
+  if(!isTouch){ const rb=new THREE.Group(); rb.position.set(-3,0,4);   // roundabout (skip on LITE)
+    const disc=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.3,0.16,12),red); disc.position.y=0.35; rb.add(disc);
+    for(let k=0;k<4;k++){ const bar=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.06,0.06),steel); bar.rotation.y=k*Math.PI/4; bar.position.y=0.55; rb.add(bar); }
+    rb.traverse(o=>o.castShadow=sh); pg.add(rb); }
+  if(propsReady && propModels.tree){ const xf=[]; for(let k=0;k<4;k++){ const tx=cx+(rng()-0.5)*22, tz=cz+(rng()-0.5)*22; if(distToTrackApprox(tx,tz)>hw+6) xf.push(propMat(tx,tz, 6.5+rng()*2, rng()*6.283)); } if(xf.length) instProp(propModels.tree, xf); }
+}
+// BUS STOPS: glass-roof shelters (bench + lit sign) on the sidewalk + one parked themed BUS
+function buildBusStops(rng){
+  const hw=CONFIG.roadHalfWidth, sh=!isTouch;
+  const glass=new THREE.MeshStandardMaterial({color:0x9fb8c8, roughness:0.2, metalness:0.35, transparent:!isTouch, opacity:isTouch?1:0.6});
+  const postM=new THREE.MeshStandardMaterial({color:0x2a2a30, metalness:0.6, roughness:0.4});
+  const wood=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
+  const signM=new THREE.MeshStandardMaterial({color:0x2f7fd0, emissive:0x1f5fa0, emissiveIntensity:nightMode?1.2:0.5, roughness:0.5});
+  const nStops=isTouch?2:3; let placed=0;
+  for(let s=0; s<SAMPLES && placed<nStops; s+=Math.max(4,Math.floor(SAMPLES/(nStops+3)))){ const i=(20+s)%SAMPLES, p=samplePts[i], n=sampleNorm[i], side=(placed%2)?1:-1, off=hw+2.8;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<hw+1) continue;
+    const g=new THREE.Group(); g.position.set(x,terrainHeight(x,z),z); g.rotation.y=Math.atan2(p.x-x,p.y-z); scene.add(g);
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(3.2,0.1,1.5),glass); roof.position.set(0,2.3,0); g.add(roof);
+    const backP=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.7,0.08),glass); backP.position.set(0,1.35,-0.7); g.add(backP);
+    for(const sx of[-1,1]){ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.3,6),postM); post.position.set(sx*1.5,1.15,-0.6); g.add(post); }
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.14,0.4),wood); seat.position.set(0,0.5,-0.15); g.add(seat);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2.6,6),postM); pole.position.set(1.7,1.3,0.6); g.add(pole);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.7,0.06),signM); sign.position.set(1.7,2.45,0.6); g.add(sign);
+    g.traverse(o=>o.castShadow=sh); placed++;
+  }
+  const th=currentTheme?currentTheme.theme:'city';
+  const liv = th==='desert'?0xd9a441 : th==='forest'?0x2f6b34 : th==='snow'?0x114a8a : (th==='coast'||th==='beach')?0x2a9d54 : 0xe4b93a;
+  for(let s=0;s<26;s++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=hw+6.4;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<hw+5.8) continue;
+    const g=new THREE.Group(); g.position.set(x,terrainHeight(x,z),z); g.rotation.y=roadAngleAt(x,z)+(rng()<0.5?0:Math.PI); scene.add(g);
+    const body=new THREE.Mesh(rbox(2.5,2.5,10.5,0.4), new THREE.MeshStandardMaterial({color:liv, roughness:0.42, metalness:0.2})); body.position.y=1.7; g.add(body);
+    const win=new THREE.Mesh(new THREE.BoxGeometry(2.56,0.8,8.4), new THREE.MeshStandardMaterial({color:0x10141c, roughness:0.25, metalness:0.4})); win.position.y=2.25; g.add(win);
+    const wg=new THREE.CylinderGeometry(0.55,0.55,0.42,10); wg.rotateZ(Math.PI/2); const wm=new THREE.MeshStandardMaterial({color:0x15151a, roughness:0.85});
+    for(const wz of [-3.6,3.2]) for(const sx of[-1,1]){ const w=new THREE.Mesh(wg,wm); w.position.set(sx*1.28,0.55,wz); g.add(w); }
+    g.traverse(o=>o.castShadow=sh); break;
+  }
 }
 // procedural dock gantry cranes (legs + boom + cab) for the docks
 function buildCranes(rng){
@@ -3852,7 +3918,7 @@ function carShadowAssets(){
   const g=new THREE.PlaneGeometry(3.0,4.7); g.rotateX(-Math.PI/2);        // lie flat; long axis = car forward (+Z)
   _carShadowGeo=g;
   const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
-  const rg=x.createRadialGradient(32,32,2,32,32,31); rg.addColorStop(0,'rgba(0,0,0,0.55)'); rg.addColorStop(0.55,'rgba(0,0,0,0.30)'); rg.addColorStop(1,'rgba(0,0,0,0)');
+  const rg=x.createRadialGradient(32,32,2,32,32,31); rg.addColorStop(0,'rgba(24,15,8,0.52)'); rg.addColorStop(0.55,'rgba(22,14,8,0.28)'); rg.addColorStop(1,'rgba(20,12,6,0)');
   x.fillStyle=rg; x.fillRect(0,0,64,64);
   _carShadowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false,
     polygonOffset:true, polygonOffsetFactor:-7, polygonOffsetUnits:-7});  // soft AO contact shadow, beats road + skids
@@ -3873,6 +3939,7 @@ function syncCarMesh(c){
   carShadowAssets();
   if(!c.shadowMesh){ c.shadowMesh=new THREE.Mesh(_carShadowGeo,_carShadowMat); scene.add(c.shadowMesh); }
   c.shadowMesh.position.set(c.pos.x, 0.085+c.visY, c.pos.y); c.shadowMesh.rotation.y=c.heading;
+  { const dm=c.rig&&c.rig.dims; if(dm) c.shadowMesh.scale.set(clamp(dm.W/2.4,0.5,1.5), 1, clamp(dm.Lz/4.4,0.55,1.5)); }   // shadow matches the car's silhouette
   c.shadowMesh.visible = !!(c.rig && c.rig.group && c.rig.group.visible);
 }
 
