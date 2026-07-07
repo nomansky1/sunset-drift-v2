@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.6-->
+<!--BUILD:v9.7-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1039,7 +1039,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.6';
+(function(){ const BUILD='v9.7';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3720,7 +3720,10 @@ function attachUpgrades(rig, carIdx, forceU){
     const spl=add(rbox(W*0.9,0.045,0.26,0.04), carbon); spl.position.set(0, floorY+H*0.055, splZ); spl.rotation.x=0.06;   // low front splitter
     if(b>=2) for(const sx of [-1,1]){ const can=add(rbox(0.26,0.028,0.17,0.02), carbon); can.position.set(sx*(x0*0.84), floorY+H*0.30, front-Lz*0.07); can.rotation.z=sx*-0.16; can.rotation.x=0.12; } }   // canards
   // TURBO -> hood intake scoop + twin chrome exhaust tips (the top-speed kit), sat on the real hood/rear
-  if(u.turbo>0){ const x=u.turbo, scZ=front*0.34, scY=surfY(0, scZ, top*0.7);
+  if(u.turbo>0){ const x=u.turbo;
+    let scZ=front*0.55;                                             // HOOD-FINDER: from the windshield base forward, the first surface BELOW the greenhouse is the hood -> the scoop can never climb onto the glass
+    for(let f=0.34; f<=0.74; f+=0.05){ const hy=surfY(0, front*f, -9); if(hy>-8 && hy < floorY+H*0.78){ scZ=front*Math.min(f+0.10,0.78); break; } }
+    const scY=surfY(0, scZ, top*0.7);
     const scoop=add(rbox(W*0.3,H*0.13,0.5,0.05), carbon); scoop.position.set(0, scY+H*0.045, scZ); scoop.rotation.x=-0.06;
     const intake=add(new THREE.CylinderGeometry(0.085,0.11,0.12,10), carbon); intake.rotation.x=Math.PI/2; intake.position.set(0, scY+H*0.085, scZ+0.24);
     if(x>=2){ const chrome=new THREE.MeshStandardMaterial({color:0xbfc4cc, metalness:0.9, roughness:0.25});
