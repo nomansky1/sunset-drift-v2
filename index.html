@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.11-->
+<!--BUILD:v9.12-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -124,7 +124,7 @@
     #carStats .bar{ height:7px; }
     #carPrev{ position:absolute; left:calc(env(safe-area-inset-left,0px) + min(30vw,254px) + 14px); top:50%; transform:translateY(-50%); z-index:3; }
     #carNext{ position:absolute; right:calc(env(safe-area-inset-right,0px) + min(30vw,254px) + 14px); top:50%; transform:translateY(-50%); z-index:3; }
-    #paintRow,#styleRow{ justify-content:flex-start; }
+    #paintRow,#styleRow,#wrapRow{ justify-content:flex-start; }
   }
   @media (orientation:portrait){
     #panel-garage.mPanel{ justify-content:flex-start; }
@@ -153,6 +153,7 @@
   .paintSw.sel{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.55); }
   .paintSw.stock{ background:repeating-linear-gradient(45deg,#4a4d57,#4a4d57 3px,#8a8d97 3px,#8a8d97 6px); }
   #styleRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
+  #wrapRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
   .styleSw{ font-size:10px; font-weight:800; letter-spacing:.4px; padding:4px 9px; border-radius:4px; cursor:pointer;
             background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.16); color:#d4d2de; transition:.12s; }
   .styleSw:hover{ border-color:rgba(255,255,255,.34); }
@@ -888,6 +889,7 @@
         <div id="carStatus"></div>
         <div id="paintRow"></div>
         <div id="styleRow"></div>
+        <div id="wrapRow"></div>
       </div>
       <div id="garR" class="garPanel">
         <div class="garHead">⚙ UPGRADES</div>
@@ -1039,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.11';
+(function(){ const BUILD='v9.12';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1316,6 +1318,9 @@ const PAINT_STYLES=[ {key:'gloss',name:'Gloss',rough:0.34,metal:0.42,cc:0.9}, {k
   {key:'metal',name:'Metallic',rough:0.22,metal:0.92,cc:0.5}, {key:'chrome',name:'Chrome',rough:0.04,metal:1.0,cc:1.0}, {key:'pearl',name:'Pearl',rough:0.15,metal:0.55,cc:1.0} ];
 let paintStyles={}; try{ paintStyles=JSON.parse(localStorage.getItem('sd_pstyle')||'{}'); }catch(e){ paintStyles={}; }
 function savePaintStyle(){ try{ localStorage.setItem('sd_pstyle', JSON.stringify(paintStyles)); }catch(e){} }
+let paintWraps={}; try{ paintWraps=JSON.parse(localStorage.getItem('sd_wrap')||'{}'); }catch(e){ paintWraps={}; }
+function savePaintWrap(){ try{ localStorage.setItem('sd_wrap', JSON.stringify(paintWraps)); }catch(e){} }
+const WRAPS=[ {key:'stripe',name:'Stripes'}, {key:'rising',name:'Rising Sun'}, {key:'rally',name:'Rally #'} ];   // livery wraps (JDM rising-sun etc.)
 // the paintable body mesh(es): prefer a 'body'-named mesh, else any textured non-wheel/glass/driver mesh (karts name theirs '<model>_1')
 function carBodyMeshes(chassis){ const named=[], textured=[], solid=[];
   chassis.traverse(o=>{ if(!o.isMesh) return; const n=o.name||''; const m=o.material;
@@ -1360,6 +1365,46 @@ function bodyDomColor(body, cm, key){ if(_bodyCol[key]) return _bodyCol[key];
     if(img[o+3]<200) continue; const k=img[o]+','+img[o+1]+','+img[o+2]; area[k]=(area[k]||0)+ar; }
   let best=null,bc=0; for(const k in area){ if(area[k]>bc){ bc=area[k]; best=k; } }
   _bodyCol[key]=best?best.split(',').map(Number):null; return _bodyCol[key]; }
+let _risingSunTex=null;
+function risingSunTex(){ if(_risingSunTex) return _risingSunTex; const S=128,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d');
+  x.clearRect(0,0,S,S); x.fillStyle='#f4f4f2'; x.beginPath(); x.arc(S/2,S/2,S/2-2,0,7); x.fill();
+  x.fillStyle='#d61f26'; x.save(); x.translate(S/2,S/2); for(let i=0;i<16;i++){ x.rotate(Math.PI/8); x.beginPath(); x.moveTo(-5,0); x.lineTo(-3,-S/2); x.lineTo(3,-S/2); x.lineTo(5,0); x.closePath(); x.fill(); } x.restore();
+  x.fillStyle='#d61f26'; x.beginPath(); x.arc(S/2,S/2,S*0.15,0,7); x.fill();
+  const t=new THREE.CanvasTexture(c); if('encoding' in t) t.encoding=THREE.sRGBEncoding; _risingSunTex=t; return t; }
+let _rallyTex=null;
+function rallyNumTex(){ if(_rallyTex) return _rallyTex; const S=128,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d');
+  x.clearRect(0,0,S,S); x.fillStyle='#f4f4f2'; x.beginPath(); x.arc(S/2,S/2,S/2-3,0,7); x.fill();
+  x.strokeStyle='#1b1d22'; x.lineWidth=6; x.beginPath(); x.arc(S/2,S/2,S/2-6,0,7); x.stroke();
+  x.fillStyle='#1b1d22'; x.font='bold 78px Arial'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('7',S/2,S/2+4);
+  const t=new THREE.CanvasTexture(c); if('encoding' in t) t.encoding=THREE.sRGBEncoding; _rallyTex=t; return t; }
+// molded LIVERY WRAPS: decals raycast onto the real body surface (top stripes / hood+door roundels)
+function applyWrap(rig, key){
+  if(rig.wrapKit){ try{ rig.group.remove(rig.wrapKit); }catch(e){} rig.wrapKit=null; }
+  if(!key || !rig.chassis || !rig.group) return;
+  const d=rig.dims||{W:2,H:1.5,Lz:4.6,yaw:0}, W=d.W,H=d.H,Lz=d.Lz, x0=W/2, front=Lz/2, rear=-Lz/2, floorY=0;
+  const wrap=new THREE.Group(); wrap.rotation.y=d.yaw; rig.group.add(wrap); rig.group.updateWorldMatrix(true,true); rig.wrapKit=wrap;
+  const body=rig.chassis, _ray=new THREE.Raycaster(), _o=new THREE.Vector3(), _t=new THREE.Vector3(), _dn=new THREE.Vector3(0,-1,0);
+  const surfY=(lx,lz,fb)=>{ wrap.localToWorld(_o.set(lx,H+3,lz)); _ray.set(_o,_dn); const h=_ray.intersectObject(body,true); return h.length? wrap.worldToLocal(h[0].point.clone()).y : fb; };
+  const surfX=(sign,lz,ly,fb)=>{ wrap.localToWorld(_o.set(sign*(x0+1.5),ly,lz)); wrap.localToWorld(_t.set(0,ly,lz)); _ray.set(_o,_t.sub(_o).normalize()); const h=_ray.intersectObject(body,true); return h.length? Math.abs(wrap.worldToLocal(h[0].point.clone()).x) : fb; };
+  if(key==='stripe'){
+    const sm=new THREE.MeshPhysicalMaterial({color:0xf2f2f4, metalness:0.1, roughness:0.5, clearcoat:0.7, clearcoatRoughness:0.2, side:THREE.DoubleSide});
+    for(const cx of [-W*0.11, W*0.11]){ const pos=[], idx=[]; let prev=-1; const hw2=W*0.045;
+      for(let i=0;i<=26;i++){ const lz=front*0.85 - (front*0.85-rear*0.85)*(i/26), yy=surfY(cx,lz,-9);
+        if(yy<-8){ prev=-1; continue; } const b=pos.length/3;
+        pos.push(cx-hw2, yy+0.014, lz,  cx+hw2, yy+0.014, lz);
+        if(prev>=0){ idx.push(prev,prev+1,b, prev+1,b+1,b); } prev=b; }
+      if(!idx.length) continue;
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals();
+      const m=new THREE.Mesh(g,sm); m.castShadow=false; m.renderOrder=2; wrap.add(m); }
+  } else if(key==='rising' || key==='rally'){
+    const tex = key==='rising'?risingSunTex():rallyNumTex();
+    const mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false, side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4});
+    const hz=front*0.5, hy=surfY(0,hz,-9);
+    if(hy>-8){ const disc=new THREE.Mesh(new THREE.CircleGeometry(W*0.2,24), mat); disc.rotation.x=-Math.PI/2; disc.position.set(0,hy+0.02,hz); disc.castShadow=false; disc.renderOrder=2; wrap.add(disc); }
+    for(const sx of [-1,1]){ const dz=0, dy=floorY+H*0.42, ex=surfX(sx,dz,dy, x0*0.98);
+      const dd=new THREE.Mesh(new THREE.CircleGeometry(H*0.2,20), mat); dd.position.set(sx*(ex+0.02),dy,dz); dd.rotation.y=sx>0?Math.PI/2:-Math.PI/2; dd.castShadow=false; dd.renderOrder=2; wrap.add(dd); }
+  }
+}
 function paintCar(rig, hex, modelKey){ if(hex==null||!rig.chassis) return;
   const col=new THREE.Color(hex);
   if(rig.kitMats) rig.kitMats.forEach(m=>{ if(m&&m.color) m.color.copy(col).multiplyScalar(0.95); });   // upgrade parts share the body's paint colour
@@ -1409,7 +1454,7 @@ function renderShop(){                                   // menu car panel: name
     st.textContent=(afford?'UNLOCK · ':'🔒 ')+c.price+' 🪙';
     st.onclick=(e)=>{ if(e) e.stopPropagation(); if(coins>=CARS[i].price){ coins-=CARS[i].price; saveCoins(); renderCoins(); ownedCars[i]=true; saveOwned(); renderShop(); } };
     btn.classList.add('locked'); btn.innerHTML='🔒 UNLOCK TO RACE'; }
-  renderKits(); renderArsenal(); renderPaints(); renderStyles();
+  renderKits(); renderArsenal(); renderPaints(); renderStyles(); renderWraps();
 }
 function renderArsenal(){                                 // GLOBAL battle-royale weapon upgrades (apply to whichever car you fight in)
   const host=document.getElementById('weaponRow'); if(!host) return; host.style.display='flex';
@@ -1434,6 +1479,13 @@ function renderStyles(){                                  // garage paint-FINISH
     PAINT_STYLES.map(s=>'<i class="styleSw'+(cur===s.key?' sel':'')+'" data-s="'+s.key+'">'+s.name+'</i>').join('');
   host.querySelectorAll('.styleSw').forEach(sw=>{ sw.onclick=(e)=>{ if(e) e.stopPropagation(); const s=sw.getAttribute('data-s');
     if(s==='') delete paintStyles[i]; else paintStyles[i]=s; savePaintStyle(); upgradeCars(); renderStyles(); }; }); }
+function renderWraps(){ const host=document.getElementById('wrapRow'); if(!host) return; const i=selectedCar;
+  if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
+  host.style.display='flex'; const cur=paintWraps[i]||'';
+  host.innerHTML='<span class="paintLbl">WRAP</span><i class="styleSw'+(cur===''?' sel':'')+'" data-w="">None</i>'+
+    WRAPS.map(w=>'<i class="styleSw'+(cur===w.key?' sel':'')+'" data-w="'+w.key+'">'+w.name+'</i>').join('');
+  host.querySelectorAll('.styleSw').forEach(sw=>{ sw.onclick=(e)=>{ if(e) e.stopPropagation(); const w=sw.getAttribute('data-w');
+    if(w==='') delete paintWraps[i]; else paintWraps[i]=w; savePaintWrap(); upgradeCars(); renderWraps(); }; }); }
 function renderPaints(){                                  // garage paint-job picker (owned Kenney cars; recolours body, keeps glass)
   const host=document.getElementById('paintRow'); if(!host) return; const i=selectedCar;
   if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
@@ -3530,6 +3582,7 @@ function upgradeCars(){
     physicalizeBody(rig);                                                    // body panels -> physical clearcoat paint (IBL sunset reflection + working finishes)
     paintCar(rig, paintJobs[liveryIdx], CARS[liveryIdx].raw||'doge');        // custom paint job (recolours the body, keeps glass)
     if(paintStyles[liveryIdx]) finishCar(rig, paintStyles[liveryIdx]);       // custom finish/style (matte/metallic/chrome/pearl)
+    applyWrap(rig, paintWraps[liveryIdx]);                                    // livery wrap decals (stripes / JDM rising-sun / rally #)
     if(rig.flames) rig.flames.forEach((f,fi)=>{ rig.group.add(f);   // re-attach exhaust flames (group was wiped above)
       if(rig.exhaustPts && rig.exhaustPts[fi]) f.position.copy(rig.exhaustPts[fi]); });   // fire comes out of THIS model's pipes
     if(c.isPlayer && !rig.headSpot){                                    // night driving beam (player only - cheap)
