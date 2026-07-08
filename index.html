@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.38-->
+<!--BUILD:v9.39-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1043,7 +1043,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.38';
+(function(){ const BUILD='v9.39';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3638,7 +3638,7 @@ function buildLights(sunDir){
   const s=46;                              // TIGHT shadow box following the car (was 72) -> ~2.4x denser texels = crisp shadows, same cost
   sun.shadow.camera.left=-s; sun.shadow.camera.right=s; sun.shadow.camera.top=s; sun.shadow.camera.bottom=-s;
   sun.shadow.camera.near=1; sun.shadow.camera.far=240; sun.shadow.camera.updateProjectionMatrix();
-  sun.shadow.mapSize.set(isTouch?1024:2048, isTouch?2048:2048);
+  sun.shadow.mapSize.set(isTouch?1024:2048, isTouch?1024:2048);
   sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.03; sun.shadow.radius=isTouch?3:4;   // normalBias 0.45->0.03: shadows REATTACH to the wheels/cars (kills peter-panning)
   scene.add(sun); sunLight=sun;
   if(!nightMode){ const fill=new THREE.DirectionalLight(0x9db4d6, 0.22);                 // cool shadowless fill OPPOSITE the sun -> shaded sides read as real daylight, not dead-flat
@@ -4691,7 +4691,7 @@ function hidePauseUI(){ const pb=document.getElementById('pauseBtn'); if(pb) pb.
 function pauseGame(){ if(state!=='race') return; state='paused'; document.getElementById('pauseMenu').classList.remove('hidden'); if(audio&&audio.ok) audio.update(0,0,false); }
 function resumeGame(){ if(state!=='paused') return; document.getElementById('pauseMenu').classList.add('hidden'); state='race'; }
 function showMenu(){                                       // back to the garage/menu (shop)
-  state='menu'; menuT=0; champ.active=false; hidePauseUI(); document.body.classList.add('inmenu');
+  state='menu'; menuT=0; champ.active=false; dailyActive=false; hidePauseUI(); document.body.classList.add('inmenu');
   if(window.audio&&audio.silence) audio.silence();   // no engine/skid bleed into the garage
   if(brActive) endBattle();                               // clear any Battle Royale state (guns, zone, HP)
   if(ghostMesh) ghostMesh.visible=false; ghostActive=false;   // no ghost in the garage
@@ -4703,7 +4703,7 @@ function showMenu(){                                       // back to the garage
 }
 function startChampionship(){
   if(!isOwned(selectedCar)){ renderShop(); return; }
-  champ.active=true; champ.round=0; champ.points=cars.map(()=>0);
+  champ.active=true; dailyActive=false; champ.round=0; champ.points=cars.map(()=>0);
   currentTrack=champ.order[0]; selectTrack(currentTrack); startGame();
 }
 function showStandings(){
@@ -4969,7 +4969,7 @@ function damageCar(c, amt, by){ if(!c.alive) return;
     if(by===player && c!==player){                                                  // KILL REWARDS: paid + escalating streak popups
       questProgress('kill',1);                                                      // DAILY QUEST progress
       player._brStreak=(player._brStreak||0)+1; const st=player._brStreak;
-      coins+=50; if(typeof saveCoins==='function') saveCoins(); if(typeof updateCoinHud==='function') updateCoinHud();
+      coins+=50; if(typeof saveCoins==='function') saveCoins(); if(typeof renderCoins==='function') renderCoins();
       popup(st>=4?'RAMPAGE x'+st+' +50c':st===3?'TRIPLE KILL +50c':st===2?'DOUBLE KILL +50c':'KILL +50c', st>=3?'#ff8a3c':'#ffd23b');
       if(audio&&audio.coin) audio.coin(); }
     if(c===player) player._brStreak=0;
@@ -5079,12 +5079,13 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
   const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0; }
 function finishRace(){
   player.finished=true; state='finished'; hidePauseUI();
-  const r=rankOf(player), won=r===1;
+  const solo = timeTrial || !!window.NETRACE;              // no AI field -> "1st of 4" would be fake
+  const r = solo ? 0 : rankOf(player), won = !solo && r===1;
   if(won && window.audio && audio.victory) audio.victory();
   if(!timeTrial){ questProgress('finish',1); if(won) questProgress('win',1); }   // DAILY QUEST progress
   // ADAPTIVE AI: every win permanently sharpens the field (+0.07 power, cap +0.35);
   // finishing 3rd+ relaxes it. Beating everyone stops being possible to do on autopilot.
-  try{ let ad=parseFloat(localStorage.getItem('sd_adapt')||'0')||0;
+  if(!solo) try{ let ad=parseFloat(localStorage.getItem('sd_adapt')||'0')||0;
     ad = won ? Math.min(ad+0.07, 0.35) : (r>=3 ? Math.max(ad-0.10, 0) : ad);
     localStorage.setItem('sd_adapt', ad.toFixed(2));
     if(won && ad>=0.14) popup("⚠️ RIVALS ADAPTING — getting faster", "#ff9a5a");
@@ -5106,16 +5107,16 @@ function finishRace(){
       const show=(typeof Rewarded!=='undefined' && Rewarded.available()); db.style.display=show?'block':'none';
       if(show) db.textContent='▶ 2× COINS  (+'+reward+')'; } }
   if(champ.active){ champ.round++; showStandings(); if(audio&&audio.ok) audio.update(0,0,false); return; }   // championship -> standings
-  const stars = won?3 : (r<=2?2:1);                                      // 1 finish / 2 podium / 3 win
+  const stars = solo ? 1 : (won?3 : (r<=2?2:1));                         // 1 finish / 2 podium / 3 win; solo runs never farm stars
   if(stars>(trackStars[currentTrack]||0)){ trackStars[currentTrack]=stars; saveStars(); }
   let unlockedName=null;                                                 // WIN a track -> unlock the next one
   if(won && currentTrack===maxTrack && maxTrack<TRACKS.length-1){ maxTrack++; saveMaxTrack(); unlockedName=TRACKS[maxTrack].name; }
   const prevBest=trackBest[currentTrack]; let newRecord=false;          // best total time per track
   if(prevBest===undefined || raceTime<prevBest){ trackBest[currentTrack]=raceTime; saveBest(); if(prevBest!==undefined) newRecord=true; }
   const medal = r===1?'🥇 ':r===2?'🥈 ':r===3?'🥉 ':'';
-  document.getElementById('resTitle').textContent = newRecord?'⏱ NEW RECORD!' : (won?'🏆 YOU WIN!':(r<=2?'PODIUM!':'FINISH!'));
+  document.getElementById('resTitle').textContent = newRecord?'⏱ NEW RECORD!' : (solo?(timeTrial?'⏱ TIME TRIAL':'FINISH!'):(won?'🏆 YOU WIN!':(r<=2?'PODIUM!':'FINISH!')));
   if(wasDaily) document.getElementById('resTitle').innerHTML = '🔥 DAILY · '+dailyState.streak+' DAY'+(dailyState.streak===1?'':'S');   // daily streak headline
-  document.getElementById('resPos').innerHTML = medal+ordinal(r);
+  document.getElementById('resPos').innerHTML = solo ? '⏱' : (medal+ordinal(r));
   document.getElementById('resStats').innerHTML =
     lapSplitsHTML() + 'Total <b>'+fmt(raceTime)+'</b> &nbsp;·&nbsp; Best <b>'+fmt(bestLap)+'</b>'
     + (unlockedName ? '<br><span style="font-size:.92em;color:#ffd24a;font-weight:800">🔓 UNLOCKED: '+unlockedName+'</span>' : '')
@@ -5257,6 +5258,12 @@ const CINEMATIC_SHADER = {
 function buildComposer(){
   if(typeof THREE.EffectComposer==='undefined' || typeof THREE.UnrealBloomPass==='undefined') return;
   try{
+    // r137 composer.dispose() misses the bloom/SSAO internal target chains -> GPU memory climbs on every
+    // orientation flip / quality toggle until Android kills the context MID-RACE. Free them explicitly.
+    try{ if(bloomPass&&bloomPass.dispose) bloomPass.dispose(); }catch(e){}
+    try{ if(ssaoPass&&ssaoPass.dispose) ssaoPass.dispose(); }catch(e){}
+    try{ if(fxaaPass&&fxaaPass.material&&fxaaPass.material.dispose) fxaaPass.material.dispose(); }catch(e){}
+    try{ if(cinePass&&cinePass.material&&cinePass.material.dispose) cinePass.material.dispose(); }catch(e){}
     composer=new THREE.EffectComposer(renderer);
     ssaoPass=null;
     if(aoPref && !lowQuality && typeof THREE.SSAOPass!=='undefined'){                 // AMBIENT OCCLUSION — soft contact shadowing (renders the scene itself)
@@ -5635,7 +5642,7 @@ function init(){
   // (RACE button is the single deliberate launch path — no tap-anywhere-to-start trap)
   document.getElementById('pauseBtn').addEventListener('click', e=>{ e.stopPropagation(); pauseGame(); });
   document.getElementById('resumeBtn').addEventListener('click', e=>{ e.stopPropagation(); resumeGame(); });
-  document.getElementById('pRestartBtn').addEventListener('click', e=>{ e.stopPropagation(); champ.active=false; startGame(); });
+  document.getElementById('pRestartBtn').addEventListener('click', e=>{ e.stopPropagation(); if(brActive){ startBattle(); return; } champ.active=false; startGame(); });
   document.getElementById('pGarageBtn').addEventListener('click', e=>{ e.stopPropagation(); showMenu(); });
   document.getElementById('againBtn').addEventListener('click', e=>{ e.stopPropagation(); if(brActive){ startBattle(); return; } champ.active=false; startGame(); });
   { const bb=document.getElementById('boardBtn'); if(bb) bb.addEventListener('click', e=>{ e.stopPropagation(); if(window.openTrackBoard) window.openTrackBoard(); }); }
