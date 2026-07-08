@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.35-->
+<!--BUILD:v9.36-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1043,7 +1043,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.35';
+(function(){ const BUILD='v9.36';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1811,7 +1811,7 @@ function applyMusicVol(){ if(bgMusic) bgMusic.volume = musicMuted?0:musicVolume;
 const MUSIC_FILE={ /* city:'audio/music-city.mp3', coast:'audio/music-coast.mp3', ... */ };
 // NATIONAL MUSIC (Suno): one instrumental per world region, local + untagged + loudness-normalized.
 // Flip a group true once audio/music-<grp>.mp3 ships (manifest = zero 404s until then).
-const GROUP_MUSIC_PRESENT={ latin:false, funk:false, usa:false, europe:false, phonk:false, india:false, arabic:false, afro:false };
+const GROUP_MUSIC_PRESENT={ latin:true, funk:false, usa:true, europe:true, phonk:true, india:true, arabic:true, afro:true };
 function playMusic(theme){
   let src = MUSIC_FILE[theme] || MUSIC[theme], mkey = theme;
   try{ const gk=nation().grp; if(gk && GROUP_MUSIC_PRESENT[gk]){ src='audio/music-'+gk+'.mp3'; mkey='g:'+gk; } }catch(e){}
