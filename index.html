@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.39-->
+<!--BUILD:v9.40-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1043,7 +1043,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.39';
+(function(){ const BUILD='v9.40';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5701,7 +5701,7 @@ init();
 // Backend-ready adapter: times live in localStorage today; swap LB.submit/LB.top to a Vercel endpoint later for a
 // truly global board (Supabase REST is quota-blocked, so global must route through the backend pooler). The
 // CHALLENGE link is real async competition NOW — encodes {track,time,name} in the URL, no server needed.
-const SD_LB_DEFAULT = '';   // <- baked-in global-leaderboard backend URL (empty = local-only; set once deployed)
+const SD_LB_DEFAULT = 'https://sunset-drift-server.vercel.app';   // GLOBAL leaderboard backend (Vercel + Supabase pg) — deployed 2026-07-08
 const SD_LB_URL = (function(){ try{ return ((localStorage.getItem('sd_lb_url')||SD_LB_DEFAULT)||'').replace(/\/+$/,''); }catch(e){ return SD_LB_DEFAULT; } })();
 const LB={
   remote: !!SD_LB_URL,
@@ -5710,7 +5710,7 @@ const LB={
       body:JSON.stringify({board:board,name:name,ms:ms,avatar:(ava&&ava.length<20000)?ava:''})}).catch(()=>{}); }catch(e){} },
   _top(board,cb){ if(!SD_LB_URL){ cb(null); return; }
     fetch(SD_LB_URL+'/api/top?board='+encodeURIComponent(board)+'&n=12&ava=1')
-      .then(r=>r.json()).then(d=>cb(d&&d.rows?d:null)).catch(()=>cb(null)); },
+      .then(r=>r.json()).then(d=>{ const rows=d&&(d.rows||d.top); cb(rows?{rows:rows}:null); }).catch(()=>cb(null)); },
   _k(day,track){ return 'sd_lb_'+day+'_'+track; },
   get(day,track){ try{ return JSON.parse(localStorage.getItem(this._k(day,track))||'[]'); }catch(e){ return []; } },
   _save(day,track,b){ try{ localStorage.setItem(this._k(day,track), JSON.stringify(b.slice(0,50))); }catch(e){} },
