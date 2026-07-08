@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.25-->
+<!--BUILD:v9.26-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.25';
+(function(){ const BUILD='v9.26';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3713,9 +3713,10 @@ function buildDogeCar(rig, color){
 function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) — normalized + glossy
   const chassis=new THREE.Group();
   const body=raw.clone();
-  rig.bodyColor=null; rig.paintMats=null;   // Kenney cars paint via texture-swatch, not material colour
+  rig.bodyColor=null; rig.paintMats=null; rig.packCar=false;   // Kenney cars paint via texture-swatch, not material colour
   body.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=false; const src=o.material; if(src){
     if(src.color && rig.bodyColor==null) rig.bodyColor=src.color.getHex();   // body hue -> color-matched upgrade kit
+    if(/carmaterial/i.test(src.name||'')) rig.packCar=true;                   // itch LowPoly Cars pack: already has proper rims/tyres -> skip the tyre-upgrade wheel swap (it's tuned for Kenney wheel scale)
     o.material=carPaint(src); } } });   // glossy clear-coat paint over the GLB's base colour
   chassis.add(body);
   const bb=new THREE.Box3().setFromObject(chassis), sz=new THREE.Vector3(), ctr=new THREE.Vector3(); bb.getSize(sz); bb.getCenter(ctr);
@@ -3837,7 +3838,7 @@ function attachUpgrades(rig, carIdx, forceU){
       for(let f=0;f<4;f++){ const fin=add(rbox(0.03,0.11,0.3,0.012), carbon); fin.position.set((f-1.5)*W*0.16, floorY+H*0.06, rear+Lz*0.03); fin.rotation.x=-0.18; } }
   }
   // TIRES -> fat rubber tires w/ TREAD texture + matched rims, mounted INTO the spinning wheels; ride height lifts so wheels stay grounded
-  if(u.tire>0){ const t=u.tire;
+  if(u.tire>0 && !rig.packCar){ const t=u.tire;   // pack cars already ship detailed rims/tyres -> the Kenney-tuned wheel swap oversizes them; grip bonus still applies via carMul
     // 1) cluster the UNSCALED wheel-mesh verts (kit-local) -> TRUE wheel centers, before any growth
     const wb={}, pv=new THREE.Vector3();
     const eat=(o,ob)=>{ if(!o.isMesh||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position) return;
