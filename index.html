@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.44-->
+<!--BUILD:v9.45-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.44';
+(function(){ const BUILD='v9.45';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4384,10 +4384,15 @@ function updateCar(c, inp, dt){
   (c.rig.roadWheels||c.rig.wheels).forEach(w=> w.rotation.x=c.rig.spinAcc);   // spares on the tailgate don't tumble
   const vSteer=clamp(inp.steer,-1,1)*0.5;
   c.rig.front.forEach(w=> w.rotation.y=vSteer);
-  c.rig.chassis.rotation.z = lerp(c.rig.chassis.rotation.z, clamp(-lateral*0.012,-0.13,0.13), 0.2);   // subtler lean (0.25 read as the body sliding off the wheels)
-  c.rig.chassis.rotation.x = lerp(c.rig.chassis.rotation.x, clamp((inp.brake?0.03:(inp.throttle?-0.022:0)),-0.045,0.045), 0.1);
-  if(c.rig._cx0==null) c.rig._cx0=c.rig.chassis.position.x;
-  c.rig.chassis.position.x = c.rig._cx0 + Math.sin(c.rig.chassis.rotation.z)*0.42;   // pivot the lean at AXLE height, not the ground -> the wheel line stays planted under the body
+  // WHOLE-CAR lean: rotate the top-level GROUP so body, wheels, kit, exhausts, lights and flag all
+  // tilt together as ONE rigid car. (Leaning the chassis split the body from sibling wheels on the
+  // DRIFTER and from the group-mounted wing/exhausts/lights on every GLB car.)
+  c._leanZ = lerp(c._leanZ||0, clamp(-lateral*0.012,-0.13,0.13), 0.2);
+  c._leanX = lerp(c._leanX||0, clamp((inp.brake?0.03:(inp.throttle?-0.022:0)),-0.045,0.045), 0.1);
+  c.rig.group.rotation.z = c._leanZ;
+  c.rig.group.rotation.x = -(c._pitch||0) + c._leanX;                 // road grade + brake/throttle squat, one pivot
+  if(c.rig.chassis){ c.rig.chassis.rotation.z=0; c.rig.chassis.rotation.x=0;
+    if(c.rig._cx0!=null) c.rig.chassis.position.x=c.rig._cx0; }       // retire the old chassis-level lean on existing rigs
 
   // ----- effects: tire smoke + skid marks -----
   const slip=Math.abs(lateral), spd=c.vel.length();
