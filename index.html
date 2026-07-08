@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.30-->
+<!--BUILD:v9.31-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.30';
+(function(){ const BUILD='v9.31';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2341,9 +2341,12 @@ function buildTrackMeshes(){
     const walkMat=new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95});
     buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
     buildSideStrips(0, 4.5, 0.28, walkMat);             // sidewalk = road edge .. edge+4.5 (never inverts at corners)
-    { const th=currentTheme?currentTheme.theme:'city';   // GRASS VERGE: a planted strip just past the sidewalk (grass on city/docks, dune on coast/beach)
-      const vcol=(th==='coast'||th==='beach')?0xcdb98a:0x3f6b3a;
-      buildSideStrips(4.5, 9.5, 0.11, new THREE.MeshStandardMaterial({color:vcol, roughness:1, metalness:0})); }
+    { const th=currentTheme?currentTheme.theme:'city';   // GRASS VERGE: a planted strip just past the sidewalk (REAL grass on city/docks, dune on coast/beach)
+      const sandy=(th==='coast'||th==='beach');
+      const vm=new THREE.MeshStandardMaterial({color:sandy?0xcdb98a:0xbfd0b8, roughness:1, metalness:0});
+      if(!sandy){ const gt=new THREE.TextureLoader().load('textures/grass.jpg');
+        gt.wrapS=gt.wrapT=THREE.RepeatWrapping; if('encoding' in gt) gt.encoding=THREE.sRGBEncoding; gt.repeat.set(3,180); vm.map=gt; }
+      buildSideStrips(4.5, 9.5, 0.11, vm); }
     buildCitySideStreets(mulberry32(4242));             // perpendicular cross-streets + crosswalks -> track blends into a city grid
   }
   buildBarriers();                                       // continuous visible barrier on EVERY track
@@ -2711,7 +2714,9 @@ function buildTerrain(){
   for(let i=0;i<cnt;i++){ const x=pos.getX(i), z=pos.getZ(i), h=terrainHeight(x,z); pos.setY(i,h);
     biomeColor(h,col, terrainSlope(x,z)); colors[i*3]=col.r; colors[i*3+1]=col.g; colors[i*3+2]=col.b; }
   g.setAttribute('color', new THREE.BufferAttribute(colors,3)); g.computeVertexNormals();
-  const grain=makeGroundGrain(); grain.repeat.set(150,150);          // surface texture over the biome vertex colours
+  const grain=(function(){ const t=new THREE.TextureLoader().load('textures/grounddetail.jpg');   // REAL grass/soil detail (Poly Haven CC0, desaturated so biome colours stay true)
+    t.wrapS=t.wrapT=THREE.RepeatWrapping; if('encoding' in t) t.encoding=THREE.sRGBEncoding; return t; })();
+  grain.repeat.set(150,150);
   grain.anisotropy=Math.min((renderer.capabilities&&renderer.capabilities.getMaxAnisotropy)?renderer.capabilities.getMaxAnisotropy():4, 8);   // crisp ground into the distance (not a blurry smear)
   const mesh=new THREE.Mesh(g, new THREE.MeshStandardMaterial({vertexColors:true, map:grain, bumpMap:grain, bumpScale:0.5, roughness:0.96, metalness:0}));
   mesh.receiveShadow=true; scene.add(mesh);
@@ -3186,7 +3191,9 @@ function buildPark(rng){
     if(distToTrackApprox(x,z)>hw+14 && terrainSlope(x,z)<0.16 && heightFrac(x,z)>-0.05){ cx=x; cz=z; break; } }
   if(cx==null) return;
   const sh=!isTouch, y0=terrainHeight(cx,cz), g=new THREE.Group(); g.position.set(cx,y0,cz); g.rotation.y=rng()*6.283; scene.add(g);
-  { const lawn=new THREE.Mesh(new THREE.BoxGeometry(26,0.2,26), new THREE.MeshStandardMaterial({color:0x3f7a3a, roughness:1, flatShading:true})); lawn.position.y=0.08; lawn.receiveShadow=true; g.add(lawn); }
+  { const gt=new THREE.TextureLoader().load('textures/grass.jpg'); gt.wrapS=gt.wrapT=THREE.RepeatWrapping;
+    if('encoding' in gt) gt.encoding=THREE.sRGBEncoding; gt.repeat.set(7,7);
+    const lawn=new THREE.Mesh(new THREE.BoxGeometry(26,0.2,26), new THREE.MeshStandardMaterial({map:gt, roughness:1})); lawn.position.y=0.08; lawn.receiveShadow=true; g.add(lawn); }   // REAL park lawn
   const path=new THREE.Mesh(new THREE.BoxGeometry(3,0.06,24), new THREE.MeshStandardMaterial({color:0xb9a88a, roughness:0.95})); path.position.set(0,0.2,0); path.rotation.y=0.4; g.add(path);
   const pond=new THREE.Mesh(new THREE.CylinderGeometry(3.6,3.6,0.2,18), new THREE.MeshStandardMaterial({color:0x2f6f8a, roughness:0.15, metalness:0.4})); pond.position.set(7,0.16,-6); g.add(pond);
   const wood=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
@@ -3575,9 +3582,21 @@ function buildEnvironment(){
 }
 // capture the ACTUAL built world (sky + terrain + buildings) into a PMREM env map -> the car reflects its real surroundings per track
 let capturedEnvRT=null;
+let _envHDR={};   // cached PMREM per photographic HDRI
 function captureEnv(){
   try{
     if(typeof THREE.PMREMGenerator==='undefined') return;
+    // REAL image-based lighting: photographic HDRIs light the nature themes (forest canopy bounce,
+    // open daylight sky on beach/coast/snow) — the art-directed sky dome stays, the LIGHT is real.
+    const th=currentTheme?currentTheme.theme:'city';
+    const hdrFile = (!nightMode) ? ({forest:'textures/env_forest.hdr', beach:'textures/env_day.hdr', coast:'textures/env_day.hdr', snow:'textures/env_day.hdr'})[th] : null;
+    if(hdrFile && typeof THREE.RGBELoader!=='undefined'){
+      if(_envHDR[hdrFile]){ scene.environment=_envHDR[hdrFile]; return; }
+      try{ new THREE.RGBELoader().load(hdrFile, hdr=>{ try{
+          hdr.mapping=THREE.EquirectangularReflectionMapping;
+          const pm=new THREE.PMREMGenerator(renderer); _envHDR[hdrFile]=pm.fromEquirectangular(hdr).texture; pm.dispose(); hdr.dispose();
+          scene.environment=_envHDR[hdrFile]; }catch(e){} }, undefined, ()=>{}); }catch(e){}
+    }   // world-capture below still runs = instant env until the HDR arrives (then the photo IBL takes over)
     const hidden=[];
     if(typeof cars!=='undefined' && cars) cars.forEach(c=>{ if(c.rig&&c.rig.group){ hidden.push([c.rig.group,c.rig.group.visible]); c.rig.group.visible=false; } });
     const rv = rainSys?rainSys.visible:false; if(rainSys) rainSys.visible=false;
@@ -3706,7 +3725,7 @@ function loadCarModels(){
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
    ['racer','models/gen2/racer.glb'],['racecar','models/gen2/racecar.glb'],['muscle','models/gen2/muscle.glb'],
    ['roadster','models/gen2/roadster.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
-   ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/cc0/kenney/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
+   ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
    ['kartB','models/cc0/kenney/kart-oodi.glb'],
    ['kartC','models/cc0/kenney/kart-ooli.glb'],['kartD','models/cc0/kenney/kart-oopi.glb'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f])=>{   // CC0 Kenney Car Kit (modular, named wheels)
     try{ L.load(f, g=>{ fleetRaw[k]=g.scene; if(cars&&cars.length) upgradeCars(); }, undefined, ()=>{}); }catch(e){}
