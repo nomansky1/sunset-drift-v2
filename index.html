@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.32-->
+<!--BUILD:v9.33-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.32';
+(function(){ const BUILD='v9.33';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2362,6 +2362,17 @@ function buildNationFlags(){
   const tex=flagTex(key);
   const poleMat=new THREE.MeshStandardMaterial({color:0xd8dce2, roughness:0.5, metalness:0.6});
   const flagMat=new THREE.MeshBasicMaterial({map:tex, side:THREE.DoubleSide, toneMapped:false});
+  flagMat.onBeforeCompile=(sh)=>{                     // WIND: cloth wave in the vertex shader (GPU - free on mobile)
+    sh.uniforms.uT={value:0}; sh.uniforms.uW={value:1}; flagMat.userData.sh=sh;
+    sh.vertexShader='uniform float uT; uniform float uW;'+String.fromCharCode(10)+sh.vertexShader.replace('#include <begin_vertex>',
+      `#include <begin_vertex>
+       { float e=clamp(transformed.x/3.2,0.0,1.0);
+         transformed.z += sin(transformed.x*2.6 - uT*7.0) * 0.16 * e * uW;
+         transformed.z += sin(transformed.x*5.1 - uT*11.0) * 0.05 * e * uW;
+         transformed.y += sin(transformed.x*2.1 - uT*6.0) * 0.05 * e * uW;
+         transformed.x -= 0.22 * e * e * uW * (0.5+0.5*sin(uT*0.9)); }`);
+  };
+  window._flagMats=[flagMat];   // only the CURRENT track's flags animate (old ones are disposed with the world)
   const pairs=isTouch?3:5;
   for(let k=0;k<pairs;k++){
     for(let side=-1;side<=1;side+=2){
@@ -2371,8 +2382,9 @@ function buildNationFlags(){
       const y0=(terrainAmp>0 && typeof terrainHeight==='function') ? terrainHeight(x,z) : (sampleElev[i]||0);   // pole base ON the ground (hilly tracks too)
       const g=new THREE.Group(); g.position.set(x,y0,z); g.rotation.y=Math.atan2(t.x,t.y);
       const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,7.2,6), poleMat); pole.position.y=3.6; pole.castShadow=!isTouch; g.add(pole);
-      const fl=new THREE.Mesh(new THREE.PlaneGeometry(3.2,1.95), flagMat);
-      fl.position.set(0,6.0,-1.65); fl.rotation.y=Math.PI/2;   // big proud flag at the pole top, streaming back along the track
+      const fg=new THREE.PlaneGeometry(3.2,1.95,12,4); fg.translate(1.6,0,0);   // hoist at the pole; segments carry the cloth wave
+      const fl=new THREE.Mesh(fg, flagMat);
+      fl.position.set(0,6.0,0); fl.rotation.y=Math.PI/2; fl.frustumCulled=false;   // streams back, waving in the wind
       g.add(fl); scene.add(g);
     }
   }
@@ -3748,7 +3760,7 @@ function loadCarModels(){
   // Champs-Elysees / Piccadilly / Sheikh Zayed Rd / Tverskaya / Fort Mumbai / Copacabana / Berlin Mitte),
   // © OpenStreetMap contributors (ODbL) — swapped in as the downtown when you race that nation.
   ['nyc','tokyo','miami','paris','london','dubai','moscow','mumbai','rio','berlin'].forEach(k=>{
-    try{ L.load('models/districts/'+k+'.glb', g=>{ const root=g.scene;
+    try{ L.load('models/districts/'+k+(isTouch?'':'2')+'.glb', g=>{ const root=g.scene;   // desktop = DETAILED pack buildings on the real street grid; phones keep the light block version
       root.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material){ SHARED.add(o.material); o.material.fog=false; } o.castShadow=false; o.receiveShadow=false; } });
       districtRaw[k]=root; districtBox[k]=new THREE.Box3().setFromObject(root);
       if(cars&&cars.length && state==='menu' && currentTheme && nationDistrictKey()===k) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
@@ -5301,6 +5313,8 @@ function animate(){ requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.05); update(dt);
   updateFxLights(dt); dynRes(dt);
   if(skyMat) skyMat.uniforms.uTime.value=clock.getElapsedTime();   // living sky: drift clouds + breathe sun
+  if(window._flagMats && window._flagMats.length){ const t=clock.getElapsedTime(), w=0.75+0.3*Math.sin(t*0.6)+0.18*Math.sin(t*2.1);   // WIND with gusts -> every flag, every track
+    for(const m of window._flagMats){ const sh=m.userData.sh; if(sh){ sh.uniforms.uT.value=t; sh.uniforms.uW.value=w; } } }
   if(waterMat) waterMat.uniforms.uTime.value=clock.getElapsedTime();   // rolling ocean waves
   if(birdFlock){ const bt=clock.getElapsedTime(); birdFlock.userData.birds.forEach(b=>{ const u=b.userData, ang=u.a0 + bt*0.05*u.sp*u.dir;
     b.position.set(trackCentroid.x+Math.cos(ang)*u.rad, u.h+Math.sin(bt*0.5+u.ph)*3, trackCentroid.y+Math.sin(ang)*u.rad);   // slow circling flight + gentle bob
