@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.33-->
+<!--BUILD:v9.34-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -420,6 +420,8 @@
     background:radial-gradient(circle at 50% 38%, #0d1030 0%, #060414 62%, #030209 100%); }
   #globeModal.show{ display:block; }
   #globeCanvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; display:block; }
+  #globeCard.pop{ animation:gcPop .38s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes gcPop{ 0%{ transform:translateY(26px) scale(.86); opacity:0; } 100%{ transform:none; opacity:1; } }
   #globeHint{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 122px); left:0; right:0; text-align:center; z-index:4;
     color:#bfe6ff; font-size:12px; font-weight:800; letter-spacing:1.5px; pointer-events:none; text-shadow:0 1px 2px #000,0 2px 10px #000; opacity:.95; }
   @media (orientation:landscape) and (max-height:520px){ .gdLogo .l1{ font-size:34px; } .gdLogo .l2{ font-size:42px; } .gdLogo .sub{ font-size:11px; } #globeHint{ top:calc(env(safe-area-inset-top,6px) + 92px); } }
@@ -1041,7 +1043,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.33';
+(function(){ const BUILD='v9.34';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3761,7 +3763,7 @@ function loadCarModels(){
   // © OpenStreetMap contributors (ODbL) — swapped in as the downtown when you race that nation.
   ['nyc','tokyo','miami','paris','london','dubai','moscow','mumbai','rio','berlin'].forEach(k=>{
     try{ L.load('models/districts/'+k+(isTouch?'':'2')+'.glb', g=>{ const root=g.scene;   // desktop = DETAILED pack buildings on the real street grid; phones keep the light block version
-      root.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material){ SHARED.add(o.material); o.material.fog=false; } o.castShadow=false; o.receiveShadow=false; } });
+      root.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material){ SHARED.add(o.material); o.material.fog=false; o.material.roughness=0.78; o.material.envMapIntensity=0.85; } const sh=!isTouch&&!lowQuality; o.castShadow=sh; o.receiveShadow=sh; } });
       districtRaw[k]=root; districtBox[k]=new THREE.Box3().setFromObject(root);
       if(cars&&cars.length && state==='menu' && currentTheme && nationDistrictKey()===k) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
   });
@@ -6262,18 +6264,18 @@ window.NETRACE=false;
 (function(){
   // index-aligned to COUNTRIES: real-ish lat/lon + the environment theme each country races in
   const GLOBE=[
-    {lat:18.2,lon:-66.5,theme:'tropical'},{lat:18.7,lon:-70.2,theme:'tropical'},{lat:-10,lon:-52,theme:'swamp'},
-    {lat:23,lon:-102,theme:'desert'},{lat:-34,lon:-64,theme:'city'},{lat:4,lon:-73,theme:'forest'},
+    {lat:18.2,lon:-66.5,theme:'tropical'},{lat:18.7,lon:-70.2,theme:'tropical'},{lat:-22.97,lon:-43.18,theme:'swamp'},
+    {lat:21.16,lon:-86.85,theme:'desert'},{lat:-34,lon:-64,theme:'city'},{lat:4,lon:-73,theme:'forest'},
     {lat:8,lon:-66,theme:'coast'},{lat:-10,lon:-76,theme:'desert'},{lat:-33,lon:-71,theme:'coast'},
     {lat:22,lon:-79,theme:'city'},{lat:-1.5,lon:-78,theme:'forest'},{lat:-33,lon:-56,theme:'coast'},
     {lat:-17,lon:-65,theme:'snow'},{lat:9,lon:-80,theme:'docks'},{lat:15.5,lon:-90,theme:'forest'},
-    {lat:-23,lon:-58,theme:'forest'},{lat:39,lon:-98,theme:'city'},{lat:15,lon:-86,theme:'beach'},
+    {lat:-23,lon:-58,theme:'forest'},{lat:40.75,lon:-74.0,theme:'city'},{lat:15,lon:-86,theme:'beach'},
     {lat:10,lon:-84,theme:'tropical'},{lat:13,lon:-85,theme:'coast'},
-    {lat:56,lon:-106,theme:'snow'},{lat:54,lon:-2,theme:'city'},{lat:47,lon:2,theme:'city'},
-    {lat:51,lon:10,theme:'city'},{lat:42,lon:12,theme:'coast'},{lat:40,lon:-4,theme:'coast'},
-    {lat:36,lon:138,theme:'city'},{lat:37,lon:127,theme:'city'},{lat:35,lon:103,theme:'city'},
-    {lat:22,lon:79,theme:'desert'},{lat:-25,lon:133,theme:'desert'},{lat:-29,lon:24,theme:'desert'},
-    {lat:26,lon:30,theme:'desert'},{lat:24,lon:54,theme:'desert'},
+    {lat:50.1,lon:-122.9,theme:'snow'},{lat:51.51,lon:-0.13,theme:'city'},{lat:48.87,lon:2.31,theme:'city'},
+    {lat:52.52,lon:13.39,theme:'city'},{lat:40.63,lon:14.6,theme:'coast'},{lat:41.39,lon:2.17,theme:'coast'},
+    {lat:35.66,lon:139.7,theme:'city'},{lat:37.57,lon:126.98,theme:'city'},{lat:31.23,lon:121.47,theme:'city'},
+    {lat:18.93,lon:72.83,theme:'desert'},{lat:-25,lon:133,theme:'desert'},{lat:-29,lon:24,theme:'desert'},
+    {lat:30.05,lon:31.24,theme:'desert'},{lat:25.2,lon:55.27,theme:'desert'},
     {lat:56,lon:38,theme:'snow'}
   ];
   let sc=null,cam=null,ren=null,raf=0,grp=null,markers=[],picked=-1,rot=0.5,tilt=-0.32,drag=null,vel=0,velT=0,ray=null,mouse=null,moved=0;
@@ -6326,9 +6328,12 @@ window.NETRACE=false;
   function resize(){ const cv=document.getElementById('globeCanvas'); const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
     if(ren){ ren.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); } }
   function loop(){ raf=requestAnimationFrame(loop);
-    if(drag===null) rot+=0.0024; rot+=vel; vel*=0.9; tilt=Math.max(-1.15,Math.min(1.15,tilt+velT)); velT*=0.9; grp.rotation.y=rot; grp.rotation.x=tilt;
+    if(spinT!=null){ const d=Math.atan2(Math.sin(spinT-rot),Math.cos(spinT-rot)); rot+=d*0.12; tilt+=(tiltT-tilt)*0.12;
+      if(Math.abs(d)<0.01){ spinT=null; } }
+    else if(drag===null) rot+=0.0024;
+    rot+=vel; vel*=0.9; tilt=Math.max(-1.15,Math.min(1.15,tilt+velT)); velT*=0.9; grp.rotation.y=rot; grp.rotation.x=tilt;
     const t=performance.now()*0.004;
-    markers.forEach(m=>{ const pulse=0.9+0.4*Math.sin(t+m.i*1.3); m.ring.scale.setScalar(m.i===picked?2.1:pulse); m.pin.scale.setScalar(m.i===picked?2.0:1); });
+    markers.forEach(m=>{ const pulse=0.9+0.4*Math.sin(t+m.i*1.3); const ping=(m.i===picked)?(2.0+0.9*Math.abs(Math.sin(t*2.2))):pulse; m.ring.scale.setScalar(ping); m.ring.material.opacity=(m.i===picked)?(0.5-0.3*Math.abs(Math.sin(t*2.2))):0.35; m.pin.scale.setScalar(m.i===picked?2.2:1); });
     ren.render(sc,cam); }
   function bind(cv){
     cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; moved=0; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
@@ -6345,14 +6350,19 @@ window.NETRACE=false;
         const d=Math.hypot(q.x-tx, q.y-ty); if(d<bd){ bd=d; best=m.i; } });
       if(best>=0) select(best); });
   }
+  let spinT=null, tiltT=null;
   function select(i){ picked=i; const co=COUNTRIES[i], gd=GLOBE[i], car=(typeof CARS!=='undefined'&&CARS[i])?CARS[i].name:'CAR';
+    { const p0=llToVec(gd.lat,gd.lon,1.73); spinT=Math.atan2(p0.x,p0.z); tiltT=Math.max(-0.9,Math.min(0.9,-Math.asin(p0.y/1.73)*0.55)); }
+    const gc0=document.getElementById('globeCard'); if(gc0){ gc0.classList.remove('pop'); void gc0.offsetWidth; gc0.classList.add('pop'); }
     const fl=document.getElementById('globeFlag'); if(typeof flagURL==='function') fl.src=flagURL(co.key);
     document.getElementById('globeCountry').textContent=co.name;
     let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; const trk=TRACKS[ti]||{};
     document.getElementById('globeMeta').textContent=((typeof nationCityFor==='function')?nationCityFor(i,gd.theme)+' · ':'')+(trk.name||gd.theme.toUpperCase());
     const gt=document.getElementById('gcTrack'); if(gt && typeof trackThumb==='function' && trk.ctrl){ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b'; gt.innerHTML=trackThumb(trk.ctrl, acc); }
     const dd=document.getElementById('gcDiff'); if(dd){ let d=3; try{ d=trackDifficulties()[ti]||3; }catch(e){} dd.innerHTML='DIFFICULTY  <span class="on">'+'\u2605'.repeat(d)+'</span><span class="off">'+'\u2605'.repeat(5-d)+'</span>'; }
-    const cc=document.getElementById('gcCar'); if(cc) cc.textContent='\uD83C\uDFCE '+car+'  \u00b7  '+gd.theme.toUpperCase();
+    const cc=document.getElementById('gcCar'); if(cc){ const GNAME={latin:'REGGAETON',funk:'BAILE FUNK',usa:'HIP-HOP',europe:'ELECTRO',phonk:'DRIFT PHONK',india:'BHANGRA',arabic:'ARABIC TRAP',afro:'AFRO HOUSE'};
+      const nn=(typeof NATION!=='undefined'&&NATION[co.key])||{}; const gname=GNAME[nn.grp||'latin']||'';
+      cc.textContent='🏎 '+car+'  ·  '+gd.theme.toUpperCase()+(nn.district?'  ·  📍 REAL CITY':'')+(gname?('  ·  🎵 '+gname):''); }
     document.getElementById('globeCard').classList.remove('hidden');
     const ga=document.getElementById('globeActions'); if(ga) ga.style.display='none'; }
   function close(){ document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
