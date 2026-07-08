@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.27-->
+<!--BUILD:v9.28-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.27';
+(function(){ const BUILD='v9.28';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1215,7 +1215,64 @@ const COUNTRIES=[
   {name:'GERMANY', key:'de', col:0x222222}, {name:'ITALY', key:'it', col:0x009246}, {name:'SPAIN', key:'es', col:0xaa151b},
   {name:'JAPAN', key:'jp', col:0xbc002d}, {name:'SOUTH KOREA', key:'kr', col:0x0047a0}, {name:'CHINA', key:'cn', col:0xde2910},
   {name:'INDIA', key:'in', col:0xff9933}, {name:'AUSTRALIA', key:'au', col:0x012169}, {name:'SOUTH AFRICA', key:'za', col:0x007a4d},
-  {name:'EGYPT', key:'eg', col:0xce1126}, {name:'U.A.E.', key:'ae', col:0x00732f} ];
+  {name:'EGYPT', key:'eg', col:0xce1126}, {name:'U.A.E.', key:'ae', col:0x00732f},
+  {name:'RUSSIA', key:'ru', col:0xd52b1e} ];
+/* ---- NATION IDENTITY: every race happens in a REAL city of the chosen country ----
+   The globe pick (or the track's home country) drives: the city name on the HUD, national flags
+   lining the start straight, localized storefront signage, NY-only water towers, and the music genre. */
+let currentCountry=16;                                          // COUNTRIES index for the current race
+const TRACK_HOME=[16,16,13,3,20,34,33,26,32,2,0,5];             // menu-launch home per track: NY, Miami, Panama, Cancun, Whistler, Moscow, Dubai, Tokyo, Cairo, Rio, San Juan, Cartagena
+const NATION={
+  us:{grp:'usa',  wt:true, city:{city:'NEW YORK',coast:'MIAMI',beach:'MIAMI BEACH',desert:'LAS VEGAS',docks:'SEATTLE',forest:'PORTLAND',snow:'ASPEN'},
+      biz:["JOE'S PIZZA",'5TH AVE DELI','LIBERTY BANK','BROADWAY CAFE','DUANE DRUGS','THE PLAZA HOTEL','24HR BODEGA','HARLEM JAZZ']},
+  ca:{grp:'usa',  wt:true, city:{snow:'WHISTLER',forest:'VANCOUVER',city:'TORONTO'},
+      biz:["TIM'S COFFEE",'MAPLE DELI','ROYAL BANK','POUTINE HOUSE','REXALL DRUGS','HOTEL FAIRMONT','DEPANNEUR 24H','HOCKEY BAR']},
+  gb:{grp:'europe', city:{city:'LONDON'},
+      biz:['FISH & CHIPS','THE CROWN PUB','BARCLAYS BANK','THE TEA ROOM','BOOTS PHARMACY','THE SAVOY','TESCO EXPRESS','SOHO JAZZ']},
+  fr:{grp:'europe', city:{city:'PARIS'},
+      biz:['BOULANGERIE','CAFE DE PARIS','BANQUE DE PARIS','LE BISTRO','PHARMACIE','HOTEL RITZ','TABAC 24H','MOULIN CLUB']},
+  de:{grp:'europe', city:{city:'BERLIN'},
+      biz:['CURRYWURST HAUS','BACKEREI BROT','DEUTSCHE BANK','KAFFEEHAUS','APOTHEKE','HOTEL ADLON','SPATI 24H','TECHNO KLUB']},
+  it:{grp:'europe', city:{coast:'AMALFI',city:'ROME'},
+      biz:['PIZZERIA NAPOLI','GELATERIA LUNA','BANCA ROMA','CAFFE ESPRESSO','FARMACIA','GRAND HOTEL','ALIMENTARI','OPERA BAR']},
+  es:{grp:'europe', city:{coast:'BARCELONA',city:'MADRID'},
+      biz:['TAPAS BAR','PANADERIA SOL','CAIXA BANC','CAFE CORTADO','FARMACIA','HOTEL SOL','MERCADO 24H','FLAMENCO CLUB']},
+  ru:{grp:'europe', city:{snow:'MOSCOW',city:'MOSCOW'},
+      biz:['PELMENI HOUSE','BLINI CAFE','SBER BANK','SAMOVAR TEA','APTEKA','HOTEL METROPOL','PRODUKTY 24','BALALAIKA BAR']},
+  jp:{grp:'phonk', city:{city:'TOKYO'},
+      biz:['RAMEN ICHIBAN','SUSHI ZEN','PACHINKO HALL','KARAOKE ECHO','KONBINI 24H','HOTEL SAKURA','DONKI MARKET','GOLDEN GAI BAR']},
+  kr:{grp:'phonk', city:{city:'SEOUL'},
+      biz:['KIMCHI HOUSE','NOODLE BAR','K-BANK','BUBBLE TEA','OLIVE PHARMACY','HOTEL LOTTE','GS MART 24H','K-POP KARAOKE']},
+  cn:{grp:'phonk', city:{city:'SHANGHAI'},
+      biz:['DIM SUM HOUSE','TEA PAVILION','BANK OF CHINA','NOODLE EXPRESS','PHARMACY 999','JADE HOTEL','NIGHT MARKET','DRAGON CLUB']},
+  in:{grp:'india', city:{desert:'JAIPUR',city:'MUMBAI'},
+      biz:['CHAI POINT','TANDOOR PALACE','SPICE BAZAAR','BOLLYWOOD CINEMA','MUMBAI PHARMA','HOTEL RAJ','SAREE EMPORIUM','CRICKET CLUB']},
+  ae:{grp:'arabic', city:{desert:'DUBAI'},
+      biz:['GOLD SOUK','BURJ CAFE','OASIS BANK','DESERT ROSE','AL NOOR MARKET','MIRAGE HOTEL','FALCON CLUB','SHEIKH PLAZA']},
+  eg:{grp:'arabic', city:{desert:'CAIRO'},
+      biz:['KEBAB HOUSE','KOSHARY CORNER','BANK MISR','AHWA CAFE','NILE PHARMACY','PYRAMID HOTEL','SOUK 24H','OUD LOUNGE']},
+  za:{grp:'afro',  city:{desert:'KAROO',city:'JOHANNESBURG'},
+      biz:['BRAAI SHACK','BILTONG & CO','STANDARD BANK','ROOIBOS CAFE','CLICKS PHARMA','SAFARI LODGE','SPAZA 24H','KWAITO CLUB']},
+  au:{grp:'usa',  city:{desert:'ALICE SPRINGS',city:'SYDNEY'},
+      biz:['MEAT PIE SHOP','BONDI SURF CO','OUTBACK BANK','FLAT WHITE CAFE','CHEMIST WHSE','HOTEL BONDI','SERVO 24H','PUB ROCK BAR']},
+  br:{grp:'funk',  city:{beach:'RIO DE JANEIRO',swamp:'MANAUS',city:'SAO PAULO'},
+      biz:['PADARIA PAO','CHURRASCARIA','BANCO DO BRASIL','ACAI CAFE','DROGARIA','COPACABANA HOTEL','MERCADO 24H','SAMBA CLUB']},
+  mx:{grp:'latin', city:{beach:'CANCUN',desert:'BAJA',city:'MEXICO CITY'},
+      biz:['TAQUERIA EL PASTOR','PANADERIA ROSA','BANCO AZTECA','CAFE DE OLLA','FARMACIA GDL','HOTEL MAYA','ABARROTES 24H','MARIACHI BAR']},
+  pr:{grp:'latin', city:{tropical:'SAN JUAN',beach:'SAN JUAN'},
+      biz:['LA LECHONERA','EL JIBARO','BANCO POPULAR','CAFE CON LECHE','FARMACIA CARIDAD','EL CONVENTO','COLMADO 24H','SALSA CLUB']},
+  do:{grp:'latin', city:{tropical:'SANTO DOMINGO'}}, cu:{grp:'latin', city:{city:'HAVANA'}},
+  ar:{grp:'latin', city:{city:'BUENOS AIRES'}}, co:{grp:'latin', city:{forest:'BOGOTA',swamp:'CARTAGENA'}},
+  ve:{grp:'latin', city:{coast:'CARACAS'}}, pe:{grp:'latin', city:{desert:'LIMA'}}, cl:{grp:'latin', city:{coast:'VALPARAISO'}},
+  ec:{grp:'latin', city:{forest:'QUITO'}}, uy:{grp:'latin', city:{coast:'MONTEVIDEO'}}, bo:{grp:'latin', city:{snow:'LA PAZ'}},
+  pa:{grp:'latin', city:{docks:'PANAMA CITY'}, biz:['CEVICHERIA','CANAL CAFE','BANCO NACIONAL','EMPANADA HOUSE','FARMACIA ARROCHA','HOTEL CASCO','MINI SUPER 24H','REGGAETON CLUB']},
+  gt:{grp:'latin', city:{forest:'ANTIGUA'}}, py:{grp:'latin', city:{forest:'ASUNCION'}},
+  hn:{grp:'latin', city:{beach:'ROATAN'}}, cr:{grp:'latin', city:{tropical:'SAN JOSE'}}, ni:{grp:'latin', city:{coast:'MANAGUA'}},
+};
+function nationFor(ci){ const co=COUNTRIES[ci]||COUNTRIES[16]; return Object.assign({key:co.key,name:co.name,grp:'latin'}, NATION[co.key]||{}); }
+function nation(){ return nationFor(currentCountry); }
+function nationCityFor(ci,theme){ const n=nationFor(ci), c=n.city||{}; return c[theme]||c.city||Object.keys(c).length&&c[Object.keys(c)[0]]||n.name; }
+function nationCity(theme){ return nationCityFor(currentCountry,theme); }
 const PAINTS=[ {name:'Stock',hex:null}, {name:'Red',hex:0xe0202a}, {name:'Orange',hex:0xf07315}, {name:'Gold',hex:0xf2c021},
   {name:'Lime',hex:0x7ac81e}, {name:'Green',hex:0x18a558}, {name:'Teal',hex:0x12a39a}, {name:'Cyan',hex:0x18b5d6},
   {name:'Blue',hex:0x1e6cff}, {name:'Navy',hex:0x23306e}, {name:'Purple',hex:0x7b3ff2}, {name:'Pink',hex:0xe84f9c},
@@ -1235,6 +1292,7 @@ function flagCanvas(key){
     case 'ca': vs(['#d52b1e','#fff','#d52b1e']); x.fillStyle='#d52b1e'; x.beginPath(); for(let i=0;i<12;i++){const a=-Math.PI/2+i*Math.PI/6, r=i%2?H*0.2:H*0.08; x.lineTo(W/2+Math.cos(a)*r,H/2+Math.sin(a)*r);} x.closePath(); x.fill(); break;
     case 'gb': x.fillStyle='#012169'; x.fillRect(0,0,W,H); x.strokeStyle='#fff'; x.lineWidth=H*0.26; x.beginPath(); x.moveTo(0,0);x.lineTo(W,H);x.moveTo(W,0);x.lineTo(0,H); x.stroke(); x.fillStyle='#fff'; x.fillRect(W*0.42,0,W*0.16,H); x.fillRect(0,H*0.36,W,H*0.28); x.fillStyle='#c8102e'; x.fillRect(W*0.45,0,W*0.1,H); x.fillRect(0,H*0.42,W,H*0.16); break;
     case 'fr': vs(['#0055a4','#fff','#ef4135']); break;
+    case 'ru': hs(['#ffffff','#0039a6','#d52b1e']); break;
     case 'de': hs(['#000','#dd0000','#ffce00']); break;
     case 'it': vs(['#009246','#fff','#ce2b37']); break;
     case 'es': hs(['#aa151b','#f1bf00','#f1bf00','#f1bf00','#aa151b']); break;
@@ -1725,7 +1783,8 @@ function saveAO(){ try{ localStorage.setItem('sd_ao', aoPref?'1':'0'); }catch(e)
 let roadMatRef = null;                                    // road material -> scrolling chevrons (sense of speed)
 let nightMode = false, rainOn = false, lowQuality = isTouch; // weather / time-of-day / perf toggles (LITE on by default on phones for smoother FPS)
 let timeTrial = false;                                     // TIME TRIAL mode: solo run, no AI, chase your ghost / best lap
-let sfxVolume = 0.55, muted = false;                     // user audio volume (turned down by default) + mute
+let sfxVolume = 0.35, muted = false;                     // user audio volume (0.55 was TOO LOUD on phones) + mute — persisted
+try{ const _sv=localStorage.getItem('sd_sfxvol'); if(_sv!=null) sfxVolume=Math.max(0,Math.min(1,parseFloat(_sv)||0)); }catch(e){}
 let coins = 0;                                           // reward currency (persisted)
 function loadCoins(){ try{ coins=parseInt(localStorage.getItem('sd_coins'))||0; }catch(e){ coins=0; } }
 function saveCoins(){ try{ localStorage.setItem('sd_coins', coins); }catch(e){} }
@@ -1746,12 +1805,16 @@ function applyMusicVol(){ if(bgMusic) bgMusic.volume = musicMuted?0:musicVolume;
 // SUNO MUSIC PACK: drop your own tracks in audio/ and list them here to REPLACE the per-theme music.
 // e.g. MUSIC_FILE.city='audio/music-city.mp3'. Absent -> falls back to the streamed beat (no 404, no request).
 const MUSIC_FILE={ /* city:'audio/music-city.mp3', coast:'audio/music-coast.mp3', ... */ };
+// NATIONAL MUSIC (Suno): one instrumental per world region, local + untagged + loudness-normalized.
+// Flip a group true once audio/music-<grp>.mp3 ships (manifest = zero 404s until then).
+const GROUP_MUSIC_PRESENT={ latin:false, funk:false, usa:false, europe:false, phonk:false, india:false, arabic:false, afro:false };
 function playMusic(theme){
-  const src = MUSIC_FILE[theme] || MUSIC[theme];
+  let src = MUSIC_FILE[theme] || MUSIC[theme], mkey = theme;
+  try{ const gk=nation().grp; if(gk && GROUP_MUSIC_PRESENT[gk]){ src='audio/music-'+gk+'.mp3'; mkey='g:'+gk; } }catch(e){}
   if(!src) return;
   if(!bgMusic){ bgMusic=new Audio(); bgMusic.loop=true; bgMusic.preload='auto'; }
-  if(musicTheme!==theme){ musicTheme=theme;
-    if(MUSIC_FILE[theme]) bgMusic.onerror=()=>{ bgMusic.onerror=null; if(MUSIC[theme]){ bgMusic.src=MUSIC[theme]; if(!musicMuted) try{bgMusic.play();}catch(e){} } };  // Suno file missing -> streamed beat
+  if(musicTheme!==mkey){ musicTheme=mkey;
+    bgMusic.onerror=()=>{ bgMusic.onerror=null; if(MUSIC[theme]){ bgMusic.src=MUSIC[theme]; if(!musicMuted) try{bgMusic.play();}catch(e){} } };  // local file missing -> streamed beat
     bgMusic.src=src; }
   applyMusicVol();
   if(!musicMuted){ try{ const p=bgMusic.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
@@ -1873,7 +1936,7 @@ class AudioEngine {
   setVolume(v){ if(this.ok) this.master.gain.setTargetAtTime(muted?0:v, this.ctx.currentTime, 0.04); }
   _fetchBuf(url){ return fetch(url + (url.indexOf("?")<0?"?":"&") + "v=" + AUDIO_VER).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>this.ctx.decodeAudioData(ab,res,rej))).catch(()=>null); }
   _play(buf, vol, rate){ if(!this.ok||!buf) return; try{ const s=this.ctx.createBufferSource(); s.buffer=buf; if(rate) s.playbackRate.value=rate;
-    const g=this.ctx.createGain(); g.gain.value=(vol==null?0.7:vol); s.connect(g); g.connect(this.comp); s.start(); }catch(e){} }
+    const g=this.ctx.createGain(); g.gain.value=(vol==null?0.55:vol); s.connect(g); g.connect(this.comp); s.start(); }catch(e){} }
   victory(){ if(this.buffers&&this.buffers.victory) this._play(this.buffers.victory, 0.7); }
   hover(){ if(this.buffers&&this.buffers.hover) this._play(this.buffers.hover, 0.28); }
   update(speed01, throttle, drift, boosting){ if(!this.ok) return; if(window.__auto){ if(this.master) this.master.gain.value=0; return; } const t=this.ctx.currentTime;
@@ -1886,8 +1949,8 @@ class AudioEngine {
     const f0=(46 + this._rpm*150)*ch.pitch;                    // firing fundamental: idle ~46Hz -> redline ~196Hz, per-car pitch
     if(this.engLayers){                                       // REAL sample engine: crossfade idle<->rev by rpm + narrow per-car pitch (no chipmunk)
       const r=this._rpm, thr=throttle?1:0.6;
-      this.engLayers.idle.g.gain.setTargetAtTime(clamp(1-r*1.7,0,1)*0.5, t, 0.08);
-      this.engLayers.rev.g.gain.setTargetAtTime(clamp((r-0.08)*1.35,0,1)*0.62*thr, t, 0.08);
+      this.engLayers.idle.g.gain.setTargetAtTime(clamp(1-r*1.7,0,1)*0.38, t, 0.08);
+      this.engLayers.rev.g.gain.setTargetAtTime(clamp((r-0.08)*1.35,0,1)*0.48*thr, t, 0.08);   // engine sits UNDER the mix (was drowning everything)
       this.engLayers.idle.s.playbackRate.setTargetAtTime((0.85+r*0.35)*ch.pitch, t, 0.06);
       this.engLayers.rev.s.playbackRate.setTargetAtTime((0.78+r*0.8)*ch.pitch, t, 0.06);
       if(this.engProcG) this.engProcG.gain.setTargetAtTime(0, t, 0.12);   // silence the synth stack once real loops play
@@ -2286,6 +2349,28 @@ function buildTrackMeshes(){
   // start / finish gate + checkpoint gates (overhead banners)
   buildGate(0, true);
   [Math.floor(SAMPLES*0.25), Math.floor(SAMPLES*0.5), Math.floor(SAMPLES*0.75)].forEach(i=>buildGate(i,false));
+  buildNationFlags();                                   // the host country's flags line the start straight
+}
+// national flag rows down the start straight — every race announces its host COUNTRY
+function buildNationFlags(){
+  const key=(COUNTRIES[currentCountry]||{}).key; if(!key || typeof flagTex!=='function') return;
+  const tex=flagTex(key);
+  const poleMat=new THREE.MeshStandardMaterial({color:0xd8dce2, roughness:0.5, metalness:0.6});
+  const flagMat=new THREE.MeshBasicMaterial({map:tex, side:THREE.DoubleSide, toneMapped:false});
+  const pairs=isTouch?3:5;
+  for(let k=0;k<pairs;k++){
+    for(let side=-1;side<=1;side+=2){
+      const i=(4+k*8)%SAMPLES, p=samplePts[i], n=sampleNorm[i], t=sampleTan[i];
+      const off=(sampleHW[i]||CONFIG.roadHalfWidth)+2.6;
+      const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
+      const y0=(terrainAmp>0 && typeof terrainHeight==='function') ? terrainHeight(x,z) : (sampleElev[i]||0);   // pole base ON the ground (hilly tracks too)
+      const g=new THREE.Group(); g.position.set(x,y0,z); g.rotation.y=Math.atan2(t.x,t.y);
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,7.2,6), poleMat); pole.position.y=3.6; pole.castShadow=!isTouch; g.add(pole);
+      const fl=new THREE.Mesh(new THREE.PlaneGeometry(3.2,1.95), flagMat);
+      fl.position.set(0,6.0,-1.65); fl.rotation.y=Math.PI/2;   // big proud flag at the pole top, streaming back along the track
+      g.add(fl); scene.add(g);
+    }
+  }
 }
 
 function buildGate(i, finish){
@@ -2660,6 +2745,7 @@ function buildCity(rng){
     {name:'24HR MARKET',   sign:'#d35400', wall:'#5a5048', awn1:'#d35400', awn2:'#f4f4f4', text:'#fff'},
     {name:'NEON BAR',      sign:'#8e2de2', wall:'#23262e', awn1:'#8e2de2', awn2:'#2a2a3a', text:'#ff5ad0'},
   ];
+  { const nb=nation().biz; if(nb) BIZ.forEach((b,i)=>{ if(nb[i]) b.name=nb[i]; }); }   // localized signage: race in TOKYO -> ramen/pachinko, PARIS -> boulangerie...
   const storeTex=BIZ.map(b=>makeStorefrontTexture(rng,b));
   const towers=facadeTex.map(()=>[]), stores=storeTex.map(()=>[]), waterTowers=[], billboards=[], roofs=[], sidewalks=[];
   const baseH=5, block=58, span=820, _c=new THREE.Color();
@@ -2692,8 +2778,8 @@ function buildCity(rng){
     m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); };
   facadeTex.forEach((tex,fi)=>{ const g=TYPES[fi]==='glass'; addInst(tex.map, tex.emis, towers[fi], 0.85, g?0.28:0.92, g?0.32:0.03); });   // walls lit by the scene; ONLY windows glow (natural dusk)
   storeTex.forEach((tex,si)=> addInst(tex, tex, stores[si], 0.28, 0.72, 0.05));
-  // NYC rooftop water towers
-  if(waterTowers.length){ const _m=new THREE.Matrix4();
+  // NYC rooftop water towers (a North-American skyline signature — other cities skip them)
+  if(waterTowers.length && nation().wt){ const _m=new THREE.Matrix4();
     const tankMat=new THREE.MeshStandardMaterial({color:0x5a4636, roughness:0.9});
     const tank=new THREE.InstancedMesh(new THREE.CylinderGeometry(1.4,1.6,2.6,8), tankMat, waterTowers.length);
     const cone=new THREE.InstancedMesh(new THREE.ConeGeometry(1.7,1.1,8), tankMat, waterTowers.length);
@@ -5284,12 +5370,15 @@ function updateRain(dt){
   rainGeo.attributes.position.needsUpdate=true;
 }
 function selectTrack(idx){
+  currentCountry = (window.__globeCountry!=null) ? window.__globeCountry : (TRACK_HOME[idx]!=null?TRACK_HOME[idx]:16);   // globe pick wins; else the track's home country
+  window.__globeCountry=null;
   buildWorld(idx); initMap(); placeGrid();
   _f.set(Math.sin(player.heading),Math.cos(player.heading));
   camera.position.set(player.pos.x-_f.x*CONFIG.camDist, CONFIG.camHeight, player.pos.y-_f.y*CONFIG.camDist);
   camera.lookAt(player.pos.x,1,player.pos.y);
   document.querySelectorAll('.trackBtn').forEach((b,i)=>b.classList.toggle('sel', i===idx));
-  const sub=document.querySelector('#menu .sub'); if(sub) sub.textContent=(TRACKS[idx]||currentTheme||{}).sub||'CUSTOM';
+  const sub=document.querySelector('#menu .sub'); if(sub){ const tt=(TRACKS[idx]||currentTheme||{});
+    sub.textContent=nationCity(tt.theme)+' · '+((COUNTRIES[currentCountry]||{}).name||'')+' · '+(tt.sub||'CUSTOM'); }   // the race announces its real CITY
   if(currentTheme) playMusic(currentTheme.theme);   // switch background beat per environment
 }
 function init(){
@@ -5448,7 +5537,8 @@ function init(){
   })();
   const volSlider=document.getElementById('volSlider'), muteBtn=document.getElementById('muteBtn');
   const applyVol=()=>{ muteBtn.textContent = (muted||sfxVolume<=0) ? '🔇' : '🔊'; muteBtn.classList.toggle('on',!muted&&sfxVolume>0); if(audio) audio.setVolume(sfxVolume); };
-  ['input','change'].forEach(ev=> volSlider.addEventListener(ev, e=>{ e.stopPropagation(); sfxVolume=(+volSlider.value)/100; muted=false; applyVol(); }));
+  try{ volSlider.value=Math.round(sfxVolume*100); }catch(e){}
+  ['input','change'].forEach(ev=> volSlider.addEventListener(ev, e=>{ e.stopPropagation(); sfxVolume=(+volSlider.value)/100; muted=false; try{ localStorage.setItem('sd_sfxvol', sfxVolume); }catch(_){} applyVol(); }));
   volSlider.addEventListener('pointerdown', e=>e.stopPropagation());
   muteBtn.addEventListener('click', e=>{ e.stopPropagation(); muted=!muted; applyVol(); });
   applyVol();
@@ -6102,7 +6192,8 @@ window.NETRACE=false;
     {lat:51,lon:10,theme:'city'},{lat:42,lon:12,theme:'coast'},{lat:40,lon:-4,theme:'coast'},
     {lat:36,lon:138,theme:'city'},{lat:37,lon:127,theme:'city'},{lat:35,lon:103,theme:'city'},
     {lat:22,lon:79,theme:'desert'},{lat:-25,lon:133,theme:'desert'},{lat:-29,lon:24,theme:'desert'},
-    {lat:26,lon:30,theme:'desert'},{lat:24,lon:54,theme:'desert'}
+    {lat:26,lon:30,theme:'desert'},{lat:24,lon:54,theme:'desert'},
+    {lat:56,lon:38,theme:'snow'}
   ];
   let sc=null,cam=null,ren=null,raf=0,grp=null,markers=[],picked=-1,rot=0.5,tilt=-0.32,drag=null,vel=0,velT=0,ray=null,mouse=null,moved=0;
   function llToVec(lat,lon,rad){ const phi=(90-lat)*Math.PI/180, th=(lon+180)*Math.PI/180;
@@ -6177,7 +6268,7 @@ window.NETRACE=false;
     const fl=document.getElementById('globeFlag'); if(typeof flagURL==='function') fl.src=flagURL(co.key);
     document.getElementById('globeCountry').textContent=co.name;
     let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; const trk=TRACKS[ti]||{};
-    document.getElementById('globeMeta').textContent=(trk.name||gd.theme.toUpperCase());
+    document.getElementById('globeMeta').textContent=((typeof nationCityFor==='function')?nationCityFor(i,gd.theme)+' · ':'')+(trk.name||gd.theme.toUpperCase());
     const gt=document.getElementById('gcTrack'); if(gt && typeof trackThumb==='function' && trk.ctrl){ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b'; gt.innerHTML=trackThumb(trk.ctrl, acc); }
     const dd=document.getElementById('gcDiff'); if(dd){ let d=3; try{ d=trackDifficulties()[ti]||3; }catch(e){} dd.innerHTML='DIFFICULTY  <span class="on">'+'\u2605'.repeat(d)+'</span><span class="off">'+'\u2605'.repeat(5-d)+'</span>'; }
     const cc=document.getElementById('gcCar'); if(cc) cc.textContent='\uD83C\uDFCE '+car+'  \u00b7  '+gd.theme.toUpperCase();
@@ -6190,8 +6281,9 @@ window.NETRACE=false;
   window.addEventListener('resize', ()=>{ if(document.getElementById('globeModal').classList.contains('show')) resize(); });
   document.getElementById('globeClose').addEventListener('click', e=>{ e.stopPropagation(); close(); });
   document.getElementById('globeRace').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return; const gd=GLOBE[picked];
-    selectedCar=picked; try{ if(typeof saveSelCar==='function') saveSelCar(); else localStorage.setItem('sd_car',selectedCar); }catch(_){}
+    selectedCar=picked%CARS.length; try{ if(typeof saveSelCar==='function') saveSelCar(); else localStorage.setItem('sd_car',selectedCar); }catch(_){}
     if(typeof renderShop==='function') renderShop(); if(typeof upgradeCars==='function') upgradeCars();
+    window.__globeCountry=picked;   // race in the picked COUNTRY -> city name, flags, signage, music genre
     let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; currentTrack=ti;
     try{ if(typeof selectTrack==='function') selectTrack(currentTrack); }catch(_){}
     close();
