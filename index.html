@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.29-->
+<!--BUILD:v9.30-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.29';
+(function(){ const BUILD='v9.30';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1223,31 +1223,31 @@ const COUNTRIES=[
 let currentCountry=16;                                          // COUNTRIES index for the current race
 const TRACK_HOME=[16,16,13,3,20,34,33,26,32,2,0,5];             // menu-launch home per track: NY, Miami, Panama, Cancun, Whistler, Moscow, Dubai, Tokyo, Cairo, Rio, San Juan, Cartagena
 const NATION={
-  us:{grp:'usa',  wt:true, city:{city:'NEW YORK',coast:'MIAMI',beach:'MIAMI BEACH',desert:'LAS VEGAS',docks:'SEATTLE',forest:'PORTLAND',snow:'ASPEN'},
+  us:{district:{city:'nyc',coast:'miami',beach:'miami'}, grp:'usa',  wt:true, city:{city:'NEW YORK',coast:'MIAMI',beach:'MIAMI BEACH',desert:'LAS VEGAS',docks:'SEATTLE',forest:'PORTLAND',snow:'ASPEN'},
       biz:["JOE'S PIZZA",'5TH AVE DELI','LIBERTY BANK','BROADWAY CAFE','DUANE DRUGS','THE PLAZA HOTEL','24HR BODEGA','HARLEM JAZZ']},
   ca:{grp:'usa',  wt:true, city:{snow:'WHISTLER',forest:'VANCOUVER',city:'TORONTO'},
       biz:["TIM'S COFFEE",'MAPLE DELI','ROYAL BANK','POUTINE HOUSE','REXALL DRUGS','HOTEL FAIRMONT','DEPANNEUR 24H','HOCKEY BAR']},
-  gb:{grp:'europe', city:{city:'LONDON'},
+  gb:{district:'london', grp:'europe', city:{city:'LONDON'},
       biz:['FISH & CHIPS','THE CROWN PUB','BARCLAYS BANK','THE TEA ROOM','BOOTS PHARMACY','THE SAVOY','TESCO EXPRESS','SOHO JAZZ']},
-  fr:{grp:'europe', city:{city:'PARIS'},
+  fr:{district:'paris', grp:'europe', city:{city:'PARIS'},
       biz:['BOULANGERIE','CAFE DE PARIS','BANQUE DE PARIS','LE BISTRO','PHARMACIE','HOTEL RITZ','TABAC 24H','MOULIN CLUB']},
-  de:{grp:'europe', city:{city:'BERLIN'},
+  de:{district:'berlin', grp:'europe', city:{city:'BERLIN'},
       biz:['CURRYWURST HAUS','BACKEREI BROT','DEUTSCHE BANK','KAFFEEHAUS','APOTHEKE','HOTEL ADLON','SPATI 24H','TECHNO KLUB']},
   it:{grp:'europe', city:{coast:'AMALFI',city:'ROME'},
       biz:['PIZZERIA NAPOLI','GELATERIA LUNA','BANCA ROMA','CAFFE ESPRESSO','FARMACIA','GRAND HOTEL','ALIMENTARI','OPERA BAR']},
   es:{grp:'europe', city:{coast:'BARCELONA',city:'MADRID'},
       biz:['TAPAS BAR','PANADERIA SOL','CAIXA BANC','CAFE CORTADO','FARMACIA','HOTEL SOL','MERCADO 24H','FLAMENCO CLUB']},
-  ru:{grp:'europe', city:{snow:'MOSCOW',city:'MOSCOW'},
+  ru:{district:'moscow', grp:'europe', city:{snow:'MOSCOW',city:'MOSCOW'},
       biz:['PELMENI HOUSE','BLINI CAFE','SBER BANK','SAMOVAR TEA','APTEKA','HOTEL METROPOL','PRODUKTY 24','BALALAIKA BAR']},
-  jp:{grp:'phonk', city:{city:'TOKYO'},
+  jp:{district:'tokyo', grp:'phonk', city:{city:'TOKYO'},
       biz:['RAMEN ICHIBAN','SUSHI ZEN','PACHINKO HALL','KARAOKE ECHO','KONBINI 24H','HOTEL SAKURA','DONKI MARKET','GOLDEN GAI BAR']},
   kr:{grp:'phonk', city:{city:'SEOUL'},
       biz:['KIMCHI HOUSE','NOODLE BAR','K-BANK','BUBBLE TEA','OLIVE PHARMACY','HOTEL LOTTE','GS MART 24H','K-POP KARAOKE']},
   cn:{grp:'phonk', city:{city:'SHANGHAI'},
       biz:['DIM SUM HOUSE','TEA PAVILION','BANK OF CHINA','NOODLE EXPRESS','PHARMACY 999','JADE HOTEL','NIGHT MARKET','DRAGON CLUB']},
-  in:{grp:'india', city:{desert:'JAIPUR',city:'MUMBAI'},
+  in:{district:'mumbai', grp:'india', city:{desert:'JAIPUR',city:'MUMBAI'},
       biz:['CHAI POINT','TANDOOR PALACE','SPICE BAZAAR','BOLLYWOOD CINEMA','MUMBAI PHARMA','HOTEL RAJ','SAREE EMPORIUM','CRICKET CLUB']},
-  ae:{grp:'arabic', city:{desert:'DUBAI'},
+  ae:{district:'dubai', grp:'arabic', city:{desert:'DUBAI'},
       biz:['GOLD SOUK','BURJ CAFE','OASIS BANK','DESERT ROSE','AL NOOR MARKET','MIRAGE HOTEL','FALCON CLUB','SHEIKH PLAZA']},
   eg:{grp:'arabic', city:{desert:'CAIRO'},
       biz:['KEBAB HOUSE','KOSHARY CORNER','BANK MISR','AHWA CAFE','NILE PHARMACY','PYRAMID HOTEL','SOUK 24H','OUD LOUNGE']},
@@ -1255,7 +1255,7 @@ const NATION={
       biz:['BRAAI SHACK','BILTONG & CO','STANDARD BANK','ROOIBOS CAFE','CLICKS PHARMA','SAFARI LODGE','SPAZA 24H','KWAITO CLUB']},
   au:{grp:'usa',  city:{desert:'ALICE SPRINGS',city:'SYDNEY'},
       biz:['MEAT PIE SHOP','BONDI SURF CO','OUTBACK BANK','FLAT WHITE CAFE','CHEMIST WHSE','HOTEL BONDI','SERVO 24H','PUB ROCK BAR']},
-  br:{grp:'funk',  city:{beach:'RIO DE JANEIRO',swamp:'MANAUS',city:'SAO PAULO'},
+  br:{district:'rio', grp:'funk',  city:{beach:'RIO DE JANEIRO',swamp:'MANAUS',city:'SAO PAULO'},
       biz:['PADARIA PAO','CHURRASCARIA','BANCO DO BRASIL','ACAI CAFE','DROGARIA','COPACABANA HOTEL','MERCADO 24H','SAMBA CLUB']},
   mx:{grp:'latin', city:{beach:'CANCUN',desert:'BAJA',city:'MEXICO CITY'},
       biz:['TAQUERIA EL PASTOR','PANADERIA ROSA','BANCO AZTECA','CAFE DE OLLA','FARMACIA GDL','HOTEL MAYA','ABARROTES 24H','MARIACHI BAR']},
@@ -1273,6 +1273,8 @@ function nationFor(ci){ const co=COUNTRIES[ci]||COUNTRIES[16]; return Object.ass
 function nation(){ return nationFor(currentCountry); }
 function nationCityFor(ci,theme){ const n=nationFor(ci), c=n.city||{}; return c[theme]||c.city||Object.keys(c).length&&c[Object.keys(c)[0]]||n.name; }
 function nationCity(theme){ return nationCityFor(currentCountry,theme); }
+function nationDistrictKey(){ const d=nation().district; if(!d) return null;
+  const th=currentTheme?currentTheme.theme:'city'; return (typeof d==='string')? d : (d[th]||d.city||null); }   // REAL-CITY district (OSM) for this race, if one shipped
 const PAINTS=[ {name:'Stock',hex:null}, {name:'Red',hex:0xe0202a}, {name:'Orange',hex:0xf07315}, {name:'Gold',hex:0xf2c021},
   {name:'Lime',hex:0x7ac81e}, {name:'Green',hex:0x18a558}, {name:'Teal',hex:0x12a39a}, {name:'Cyan',hex:0x18b5d6},
   {name:'Blue',hex:0x1e6cff}, {name:'Navy',hex:0x23306e}, {name:'Purple',hex:0x7b3ff2}, {name:'Pink',hex:0xe84f9c},
@@ -3723,14 +3725,26 @@ function loadCarModels(){
     lowCityRaw.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material){ SHARED.add(o.material); o.material.fog=false; } o.castShadow=false; o.receiveShadow=false; } });
     lowCityBox=new THREE.Box3().setFromObject(lowCityRaw);
     if(cars&&cars.length && currentTheme && (currentTheme.theme==='city'||currentTheme.theme==='docks')) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
+  // REAL-CITY districts: actual OSM building footprints+heights (Times Square / Shibuya / South Beach /
+  // Champs-Elysees / Piccadilly / Sheikh Zayed Rd / Tverskaya / Fort Mumbai / Copacabana / Berlin Mitte),
+  // © OpenStreetMap contributors (ODbL) — swapped in as the downtown when you race that nation.
+  ['nyc','tokyo','miami','paris','london','dubai','moscow','mumbai','rio','berlin'].forEach(k=>{
+    try{ L.load('models/districts/'+k+'.glb', g=>{ const root=g.scene;
+      root.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material){ SHARED.add(o.material); o.material.fog=false; } o.castShadow=false; o.receiveShadow=false; } });
+      districtRaw[k]=root; districtBox[k]=new THREE.Box3().setFromObject(root);
+      if(cars&&cars.length && state==='menu' && currentTheme && nationDistrictKey()===k) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
+  });
 }
+let districtRaw={}, districtBox={};
 // place a few copies of the low-poly city as a distant skyline ring (city/docks themes)
 let lowCityPlacedR=0;   // world footprint radius of the PLACED downtown (0 = skipped) — procedural buildings fill the REST of the infield
 function placeLowCityBackdrop(rng){
   lowCityPlacedR=0;
-  if(!lowCityRaw||!lowCityBox) return;
+  const dk=(typeof nationDistrictKey==='function')?nationDistrictKey():null;    // race a nation with a REAL city -> its actual OSM district is the downtown
+  const srcRaw=(dk&&districtRaw[dk])||lowCityRaw, srcBox=(dk&&districtBox[dk])||lowCityBox;
+  if(!srcRaw||!srcBox) return;
   if(brActive) return;   // BR cars roam freely + the downtown has no collision -> they'd clip inside it; keep it race-only
-  const sz=new THREE.Vector3(); lowCityBox.getSize(sz); const span=Math.max(sz.x,sz.z)||100;
+  const sz=new THREE.Vector3(); srcBox.getSize(sz); const span=Math.max(sz.x,sz.z)||100;
   // fit the downtown into the ROAD-FREE space around the centroid. The new non-ring tracks cut INTO the
   // infield — the old blind trackRadius*1.45 sizing put 60-80% of the road INSIDE this collision-less mesh
   // (players drove through phantom buildings = "view screwed up under an overpass").
@@ -3739,8 +3753,8 @@ function placeLowCityBackdrop(rng){
   const halfDiag=Math.hypot(sz.x,sz.z)/2;                          // safe for any rotation
   const s=Math.min((trackRadius*1.45)/span, freeR/Math.max(halfDiag,1));
   if(span*s < 55) return;                                          // too small to read as a downtown -> skip (procedural city fills the scene anyway)
-  const c=lowCityRaw.clone(true); c.position.set(trackCentroid.x, -lowCityBox.min.y*s, trackCentroid.y);
-  c.scale.setScalar(s); c.rotation.y=0.4; scene.add(c);           // -> WORLD (disposed on rebuild; geo/mat SHARED)
+  const c=srcRaw.clone(true); c.position.set(trackCentroid.x, -srcBox.min.y*s, trackCentroid.y);
+  c.scale.setScalar(s); c.rotation.y=dk?0:0.4; scene.add(c);      // -> WORLD (disposed on rebuild; geo/mat SHARED); real districts keep their true street grid orientation
   lowCityPlacedR = halfDiag*s + 8;                                 // buildings keep out of THIS footprint only (not a huge blind radius -> no barren plaza)
 }
 // wheel layout taken straight from the car pack's own scene (mapped to +Z = forward)
