@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.45-->
+<!--BUILD:v9.46-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.45';
+(function(){ const BUILD='v9.46';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2174,20 +2174,20 @@ function buildRibbon(halfW, y, color, roughness, tex, vScale, metalness, materia
     const v=cum*(vScale||0.05), ey=y+(sampleElev[j]||0), hw=perHW?(sampleHW[j]||halfW):halfW;   // road rides elevation; perHW narrows tight corners
     pos.push(p.x+n.x*hw, ey, p.y+n.y*hw); uv.push(0, v);
     pos.push(p.x-n.x*hw, ey, p.y-n.y*hw); uv.push(1, v); }
-  for(let i=0;i<SAMPLES;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  for(let i=0;i<SAMPLES;i++){ const a=i*2; idx.push(a,a+2,a+1, a+1,a+2,a+3); }   // wound FACE-UP (the old order faced down -> FrontSide culled the road from above, backface shading turned it into a pastel mirror)
   const g=new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
   g.setIndex(idx); g.computeVertexNormals();
   let m = material;
-  if(!m){ const opts={ color, roughness:roughness??0.9, metalness:metalness||0 }; if(tex) opts.map=tex; m=new THREE.MeshStandardMaterial(opts); }
+  if(!m){ const opts={ color, roughness:roughness??0.9, metalness:metalness||0, side:THREE.DoubleSide }; if(tex) opts.map=tex; m=new THREE.MeshStandardMaterial(opts); }
   const mesh=new THREE.Mesh(g, m);
   mesh.receiveShadow=true; return mesh;
 }
 
 // crisp painted edge lines that hug the road edge (follow the per-sample width)
 function buildEdgeLines(){
-  const mat=new THREE.MeshBasicMaterial({color:0xf4efe2, transparent:true, opacity:0.8, depthWrite:false,
+  const mat=new THREE.MeshBasicMaterial({color:0xf4efe2, transparent:true, opacity:0.8, depthWrite:false, side:THREE.DoubleSide,
     polygonOffset:true, polygonOffsetFactor:-5, polygonOffsetUnits:-5});
   [1,-1].forEach(side=>{
     const pos=[], idx=[];
@@ -2201,7 +2201,7 @@ function buildEdgeLines(){
 }
 // red/white rumble-strip kerbs on the OUTSIDE of corners (sampleHW narrows at corners -> free corner detector)
 function buildKerbs(){
-  const mat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.5, metalness:0.0,
+  const mat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.5, metalness:0.0, side:THREE.DoubleSide,
     polygonOffset:true, polygonOffsetFactor:-4.5, polygonOffsetUnits:-4.5});
   [1,-1].forEach(side=>{
     const pos=[], idx=[], col=[];
@@ -2214,7 +2214,7 @@ function buildKerbs(){
                p1.x+n1.x*a1*side, e1, p1.y+n1.y*a1*side, p1.x+n1.x*b1*side, e1, p1.y+n1.y*b1*side);
       const c=(i%2)===0?[0.82,0.11,0.09]:[0.9,0.9,0.9];            // alternate red / white stripe per sample
       for(let k=0;k<4;k++) col.push(c[0],c[1],c[2]);
-      idx.push(base,base+1,base+2, base+1,base+3,base+2); }
+      idx.push(base,base+2,base+1, base+1,base+2,base+3); }        // face-up winding (see buildRibbon)
     if(pos.length){ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
       g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.setIndex(idx); g.computeVertexNormals();
       const m=new THREE.Mesh(g,mat); m.receiveShadow=true; scene.add(m); } });
@@ -2237,8 +2237,8 @@ function buildSideStrips(innerPad, outerPad, y, material){
 // CITY CROSS-STREETS: perpendicular asphalt streets branching off the track (behind the sidewalk) so the
 // circuit reads as part of a street grid, not an isolated ribbon. Flat quads (no rotation math) + crosswalk + centre dashes.
 function buildCitySideStreets(rng){
-  const asphalt=new THREE.MeshStandardMaterial({color:0x2c2f36, roughness:0.94, metalness:0.0});
-  const paint=new THREE.MeshBasicMaterial({color:0xcdc7b4, fog:true});
+  const asphalt=new THREE.MeshStandardMaterial({color:0x2c2f36, roughness:0.94, metalness:0.0, side:THREE.DoubleSide});
+  const paint=new THREE.MeshBasicMaterial({color:0xcdc7b4, fog:true, side:THREE.DoubleSide});
   const grp=new THREE.Group(); scene.add(grp);
   const quad=(A,B,C,D,mat)=>{ const g=new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute([...A,...B,...C, ...B,...D,...C],3));
@@ -2315,8 +2315,8 @@ function buildTrackMeshes(){
     t.repeat.set(CONFIG.roadHalfWidth*0.85,0.5); t.anisotropy=aniso; return t; };   // tighter tiling = more visible asphalt grit
   const roadMat=new THREE.MeshStandardMaterial({ map:roadMap,
     normalMap:grain('textures/road_normal.jpg'), normalScale:new THREE.Vector2(1.4,1.4),
-    roughnessMap:grain('textures/road_rough.jpg'), roughness:0.42, metalness:0.1,
-    emissiveMap:roadMap, emissive:0xffffff, emissiveIntensity:0.42,
+    roughnessMap:grain('textures/road_rough.jpg'), roughness:0.6, metalness:0.04, envMapIntensity:0.45,   // matte asphalt: the old gloss (r.42 m.1) was tuned while the road was invisible - at grazing angles it mirrored the sky
+    emissiveMap:roadMap, emissive:0xffffff, emissiveIntensity:0.42, side:THREE.DoubleSide,   // DoubleSide is LOAD-BEARING: the ribbon index order winds face-DOWN, so FrontSide backface-culled the whole road from above (players raced on the bare terrain corridor)
     polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4 }); // render ON TOP of the terrain corridor (no z-fight bleed-through)
   roadMat.onBeforeCompile=(shader)=>{                    // scrolling speed chevrons on the road shoulders (fade in with speed)
     shader.uniforms.uScroll={value:0}; shader.uniforms.uSpd={value:0}; roadMat.userData.shader=shader;
@@ -2330,8 +2330,10 @@ function buildTrackMeshes(){
   roadMatRef=roadMat;
   const rth=currentTheme?currentTheme.theme:'city';        // per-theme road tint (same texture everywhere = consistent)
   if(rth==='desert'){ roadMat.color=new THREE.Color(0x554c3e); roadMat.emissiveIntensity=0.16; roadMat.roughness=0.78; }   // dark dusty desert highway (contrasts the sand)
-  else if(rth==='coast'){ roadMat.color=new THREE.Color(0x6f6a64); roadMat.emissiveIntensity=0.28; roadMat.roughness=0.34; roadMat.metalness=0.34; roadMat.envMapIntensity=1.05; }   // sea-damp asphalt reflects the sunset
-  else if(rth==='forest'){ roadMat.color=new THREE.Color(0x6a6d74); roadMat.emissiveIntensity=0.3; roadMat.roughness=0.44; roadMat.metalness=0.22; roadMat.envMapIntensity=0.9; }   // damp forest tarmac, subtle sheen
+  else if(rth==='coast'){ roadMat.color=new THREE.Color(0x6f6a64); roadMat.emissiveIntensity=0.28; roadMat.roughness=0.52; roadMat.metalness=0.15; roadMat.envMapIntensity=0.6; }   // sea-damp asphalt, gentle sunset sheen (not a mirror)
+  else if(rth==='forest'){ roadMat.color=new THREE.Color(0x6a6d74); roadMat.emissiveIntensity=0.3; roadMat.roughness=0.6; roadMat.metalness=0.1; roadMat.envMapIntensity=0.5; }   // damp forest tarmac, subtle sheen
+  else if(rth==='beach'){ roadMat.color=new THREE.Color(0x5a554d); roadMat.emissiveIntensity=0.18; roadMat.roughness=0.62; }   // untinted the full-noon beach sun clipped the asphalt to sand-white (road became invisible)
+  else if(rth==='snow'){ roadMat.color=new THREE.Color(0x4f545e); roadMat.emissiveIntensity=0.2; roadMat.roughness=0.58; roadMat.metalness=0.12; }   // cold wet tarmac -> reads dark against the snowfield
   if(rainOn){                                            // wet asphalt: darker + glossy reflective sheen
     roadMat.color=new THREE.Color(0x6e6e76); roadMat.roughness=0.16; roadMat.metalness=0.5; roadMat.emissiveIntensity=0.26;
     roadMat.envMapIntensity=1.9; roadMat.normalScale.set(0.4,0.4);   // mirror the captured sunset sky down the wet road
@@ -2343,13 +2345,13 @@ function buildTrackMeshes(){
   buildKerbs();                                         // red/white rumble-strip kerbs on the outside of corners
   // GTA-style raised sidewalks + curb on both sides (the curb is also our barrier)
   if(terrainAmp<=0){                                     // raised city sidewalks only on flat themes
-    const curbMat=new THREE.MeshStandardMaterial({color:0x9a9da3, roughness:0.85});
-    const walkMat=new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95});
+    const curbMat=new THREE.MeshStandardMaterial({color:0x9a9da3, roughness:0.85, side:THREE.DoubleSide});
+    const walkMat=new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95, side:THREE.DoubleSide});
     buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
     buildSideStrips(0, 4.5, 0.28, walkMat);             // sidewalk = road edge .. edge+4.5 (never inverts at corners)
     { const th=currentTheme?currentTheme.theme:'city';   // GRASS VERGE: a planted strip just past the sidewalk (REAL grass on city/docks, dune on coast/beach)
       const sandy=(th==='coast'||th==='beach');
-      const vm=new THREE.MeshStandardMaterial({color:sandy?0xcdb98a:0xbfd0b8, roughness:1, metalness:0});
+      const vm=new THREE.MeshStandardMaterial({color:sandy?0xcdb98a:0xbfd0b8, roughness:1, metalness:0, side:THREE.DoubleSide});
       if(!sandy){ const gt=new THREE.TextureLoader().load('textures/grass.jpg');
         gt.wrapS=gt.wrapT=THREE.RepeatWrapping; if('encoding' in gt) gt.encoding=THREE.sRGBEncoding; gt.repeat.set(3,180); vm.map=gt; }
       buildSideStrips(4.5, 9.5, 0.11, vm); }
@@ -2398,21 +2400,38 @@ function buildNationFlags(){
 
 function buildGate(i, finish){
   // FLAT markings painted on the road (no hovering arches)
-  const p=samplePts[i], t=sampleTan[i], ang=Math.atan2(t.x,t.y), hw=(sampleHW[i]||CONFIG.roadHalfWidth);
+  const hw=(sampleHW[i]||CONFIG.roadHalfWidth);
   let mat, depth;
   if(finish){
     const c=document.createElement('canvas'); c.width=64; c.height=16; const x=c.getContext('2d');
     for(let a=0;a<8;a++) for(let b=0;b<2;b++){ x.fillStyle=((a+b)%2)?'#f4f4f4':'#15151a'; x.fillRect(a*8,b*8,8,8); }
     const tex=new THREE.CanvasTexture(c); tex.magFilter=THREE.NearestFilter; tex.wrapS=THREE.RepeatWrapping; tex.repeat.set(Math.round(hw*0.7),1);
     if('encoding' in tex) tex.encoding=THREE.sRGBEncoding;
-    mat=new THREE.MeshStandardMaterial({map:tex, roughness:.7, metalness:0,
+    mat=new THREE.MeshStandardMaterial({map:tex, roughness:.7, metalness:0, side:THREE.DoubleSide,
       polygonOffset:true, polygonOffsetFactor:-6, polygonOffsetUnits:-6}); depth=2.6;
   } else {
-    mat=new THREE.MeshStandardMaterial({color:0x39c0ff, emissive:0x39c0ff, emissiveIntensity:1.1, transparent:true, opacity:0.85, roughness:.5,
+    mat=new THREE.MeshStandardMaterial({color:0x39c0ff, emissive:0x39c0ff, emissiveIntensity:1.1, transparent:true, opacity:0.85, roughness:.5, side:THREE.DoubleSide,
       depthWrite:false, polygonOffset:true, polygonOffsetFactor:-6, polygonOffsetUnits:-6}); depth=0.9;
   }
-  const geo=new THREE.PlaneGeometry(hw*2, depth); geo.rotateX(-Math.PI/2);   // lie flat on the road
-  const m=new THREE.Mesh(geo, mat); m.position.set(p.x, 0.07+(sampleElev[i]||0), p.y); m.rotation.y=ang; scene.add(m);   // flush (polygonOffset wins the depth test)
+  // CONFORM to the road surface (a flat yaw-only plane floated over dips/crests on climbing roads,
+  // and its polygonOffset punched through the crest -> read as a beam hovering across the track)
+  const ds=samplePts[i].distanceTo(samplePts[(i+1)%SAMPLES])||2.4;
+  const pos=[], uvs=[], idx=[];
+  [-0.5,0,0.5].forEach((f,r)=>{
+    const fi=i+f*depth/ds, fl=Math.floor(fi), fr=fi-fl;
+    const i0=((fl%SAMPLES)+SAMPLES)%SAMPLES, i1=(i0+1)%SAMPLES;
+    const px=samplePts[i0].x+(samplePts[i1].x-samplePts[i0].x)*fr, pz=samplePts[i0].y+(samplePts[i1].y-samplePts[i0].y)*fr;
+    const nx=sampleNorm[i0].x+(sampleNorm[i1].x-sampleNorm[i0].x)*fr, nz=sampleNorm[i0].y+(sampleNorm[i1].y-sampleNorm[i0].y)*fr;
+    const ee=0.085+(sampleElev[i0]||0)+((sampleElev[i1]||0)-(sampleElev[i0]||0))*fr;
+    pos.push(px-nx*hw, ee, pz-nz*hw,  px+nx*hw, ee, pz+nz*hw);
+    uvs.push(0, r/2, 1, r/2);
+  });
+  for(let r=0;r<2;r++){ const a=r*2; idx.push(a,a+2,a+1, a+1,a+2,a+3); }   // face-up winding (see buildRibbon)
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs,2));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  scene.add(new THREE.Mesh(geo, mat));   // flush (polygonOffset wins the depth test)
 }
 
 /* =========================================================================
@@ -2671,13 +2690,16 @@ function terrainHeight(x,z){
   let h=(terrainNoise(x*0.006+50, z*0.006+50)-0.42)*2.4*terrainAmp;
   if(h<0) h*=0.4;                                        // shallower valleys
   // distance-WEIGHTED road elevation over nearby samples (not a hard nearest pick) -> no terrain seam where the road folds back on itself
-  let bd=Infinity, wsum=0, wre=0;
+  let bd=Infinity, wsum=0, wre=0, cap=Infinity;
   for(let i=0;i<SAMPLES;i+=3){ const p=samplePts[i]; const dx=p.x-x,dz=p.y-z,dd=dx*dx+dz*dz;
     if(dd<bd) bd=dd;
-    if(dd<5625){ const w=1/(dd+30); wsum+=w; wre+=w*(sampleElev[i]||0); } }   // <75u inverse-square -> smooth field (no Voronoi seam)
+    if(dd<5625){ const w=1/((dd+30)*(dd*0.05+1)); wsum+=w; wre+=w*(sampleElev[i]||0);   // <75u smooth field, SHARP falloff: the nearest leg must dominate its own corridor (the old 1/(dd+30) let a higher leg 40u away drag the corridor 0.1-0.3 ABOVE this leg's deck -> terrain bled through the road; a lower leg pulled it below -> floating barriers)
+      const fw=(sampleHW[i]||CONFIG.roadHalfWidth)+2;                                    // +2 covers the i+=3 scan gaps at the road edge
+      if(dd<fw*fw){ const c=(sampleElev[i]||0)-0.045; if(c<cap) cap=c; } } }             // HARD RULE: under any road footprint the terrain stays below THAT deck (at close folds the bank between legs spilled over the lower road)
   const d=Math.sqrt(bd), re=wsum>0?wre/wsum:0;
   const blend=clamp((d-(CONFIG.roadHalfWidth+8))/42, 0, 1);
   let y = h*blend + (re-0.12)*(1-blend);                   // corridor rides the climbing road; terrain ramps up to the hills beside it
+  if(y>cap) y=cap;
   if(beachSea!==null){                                     // seaside: sink the terrain into the ocean away from the track -> coastline + open water
     const dC=Math.hypot(x-trackCentroid.x, z-trackCentroid.y), k=clamp((dC-(trackRadius+45))/130, 0, 1);
     y = y*(1-k) + (beachSea-9)*k;
@@ -3342,7 +3364,9 @@ function buildParkedCars(rng){
 function buildRoadside(rng){
   const off=CONFIG.roadHalfWidth+1.25, list=[], _m=new THREE.Matrix4(), q=new THREE.Quaternion(), _p=new THREE.Vector3(), _s=new THREE.Vector3();
   for(let i=0;i<SAMPLES;i+=12){ if(rng()<0.45) continue; const p=samplePts[i], n=sampleNorm[i], side=((i/12)%2)?1:-1;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; list.push({x,z,y:terrainHeight(x,z),r:rng()*6.283}); }
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side, ty=terrainHeight(x,z), e=(sampleElev[i]||0);
+    if(e-ty>0.5) continue;                                 // shoulder drops away here (embankment edge) -> a cone would hover on air
+    list.push({x,z,y:Math.max(ty,e),r:rng()*6.283}); }     // cones ride the deck too (never under/over an elevated road)
   if(!list.length) return;
   // body (orange) + white reflective band as two instanced cones
   const bodyGeo=new THREE.ConeGeometry(0.34,1.0,12); bodyGeo.translate(0,0.5,0);
@@ -3384,12 +3408,18 @@ function buildBarriers(){
     const fp=[], fuv=[], fi=[], tp=[], ti=[]; let cum=0;
     for(let i=0;i<=SAMPLES;i++){ const j=i%SAMPLES, p=samplePts[j], n=sampleNorm[j];
       if(i>0) cum+=samplePts[j].distanceTo(samplePts[(i-1+SAMPLES)%SAMPLES]);
-      const at=(sampleHW[j]||CONFIG.roadHalfWidth)+0.3;
-      const ix=p.x+n.x*at*side, iz=p.y+n.y*at*side, by=terrainHeight(ix,iz);
-      const ox=p.x+n.x*(at+w)*side, oz=p.y+n.y*(at+w)*side, oy=terrainHeight(ox,oz);
+      const at=(sampleHW[j]||CONFIG.roadHalfWidth)+0.3, e=(sampleElev[j]||0);
+      // base rides the ROAD DECK (max(terrain,elev) like every other road-edge asset). At track folds
+      // terrainHeight blends BOTH legs' elevations, so terrain-only planting hung the barrier in
+      // mid-air below its own deck, chording across the lower ground. Short skirt drops the wall to
+      // the ground where it's close (capped: the dirt deck fascia covers the deep spans).
+      const ix=p.x+n.x*at*side, iz=p.y+n.y*at*side, ty=terrainHeight(ix,iz);
+      const by=Math.max(ty,e), bb=Math.max(Math.min(ty,e), by-2.2);
+      const ox=p.x+n.x*(at+w)*side, oz=p.y+n.y*(at+w)*side, to=terrainHeight(ox,oz);
+      const oy=Math.max(to,e), ob=Math.max(Math.min(to,e), oy-2.2);
       const u=cum*0.13;
       // inner face (faces road): 2 verts; outer face: 2 verts  -> two strips share the uv
-      fp.push(ix,by,iz, ix,by+H,iz,  ox,oy,oz, ox,oy+H,oz);
+      fp.push(ix,bb,iz, ix,by+H,iz,  ox,ob,oz, ox,oy+H,oz);
       fuv.push(u,0, u,1,  u,0, u,1);
       // top face (inner-top -> outer-top)
       tp.push(ix,by+H,iz, ox,oy+H,oz);
