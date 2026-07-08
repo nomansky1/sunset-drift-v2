@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.28-->
+<!--BUILD:v9.29-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,7 +1041,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.28';
+(function(){ const BUILD='v9.29';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3115,6 +3115,34 @@ function buildTrackFurniture(rng){
         const off=CONFIG.roadHalfWidth+2.6;
         xf.push(propMat(p.x+n.x*off*out, p.y+n.y*off*out, 8, Math.atan2(t.x,t.y), 0)); } }
     if(xf.length) instProp(propModels.tirebarrier, xf); }
+  buildPackDistrict(rng);                               // real textured buildings from the LowPoly City pack, themed per environment
+}
+// themed districts from the LowPoly City pack: skyscrapers downtown, factories at the docks,
+// beach houses on the coast, gas stations in the desert — real buildings, not just boxes
+function buildPackDistrict(rng){
+  const th=currentTheme?currentTheme.theme:'city';
+  const SETS={
+    city:  [['bldg-sky-a',30],['bldg-sky-b',26],['bldg-sky-c',22],['bldg-shop-a',7],['bldg-shop-b',8],['bldg-shop-c',6]],
+    docks: [['bldg-factory-a',15],['bldg-factory-b',17],['bldg-gas',7],['bldg-shop-a',7]],
+    coast: [['bldg-house-a',7],['bldg-house-b',8],['bldg-shop-c',6],['bldg-gas',7],['bldg-shop-a',7]],
+    beach: [['bldg-house-a',7],['bldg-house-b',8],['bldg-house-c',7],['bldg-shop-c',6]],
+    tropical:[['bldg-house-b',8],['bldg-house-c',7],['bldg-shop-c',6]],
+    desert:[['bldg-gas',7],['bldg-house-a',7],['bldg-shop-a',7]],
+  };
+  const set=SETS[th]; if(!set) return;
+  const xf={}; const step=isTouch?24:16;
+  for(let i=0;i<SAMPLES;i+=step){
+    const p=samplePts[i], n=sampleNorm[i], side=(Math.floor(i/step)%2)?1:-1;
+    const pick=set[Math.floor(rng()*set.length)], key=pick[0], hgt=pick[1];
+    const off=(sampleHW[i]||CONFIG.roadHalfWidth)+(hgt>14?26:15)+rng()*8;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
+    if(!propModels[key]) continue;
+    if(terrainAmp>0 && typeof terrainSlope==='function' && terrainSlope(x,z)>0.14) continue;      // no buildings on steep hills
+    if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth+(hgt>14?16:8)) continue;                     // clear of every road leg
+    (xf[key]=xf[key]||[]).push(propMat(x, z, hgt, Math.atan2(-n.x*side,-n.y*side)+ (rng()-0.5)*0.15, 0));
+    if(hgt>14) camColliders.push({x,z,r:hgt*0.45, top:hgt});                                       // chase cam won't clip tall towers
+  }
+  for(const k in xf) instProp(propModels[k], xf[k]);
 }
 let birdFlock=null, balloonGrp=null;
 // flying bird flock that circles high above the track (animated in the render loop)
@@ -4055,6 +4083,12 @@ const PROP_SPECS={
   gantry:{file:'models/cc0/racing/overhead.glb', fit:'xz'},
   bannertower:{file:'models/cc0/racing/bannerTowerRed.glb', fit:'height'},
   tirebarrier:{file:'models/cc0/racing/tirebarrier.glb', fit:'xz'},   // Blender-made drop-in (baked-AO vertex colours) -> tyre safety wall
+  // LowPoly City pack (user's itch asset, commercial OK) -> real textured buildings for themed districts
+  'bldg-sky-a':{file:'models/city/bldg-sky-a.glb', fit:'height'}, 'bldg-sky-b':{file:'models/city/bldg-sky-b.glb', fit:'height'}, 'bldg-sky-c':{file:'models/city/bldg-sky-c.glb', fit:'height'},
+  'bldg-shop-a':{file:'models/city/bldg-shop-a.glb', fit:'height'}, 'bldg-shop-b':{file:'models/city/bldg-shop-b.glb', fit:'height'}, 'bldg-shop-c':{file:'models/city/bldg-shop-c.glb', fit:'height'},
+  'bldg-house-a':{file:'models/city/bldg-house-a.glb', fit:'height'}, 'bldg-house-b':{file:'models/city/bldg-house-b.glb', fit:'height'}, 'bldg-house-c':{file:'models/city/bldg-house-c.glb', fit:'height'},
+  'bldg-factory-a':{file:'models/city/bldg-factory-a.glb', fit:'height'}, 'bldg-factory-b':{file:'models/city/bldg-factory-b.glb', fit:'height'},
+  'bldg-gas':{file:'models/city/bldg-gas.glb', fit:'height'},
 };
 function prepProp(root, fit){           // bake -> normalize (base y=0, centred XZ, ref dim = 1); returns [{geometry,material}]
   root.updateMatrixWorld(true);
