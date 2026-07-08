@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.41-->
+<!--BUILD:v9.42-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.41';
+(function(){ const BUILD='v9.42';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4227,8 +4227,17 @@ function syncCarMesh(c){
     const i1=(c.trackIdx+3)%SAMPLES, i0=((c.trackIdx-3)%SAMPLES+SAMPLES)%SAMPLES;
     const run=Math.hypot(samplePts[i1].x-samplePts[i0].x, samplePts[i1].y-samplePts[i0].y)||1;
     pitch=clamp(Math.atan2(roadElevAt(c.trackIdx+3)-roadElevAt(c.trackIdx-3), run), -0.32, 0.32);
+    const hw=CONFIG.roadHalfWidth;
+    if(c.trackDist>hw && terrainAmp>0 && typeof terrainHeight==='function'){   // OFF-ROAD: the road's grade is not ours
+      const f=clamp(1-(c.trackDist-hw)/8, 0, 1); pitch*=f;                     // fade the road pitch out...
+      const fx=Math.sin(c.heading), fz=Math.cos(c.heading), e=1.7;             // ...and follow the GROUND under the car
+      const tp=clamp(Math.atan2(terrainHeight(c.pos.x+fx*e,c.pos.y+fz*e)-terrainHeight(c.pos.x-fx*e,c.pos.y-fz*e), 2*e), -0.42, 0.42);
+      pitch+=tp*(1-f);
+      c.visY=Math.max(c.visY, terrainHeight(c.pos.x,c.pos.y));                 // ride ON the dune, never half-buried beside the road
+    }
   }
   c._pitch=(c._pitch||0)+(pitch-(c._pitch||0))*0.25;       // light smoothing -> no jitter at slope transitions
+  c.rig.group.position.y=0.06+c.visY+(c.air||0)+(c.rig.lift||0);   // visY may have been lifted onto the terrain above
   c.rig.group.rotation.order='YXZ'; c.rig.group.rotation.y=c.heading; c.rig.group.rotation.x=-c._pitch;
   // soft contact shadow under the car (grounds it; AI cars cast no real shadow on mobile)
   carShadowAssets();
@@ -4366,8 +4375,10 @@ function updateCar(c, inp, dt){
   (c.rig.roadWheels||c.rig.wheels).forEach(w=> w.rotation.x=c.rig.spinAcc);   // spares on the tailgate don't tumble
   const vSteer=clamp(inp.steer,-1,1)*0.5;
   c.rig.front.forEach(w=> w.rotation.y=vSteer);
-  c.rig.chassis.rotation.z = lerp(c.rig.chassis.rotation.z, clamp(-lateral*0.02,-0.25,0.25), 0.2);
-  c.rig.chassis.rotation.x = lerp(c.rig.chassis.rotation.x, clamp((inp.brake?0.04:(inp.throttle?-0.03:0)),-0.06,0.06), 0.1);
+  c.rig.chassis.rotation.z = lerp(c.rig.chassis.rotation.z, clamp(-lateral*0.012,-0.13,0.13), 0.2);   // subtler lean (0.25 read as the body sliding off the wheels)
+  c.rig.chassis.rotation.x = lerp(c.rig.chassis.rotation.x, clamp((inp.brake?0.03:(inp.throttle?-0.022:0)),-0.045,0.045), 0.1);
+  if(c.rig._cx0==null) c.rig._cx0=c.rig.chassis.position.x;
+  c.rig.chassis.position.x = c.rig._cx0 + Math.sin(c.rig.chassis.rotation.z)*0.42;   // pivot the lean at AXLE height, not the ground -> the wheel line stays planted under the body
 
   // ----- effects: tire smoke + skid marks -----
   const slip=Math.abs(lateral), spd=c.vel.length();
