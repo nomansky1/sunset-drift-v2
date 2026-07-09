@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.70-->
+<!--BUILD:v9.71-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.70';
+(function(){ const BUILD='v9.71';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3930,7 +3930,8 @@ function upgradeCars(){
     [...rig.group.children].forEach(o=> rig.group.remove(o));   // wipe the placeholder / old model
     let aiIdx=(ci*2+1)%CARS.length; while(CARS[aiIdx].retired) aiIdx=(aiIdx+1)%CARS.length;
     const def = c.isPlayer ? CARS[selectedCar] : CARS[aiIdx];   // AI variety (skips retired trucks)
-    if(def.kind==='glb' && fleetRaw[def.raw]) buildFleetCar(rig, fleetRaw[def.raw], def.yaw||0);
+    if(def.kind==='glb' && fleetRaw[def.raw]){ buildFleetCar(rig, fleetRaw[def.raw], def.yaw||0);
+      rig.kitBase=(typeof KITBASE!=='undefined'&&KITBASE[def.raw])||null; }   // molded BR weapon/armor kit for this model (if extracted)
     else buildDogeCar(rig, c.color);
     const liveryIdx=c.isPlayer?selectedCar:((ci*2+1)%CARS.length);
     applyLivery(rig, liveryIdx);                              // country flag decals + flag-colour theme on every car
@@ -4011,6 +4012,7 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
   chassis.position.set(-ctr.x, -bb.min.y, -ctr.z);
   const sc=4.6/Math.max(sz.x,sz.z,0.001);
   rig.dims={W:sz.x*sc, H:sz.y*sc, Lz:sz.z*sc, yaw:yaw||0};   // true normalized size (centered, +Z fwd) for the upgrade kit
+  rig._kitFrame={sc, off:chassis.position.clone()};          // br-kit meshes share the car's Blender centering -> replay this exact normalization
   const scaleG=new THREE.Group(); scaleG.scale.setScalar(sc); scaleG.rotation.y=yaw; scaleG.add(chassis);
   rig.group.add(scaleG);
   // collect the GLB's named wheels so they roll (spin) + the fronts steer. Each wheel mesh is wrapped in a
@@ -4745,7 +4747,44 @@ function mountGun(rig){ if(rig.gun||!rig.group) return;
   g.position.set(0, Math.min(d.H,2.6)+0.02, -d.Lz*0.03);
   g.scale.setScalar(clamp((d.W||2)*0.56, 0.95, 1.35));
   g.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; });
-  rig.group.add(g); rig.gun=g; rig.gunYaw=yaw; rig.gunSpin=spin; rig.muzzle=mzl; rig.rocketMuz=rmuz; rig.rocketPod=pod; }
+  rig.group.add(g); rig.gun=g; rig.gunYaw=yaw; rig.gunSpin=spin; rig.muzzle=mzl; rig.rocketMuz=rmuz; rig.rocketPod=pod;
+  mountKitGun(rig); }   // molded per-car kit (Rodin export) swaps in async when its GLB arrives; procedural stays as fallback
+// ---- MOLDED BR KITS: per-car gatling/rocket/armor meshes exported WITH the car's centering shift,
+// so replaying the car's own normalization frame (rig._kitFrame) overlays them exactly on the body ----
+const KITBASE={racecar:'supergt', super:'exotichypercar', racer:'drifttuner', muscle:'v8supercar',
+  sport:'timeattack', roadster:'classiclemans', kartB:'f1', kartC:'indycar', kartD:'formulae'};
+let _kitLoader=null, brKitCache={};
+function loadKitGLB(url){ if(brKitCache[url]) return brKitCache[url];
+  brKitCache[url]=new Promise((res,rej)=>{ try{
+    if(!_kitLoader){ _kitLoader=new THREE.GLTFLoader();
+      if(THREE.DRACOLoader){ const dl=new THREE.DRACOLoader(); dl.setDecoderPath('vendor/draco/'); _kitLoader.setDRACOLoader(dl); } }
+    _kitLoader.load(url, g=>{ g.scene.traverse(o=>{ if(o.isMesh&&o.material){   // pack exports metallic=1 -> black mirror; clamp once on the cached scene
+        if(o.material.metalness>0.6) o.material.metalness=0.6;
+        o.material.roughness=Math.max(o.material.roughness||0,0.35);
+        o.material.side=THREE.DoubleSide; } });   // kit meshes exported with flipped winding (negative-scale bake) -> FrontSide culls them entirely
+      res(g.scene); }, undefined, rej);
+  }catch(e){ rej(e); } });
+  return brKitCache[url]; }
+function mountKitGun(rig){ if(!rig.kitBase||!rig._kitFrame||!rig.dims) return;
+  Promise.all([loadKitGLB('models/br-kits/'+rig.kitBase+'_gatling.glb'),
+               loadKitGLB('models/br-kits/'+rig.kitBase+'_rocket.glb')]).then(([gat,rkt])=>{
+    if(!rig.group||!rig.gun||rig.gun.userData._kit) return;   // battle ended / already molded
+    // kits re-exported centered X/Z with base y=0 -> park each at the car's OWN roofline / rear deck
+    const sc=rig._kitFrame.sc, d=rig.dims, kg=new THREE.Group(); kg.userData._kit=true;
+    const roofY=Math.min(d.H,2.6)+0.02;
+    const yawP=new THREE.Group(); yawP.position.set(0, roofY, -d.Lz*0.03); kg.add(yawP);   // aim pivot on the roof
+    const gm=gat.clone(); gm.scale.setScalar(sc); yawP.add(gm);
+    yawP.updateWorldMatrix(true,true);
+    const gb=new THREE.Box3().setFromObject(gm);              // bbox in yawP-local space (gm at origin)
+    const mzl=new THREE.Object3D(); mzl.position.set(0, (gb.max.y+gb.min.y)*0.5-roofY+0.1, gb.max.z-yawP.position.z+0.05); yawP.add(mzl);
+    const rm=rkt.clone(); rm.scale.setScalar(sc);
+    const deckY=clamp(d.H*0.52,0.44,1.2); rm.position.set(0, deckY, -d.Lz*0.24); kg.add(rm);   // rocket pod on the rear deck
+    const rmuz=[]; for(const sx of [-1,1]){ const o=new THREE.Object3D();
+      o.position.set(sx*0.15, deckY+0.15, -d.Lz*0.24+0.4); kg.add(o); rmuz.push(o); }
+    kg.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; });
+    rig.group.remove(rig.gun); disposeGroup(rig.gun);         // procedural turret out, molded kit in
+    rig.group.add(kg); rig.gun=kg; rig.gunYaw=yawP; rig.gunSpin=null; rig.muzzle=mzl; rig.rocketMuz=rmuz; rig.rocketPod=rm;
+  }).catch(()=>{}); }
 // BATTLE ARMOR — bolted plating scaled to each car's real dims (bull-bar, side skirts, roll cage, rear guard)
 function mountArmor(rig, lvl){ if(!rig.group || rig.armor) return; lvl=clamp(lvl||1,1,3);
   const M=gunMats(), d=rig.dims||{W:2,H:1.5,Lz:4.6}, W=d.W,H=d.H,Lz=d.Lz, a=new THREE.Group();
@@ -4770,7 +4809,7 @@ function mountArmor(rig, lvl){ if(!rig.group || rig.armor) return; lvl=clamp(lvl
     const rb=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,W*0.74,8), M.steel); rb.rotation.z=Math.PI/2; rb.position.set(0,cageY+0.06,cz); a.add(rb);
     for(const sx of [-1,1]){ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,cageY*0.55,8), M.dark); leg.position.set(sx*W*0.33,cageY*0.74,cz); leg.rotation.x=0.14; a.add(leg); } }
   if(lvl>=3){ const ry=clamp(surfY(0,-Lz*0.44,barY*0.82), 0.3, H*0.95); const rear=new THREE.Mesh(new THREE.BoxGeometry(W*0.88,H*0.2,0.08), M.trim); rear.position.set(0,ry,-Lz/2+0.02); a.add(rear); }   // rear guard at the real tail height
-  a.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); }
+  a.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); }   // (procedural armor stays: it raycast-molds to the real body; the pack's armor plates are display props)
 // NITRO KIT — twin glowing NOS bottles strapped to the rear deck
 function mountNitro(rig){ if(!rig.group || rig.nitroKit) return;
   const d=rig.dims||{W:2,H:1.5,Lz:4.6}, W=d.W,H=d.H,Lz=d.Lz, g=new THREE.Group();
