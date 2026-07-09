@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.46-->
+<!--BUILD:v9.47-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.46';
+(function(){ const BUILD='v9.47';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5400,6 +5400,7 @@ function animate(){ requestAnimationFrame(animate);
     b.rotation.y+=dt*0.05*u.dir; b.rotation.z=Math.sin(bt*0.35+u.ph)*0.05; }); }   // slow sky drift + gentle bob & sway
   if(ferrisWheel&&ferrisWheel.userData.wheel) ferrisWheel.userData.wheel.rotation.z += dt*0.18;   // slow-turning Ferris wheel landmark
   if(rainOn) updateRain(dt);
+  if(window.DEVCAM && window.DEVCAM.on) window.DEVCAM.update(dt);   // dev/marketing camera rig overrides the game cam LAST (console-only; no player-facing UI)
   if(composer) composer.render(); else renderer.render(scene,camera); }
 
 /* =========================================================================
@@ -5744,6 +5745,62 @@ function init(){
     get rainVisible(){return !!(rainSys&&rainSys.visible);}, get night(){return nightMode;},
     setLow:(v)=>{lowQuality=!!v; document.getElementById('togLow').classList.toggle('on',lowQuality); renderer.shadowMap.enabled=!lowQuality; onResize(); selectTrack(currentTrack);},
     get low(){return lowQuality;}, get pixelRatio(){return renderer.getPixelRatio();} };
+
+  // ---- DEVCAM: development / marketing camera rig ------------------------------------------
+  // Console-only (window.DEVCAM.*) — never wired into the player UI. Used for world-building QA
+  // screenshots, car-model turntables and marketing footage. animate() calls DEVCAM.update(dt)
+  // AFTER the game camera, so an active mode simply wins the frame; DEVCAM.off() hands it back.
+  window.DEVCAM=(function(){
+    const L=new THREE.Vector3(), P=new THREE.Vector3();
+    const D={ on:false, mode:null, t:0, spd:1, fov:0, sink:'http://127.0.0.1:8098/' };
+    const el=s=>sampleElev.length?(sampleElev[((Math.floor(s)%SAMPLES)+SAMPLES)%SAMPLES]||0):0;
+    function at(sf){ // interpolated track point {x,z,e,tx,tz,nx,nz} at fractional sample sf
+      const i0=((Math.floor(sf)%SAMPLES)+SAMPLES)%SAMPLES, i1=(i0+1)%SAMPLES, f=sf-Math.floor(sf);
+      const a=samplePts[i0], b=samplePts[i1], ta=sampleTan[i0], na=sampleNorm[i0];
+      return { x:a.x+(b.x-a.x)*f, z:a.y+(b.y-a.y)*f, e:el(i0)+(el(i1)-el(i0))*f, tx:ta.x, tz:ta.y, nx:na.x, nz:na.y };
+    }
+    function car(){ const c=player; return {x:c.pos.x, y:(c.visY||0)+0.75, z:c.pos.y, h:c.heading}; }
+    function aim(px,py,pz, lx,ly,lz){ camera.position.set(px,py,pz); L.set(lx,ly,lz); camera.lookAt(L);
+      if(D.fov>0){ camera.fov=D.fov; camera.updateProjectionMatrix(); } }
+    const MODES={
+      // slow turntable around the player car — car-model QA + garage marketing shots
+      orbit(dt,o){ D.t+=dt*D.spd*(o.speed||0.4); const c=car(), r=o.radius||7.5, h=o.height||2.6;
+        aim(c.x+Math.sin(D.t)*r, c.y+h, c.z+Math.cos(D.t)*r, c.x, c.y+(o.lookUp||0.3), c.z); },
+      // fixed TV tripod at track sample s — pans to follow the car as it passes (broadcast look)
+      trackside(dt,o){ const p=at(o.s||0), side=o.side||1, off=o.offset||14, c=car();
+        const px=p.x+p.nx*off*side, pz=p.z+p.nz*off*side;
+        aim(px, Math.max(terrainHeight(px,pz),p.e)+(o.height||3.2), pz, c.x, c.y, c.z); },
+      // low side-drone locked to the car — drift/speed marketing footage
+      drone(dt,o){ const c=car(), side=o.side||1, d=o.dist||6.5, fx=Math.sin(c.h), fz=Math.cos(c.h);
+        const px=c.x+(-fz)*d*side+fx*(o.lead||2), pz=c.z+(fx)*d*side+fz*(o.lead||2);
+        aim(px, c.y+(o.height||1.1), pz, c.x+fx*3, c.y+0.4, c.z+fz*3); },
+      // bumper/hood cam — cockpit-height QA of road surface + markings
+      hood(dt,o){ const c=car(), fx=Math.sin(c.h), fz=Math.cos(c.h);
+        aim(c.x+fx*1.4, c.y+(o.height||0.75), c.z+fz*1.4, c.x+fx*30, c.y+0.4, c.z+fz*30); },
+      // cinematic drone flight along the track spline — track/environment reveals
+      flyover(dt,o){ D.t+=dt*D.spd; const f=(D.t/(o.dur||20))%1, s=(o.s0||0)+f*((o.s1||SAMPLES)-(o.s0||0));
+        const p=at(s), q=at(s+14), h=o.height||16, off=o.offset||10;
+        aim(p.x+p.nx*off, p.e+h, p.z+p.nz*off, q.x, q.e+2, q.z); },
+      // slow high crane above a track point — prop-alignment / layout QA
+      crane(dt,o){ D.t+=dt*D.spd*0.15; const p=at(o.s||0), r=o.radius||26;
+        aim(p.x+Math.sin(D.t)*r, p.e+(o.height||34), p.z+Math.cos(D.t)*r, p.x, p.e, p.z); },
+      // free tripod — exact placement
+      free(dt,o){ aim(o.x||0,o.y||10,o.z||0, o.lx||0,o.ly||0,o.lz||0); }
+    };
+    D.update=function(dt){ const m=MODES[D.mode]; if(m) m(dt, D.opt||{}); };
+    D.set=function(mode,opt){ if(!MODES[mode]){ console.warn('DEVCAM modes:',Object.keys(MODES)); return D; }
+      D.mode=mode; D.opt=opt||{}; D.t=0; D.on=true; return D; };
+    D.off=function(){ D.on=false; D.mode=null; if(D.fov>0){ camera.fov=CONFIG.fovBase; camera.updateProjectionMatrix(); D.fov=0; } return D; };
+    D.shot=async function(name){ if(D.on) D.update(0); if(composer) composer.render(); else renderer.render(scene,camera);
+      const du=renderer.domElement.toDataURL('image/jpeg',0.85);
+      try{ await fetch(D.sink+(name||'devcam')+'.txt',{method:'POST',headers:{'Content-Type':'text/plain'},body:du}); }catch(e){ console.warn('DEVCAM sink offline',e); }
+      return du.length; };
+    D.seq=async function(name, seconds, fps){ // camera-path frame sequence (world pauses per frame) -> ffmpeg-ready
+      const n=Math.round((seconds||6)*(fps||30)), step=1/(fps||30);
+      for(let k=0;k<n;k++){ D.update(step); await D.shot(name+'_'+String(k).padStart(4,'0')); }
+      return n; };
+    return D;
+  })();
 
   buildComposer();
   animate();
