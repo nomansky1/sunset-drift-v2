@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.54-->
+<!--BUILD:v9.55-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.54';
+(function(){ const BUILD='v9.55';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2616,8 +2616,9 @@ function makeCityGroundTexture(baseHex){
   baseHex=baseHex||'#33363d';
   const S=256, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
   x.fillStyle=baseHex; x.fillRect(0,0,S,S);
-  for(let k=0;k<2200;k++){ x.fillStyle=(Math.random()>0.5?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.07)');
-    x.fillRect(Math.random()*S|0,Math.random()*S|0,2,2); }                 // grain
+  const _r=mulberry32(1313);                                               // seeded: identical texture every load (golden-frame determinism)
+  for(let k=0;k<2200;k++){ x.fillStyle=(_r()>0.5?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.07)');
+    x.fillRect(_r()*S|0,_r()*S|0,2,2); }                 // grain
   const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
   if('encoding' in t) t.encoding=THREE.sRGBEncoding; return t;
 }
@@ -2728,16 +2729,18 @@ function heightFrac(x,z){ return terrainHeight(x,z)/(terrainAmp*1.3||1); }   // 
 function makeGroundGrain(){
   const S=128, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
   x.fillStyle='#ffffff'; x.fillRect(0,0,S,S);
-  for(let k=0;k<5200;k++){ x.fillStyle=Math.random()<0.5?'rgba(0,0,0,0.12)':'rgba(255,255,255,0.10)';
-    const s=1+Math.random()*2; x.fillRect(Math.random()*S,Math.random()*S,s,s); }
-  for(let k=0;k<46;k++){ x.fillStyle='rgba(0,0,0,0.05)'; const r=4+Math.random()*11; x.beginPath(); x.arc(Math.random()*S,Math.random()*S,r,0,7); x.fill(); }
+  const _r=mulberry32(2727);                                               // seeded: identical texture every load (golden-frame determinism)
+  for(let k=0;k<5200;k++){ x.fillStyle=_r()<0.5?'rgba(0,0,0,0.12)':'rgba(255,255,255,0.10)';
+    const s=1+_r()*2; x.fillRect(_r()*S,_r()*S,s,s); }
+  for(let k=0;k<46;k++){ x.fillStyle='rgba(0,0,0,0.05)'; const r=4+_r()*11; x.beginPath(); x.arc(_r()*S,_r()*S,r,0,7); x.fill(); }
   const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; if('encoding' in t) t.encoding=THREE.sRGBEncoding; return t;
 }
 let _flakeTex=null;                                   // subtle metallic-flake normal for car paint
 function flakeTex(){ if(_flakeTex) return _flakeTex;
   const S=64, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
   x.fillStyle='#8080ff'; x.fillRect(0,0,S,S);
-  for(let k=0;k<1500;k++){ const r=118+(Math.random()*20|0), g=118+(Math.random()*20|0); x.fillStyle='rgb('+r+','+g+',255)'; x.fillRect(Math.random()*S|0,Math.random()*S|0,1,1); }
+  const _r=mulberry32(6464);                                               // seeded: identical texture every load (golden-frame determinism)
+  for(let k=0;k<1500;k++){ const r=118+(_r()*20|0), g=118+(_r()*20|0); x.fillStyle='rgb('+r+','+g+',255)'; x.fillRect(_r()*S|0,_r()*S|0,1,1); }
   _flakeTex=new THREE.CanvasTexture(c); _flakeTex.wrapS=_flakeTex.wrapT=THREE.RepeatWrapping; _flakeTex.repeat.set(6,6); return _flakeTex;
 }
 function buildTerrain(){
