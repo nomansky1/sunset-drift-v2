@@ -1,0 +1,241 @@
+// Global Drift — game core (S1a of the engine-upgrade plan)
+// Physics (updateCar), race progress/laps, AI driver (aiInput) + the skid-mark drop helper.
+// Classic script sharing the page's global scope — extracted VERBATIM from index.html so the
+// golden-frame and physics gates stay byte-identical. Engine-agnostic hardening comes later.
+
+/* =========================================================================
+   PHYSICS  — arcade vehicle with grip, drift, boost, soft walls
+   ========================================================================= */
+function updateCar(c, inp, dt){
+  // progress / nearest point on track (also used for off-track + ranking)
+  const prev=c.trackIdx; const nr=nearest(c.pos, prev); c.trackIdx=nr.idx; c.trackDist=nr.dist;
+
+  _f.set(Math.sin(c.heading), Math.cos(c.heading));         // forward
+  const fwdSpeed=c.vel.dot(_f);
+  const speed=c.vel.length();
+  const tire=c.tireLvl||0;                                  // player-only upgrade level (AI -> 0 = stock)
+
+  // engine (ENGINE kit: standstill launch grunt that fades with speed)
+  if(inp.throttle && !inp.brake){ const launch=1+0.5*(c.engLvl||0)*clamp(1-speed/18,0,1);
+    const accMul = c.isPlayer ? (c.spdMul||1) : aiAccel;                      // AI gets difficulty accel power (corner-exit punch) instead of upgrades
+    c.vel.addScaledVector(_f, CONFIG.engineAccel*accMul*launch*dt); }
+  if(inp.brake){ const bm=(inp.brakeMul||1)*(c.isPlayer?(1+0.16*(c.brakeLvl||0)):1);   // BRAKES kit: stronger braking -> brake later into the new tight corners
+    if(fwdSpeed>0.6) c.vel.addScaledVector(_f, -CONFIG.brakeAccel*bm*dt);
+    else c.vel.addScaledVector(_f, -CONFIG.reverseAccel*dt);
+  }
+
+  // boost
+  c.drifting = inp.drift && speed>4;
+  c.boosting=false;
+  if(c._padBoost>0) c._padBoost-=dt;                       // boost-pad forced-boost window
+  if((inp.boost || c._padBoost>0) && c.boost>2 && fwdSpeed>-1){
+    c.vel.addScaledVector(_f, CONFIG.boostForce*(c.isPlayer?(c.nosForce||1):aiAccel)*dt); c.boost-=CONFIG.boostDrain*(c.nosDrain||1)*dt; c.boosting=true;   // NITROUS: stronger + slower drain (AI uses its difficulty power)
+  } else {
+    c.boost += (c.drifting?CONFIG.boostDriftRefill*(c.nosFill||1):CONFIG.boostRefill*(c.isPlayer?1:2.6))*dt;   // NITROUS: drift fills faster; AI can't drift-chain so their idle refill compensates
+  }
+  c.boost=clamp(c.boost,0,CONFIG.boostMax*(c.nosMax||1));
+  if(c.boosting && !c.wasBoost && c.isPlayer){ audio && audio.boost();
+    if((c.nosMax||1)>1 && raceTime-(c._nosCue||-9)>1.5){ c._nosCue=raceTime; popup('🔥 NOS','#7ce0ff'); } } c.wasBoost=c.boosting;
+
+  // speed clamp ( AI boosting uses a tamer scale so a chasing AI matches — not laps — a boosting player )
+  let _ms=c.maxScale||1; if(!c.isPlayer && c.boosting) _ms=Math.min(_ms, 1.52);   // was 1.36: a drift-chaining player at 80 walked away from every boosting AI
+  const maxSpd=(c.boosting?CONFIG.boostTopSpeed:CONFIG.topSpeed)*_ms*(c.spdMul||1)*(c.isPlayer?(c.turboMul||1):1);   // TURBO kit: higher top speed
+  const sp=c.vel.length(); if(sp>maxSpd) c.vel.multiplyScalar(maxSpd/sp);
+
+  // ----- JUMPS: cresting a hill at speed launches the car into the air (skill air-time; reuses the rolling hills, all cars) -----
+  const _drop = sampleElev.length ? ((sampleElev[c.trackIdx]||0) - (sampleElev[(c.trackIdx+7)%SAMPLES]||0)) : 0;   // >0 = steep downhill crest ahead
+  if((c.air||0)<=0 && (c._airV||0)<=0 && fwdSpeed>42 && _drop>8 && raceTime-(c._landT||-9)>1.1){
+    c._airV = clamp(_drop*1.1 + (fwdSpeed-40)*0.06, 3, 8); c.air=0.02; c._peak=0;                // only a genuine steep crest launches (rare, gentle hop)
+    if(c.isPlayer) camShake=Math.min(camShake+0.22,1);
+  }
+  if((c.air||0)>0 || (c._airV||0)>0){
+    const wasAir=(c.air||0)>0; c._airV=(c._airV||0)-24*dt; c.air=(c.air||0)+c._airV*dt; c._peak=Math.max(c._peak||0, c.air);   // ballistic arc
+    if(c.air<=0){ c.air=0; c._airV=0; c._landT=raceTime;                                          // landed (cooldown before next launch)
+      if(wasAir && c.isPlayer){ camShake=Math.min(camShake+0.3,1); audio&&audio.thud&&audio.thud(0.55);
+        if(c._rampJump){ c._rampJump=false; c.boost=Math.min((c.boost||0)+CONFIG.boostMax*0.5, CONFIG.boostMax*(c.nosMax||1)); c._padBoost=0.5; audio&&audio.boost&&audio.boost(); popup&&popup('⚡ STOMP BOOST','#ffb14d'); }
+        if((c._peak||0)>2 && raceTime-(c._airCue||-9)>1.2){ c._airCue=raceTime; addScore&&addScore(70+Math.round((c._peak||0)*22),'BIG AIR!','#7ce0ff'); } }
+      c._peak=0;
+    }
+  }
+
+  // steering (needs speed; reverses when reversing; stronger while drifting)
+  let steer=inp.steer*CONFIG.steerRate*dt;
+  steer*=clamp(Math.abs(fwdSpeed)/CONFIG.steerSpeedFloor,0,1);
+  if(fwdSpeed<-0.5) steer*=-1;
+  if(c.drifting) steer*=CONFIG.driftSteerBoost;
+  c.heading+=steer;
+
+  // grip: kill lateral velocity (less when drifting → slide)
+  _f.set(Math.sin(c.heading), Math.cos(c.heading));
+  const fd=c.vel.dot(_f);
+  _l.copy(c.vel).addScaledVector(_f, -fd);          // lateral component
+  const gripMul = c.isPlayer ? (c.gripMul||1) : (1.30+(aiAccel-1)*1.1);   // AI grip RAISED: they were physically sliding wide in corners (read as constant drifting + slow exits); planted grip = fast clean curves
+  const grip=(c.drifting?CONFIG.gripDrift*(1+0.18*tire):CONFIG.gripNormal)*gripMul;   // TIRES: snappier drift exit
+  _l.multiplyScalar(Math.exp(-grip*dt));            // frame-rate independent
+  c.vel.copy(_f).multiplyScalar(fd).add(_l);
+
+  // rolling drag (frame-rate independent)
+  c.vel.multiplyScalar(Math.exp(-CONFIG.drag*dt));
+
+  // integrate
+  c.pos.addScaledVector(c.vel, dt);
+
+  // curb barrier: SLIDE along it — cancel only the into-wall velocity, keep your speed
+  { const p=samplePts[c.trackIdx]; _v.set(c.pos.x-p.x, c.pos.y-p.y); const dd=_v.length();
+    const limit=(sampleHW[c.trackIdx]||CONFIG.roadHalfWidth)-1.0;   // per-sample road edge (narrows at tight corners)
+    if(dd>limit){ _v.multiplyScalar(1/dd);                 // outward normal
+      const vOut=c.vel.dot(_v);                            // >0 = driving into the wall
+      if(vOut>0) c.vel.addScaledVector(_v, -vOut);         // remove the into-wall part -> slide along
+      c.vel.multiplyScalar(Math.exp(-1.2*(1-0.22*tire)*dt));  // light scrape (TIRES keep more speed along the wall)
+      c.pos.set(p.x + _v.x*limit, p.y + _v.y*limit);       // clamp to the curb (can't climb the sidewalk)
+      if(c.isPlayer && vOut>14){ camShake=Math.min(camShake+0.45,1.0);
+        sparks.emit(c.pos.x,0.5,c.pos.y,(Math.random()-.5)*4,1,(Math.random()-.5)*4,0.3,9);
+        if(raceTime-(c._thudT||-1)>0.25){ c._thudT=raceTime; audio&&audio.thud(clamp(vOut/40,0.3,1)); }
+        if(navigator.vibrate){ try{navigator.vibrate(20);}catch(e){} } }
+      if((!c.isPlayer || autoDrive) && c.vel.length()<3){    // un-wedge a slow AI (or auto-driving player): peel off the wall toward the centerline, then nudge forward
+        const t=sampleTan[c.trackIdx], p=samplePts[c.trackIdx];
+        const along=Math.atan2(t.x,t.y), toCtr=Math.atan2(p.x-c.pos.x, p.y-c.pos.y);
+        const aimH = c.trackDist>5 ? toCtr : along;          // pinned to the curb -> aim back to center; otherwise just realign along the track
+        c.heading += angleDiff(aimH, c.heading)*Math.min(1,dt*5);
+        c.vel.x += Math.sin(c.heading)*8.5*dt; c.vel.y += Math.cos(c.heading)*8.5*dt; }
+    }
+  }
+
+  // OFF-ROAD RESCUE (race modes): if a car somehow ends up stranded off the road (any bug, any track), snap it back after 2.5s — nobody is EVER stuck in the void
+  if(!brActive){
+    if(c.trackDist > (sampleHW[c.trackIdx]||CONFIG.roadHalfWidth)+9){ c._lostT=(c._lostT||0)+dt;
+      if(c._lostT>2.5){ const p=samplePts[c.trackIdx], t=sampleTan[c.trackIdx];
+        c.pos.set(p.x,p.y); c.heading=Math.atan2(t.x,t.y); c.vel.set(t.x*9,t.y*9); c.air=0; c._airV=0; c._lostT=0;
+        if(c.isPlayer){ _scy=null; camShake=Math.min(camShake+0.25,0.8); flash('↩ BACK ON TRACK','good'); } }
+    } else c._lostT=0;
+    // AI NO-PROGRESS RESCUE: an AI wedged on a hairpin (oscillating against the curb, spinning at the apex)
+    // never advances its track index — after 3.5s snap it to the centerline pointing down-track
+    if(!c.isPlayer){
+      if(c._lastProgIdx==null) c._lastProgIdx=c.trackIdx;
+      const adv=((c.trackIdx - c._lastProgIdx)%SAMPLES+SAMPLES)%SAMPLES;
+      if(adv>=4 && adv<SAMPLES-60){ c._lastProgIdx=c.trackIdx; c._noProgT=0; }
+      else { c._noProgT=(c._noProgT||0)+dt;
+        if(c._noProgT>3.5){ const p=samplePts[c.trackIdx], t=sampleTan[c.trackIdx];
+          c.pos.set(p.x,p.y); c.heading=Math.atan2(t.x,t.y); c.vel.set(t.x*11,t.y*11); c.air=0; c._airV=0;
+          c._noProgT=0; c._lastProgIdx=c.trackIdx; } }
+    }
+  }
+
+  // lap / checkpoint progress
+  updateProgress(c, prev);
+
+  // ----- mesh -----
+  syncCarMesh(c);
+  const lateral=_l.length()*Math.sign(c.vel.dot(_r.set(Math.cos(c.heading),-Math.sin(c.heading))));
+  c.rig.spinAcc += fwdSpeed*dt/0.55;
+  (c.rig.roadWheels||c.rig.wheels).forEach(w=> w.rotation.x=c.rig.spinAcc);   // spares on the tailgate don't tumble
+  const vSteer=clamp(inp.steer,-1,1)*0.5;
+  c.rig.front.forEach(w=> w.rotation.y=vSteer);
+  // WHOLE-CAR lean: rotate the top-level GROUP so body, wheels, kit, exhausts, lights and flag all
+  // tilt together as ONE rigid car. (Leaning the chassis split the body from sibling wheels on the
+  // DRIFTER and from the group-mounted wing/exhausts/lights on every GLB car.)
+  c._leanZ = lerp(c._leanZ||0, clamp(-lateral*0.013,-0.15,0.15), 0.14);   // weightier: a touch more roll, slower settle (reads as suspension)
+  c._leanX = lerp(c._leanX||0, clamp((inp.brake?0.04:(inp.throttle?-0.028:0)),-0.06,0.06), 0.08);   // deeper brake dive / throttle squat, eased in
+  c.rig.group.rotation.z = c._leanZ;
+  c.rig.group.rotation.x = -(c._pitch||0) + c._leanX;                 // road grade + brake/throttle squat, one pivot
+  if(c.rig.chassis){ c.rig.chassis.rotation.z=0; c.rig.chassis.rotation.x=0;
+    if(c.rig._cx0!=null) c.rig.chassis.position.x=c.rig._cx0; }       // retire the old chassis-level lean on existing rigs
+
+  // ----- effects: tire smoke + skid marks -----
+  const slip=Math.abs(lateral), spd=c.vel.length();
+  const offT=c.trackDist>CONFIG.roadHalfWidth;
+  const hardBrake = inp.brake && spd>14 && c.vel.dot(_f)>0;         // locking the brakes at speed
+  if(spd<0.8) c._stopT=0.5; else if(c._stopT>0) c._stopT-=dt;       // "recently at a standstill" flag
+  const burnout = inp.throttle && spd>2.5 && spd<8 && c._stopT>0;   // wheelspin only while pulling AWAY from a stop (not wedged at ~0)
+  const screech = (c.drifting && slip>(1.6+0.35*tire)) || hardBrake || burnout;   // TIRES grip harder before squealing
+  if(c.isPlayer && tire>0 && c.drifting && slip>2.4 && raceTime-(c._gripCue||-9)>1.6){ c._gripCue=raceTime; popup('🛞 GRIP','#7ce0ff'); }
+  const rx=c.pos.x-Math.sin(c.heading)*1.6, rz=c.pos.y-Math.cos(c.heading)*1.6;
+  const ey=c.visY||0;                                            // ground effects ride the road elevation
+  if(screech || offT || c.boosting){
+    c.skidTimer-=dt;
+    if(screech || offT){
+      const intensity = offT?1 : clamp(slip/3 + (hardBrake?0.6:0) + (burnout?0.7:0), 0.4, 1.6);
+      for(let s=-1;s<=1;s+=2){ const wx=rx+Math.cos(c.heading)*0.85*s, wz=rz-Math.sin(c.heading)*0.85*s;
+        if(offT) dust.emit(wx,0.35+ey,wz,(Math.random()-.5)*2,1.3+Math.random(),(Math.random()-.5)*2, 0.55, 12+Math.random()*8);
+        else if(s>0 || Math.random()<0.5) tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.6, 0.45+Math.random()*0.5, (Math.random()-.5)*0.6, 0.4+intensity*0.08, 3+intensity*1.3+Math.random()*2);   // minimal, tight to the tire (small puffs, not a big cloud)
+      }
+      if(c.skidTimer<=0 && skidPool.length){ dropSkid(rx,rz,c.heading,ey); c.skidTimer=0.022; }
+    }
+    if(c.boosting && Math.random()<0.5){                          // a FEW tiny embers off the flame (not an orange cloud)
+      const fwx=Math.sin(c.heading), fwz=Math.cos(c.heading);
+      const bx2=c.pos.x-fwx*2.3, bz2=c.pos.y-fwz*2.3;             // rear of the car
+      sparks.emit(bx2+(Math.random()-.5)*0.5, 0.55+ey, bz2+(Math.random()-.5)*0.5, -fwx*8+(Math.random()-.5), 0.5+Math.random()*0.7, -fwz*8+(Math.random()-.5), 0.16, 1.6+Math.random()*1.6);
+    }
+  }
+  if(c.rig.flames){                                               // licking fire flares while boosting (bigger with nitrous)
+    const on=c.boosting, nf=c.nosForce||1;
+    for(const f of c.rig.flames){ f.visible=on; if(on){ f.scale.set((0.78+Math.random()*0.35)*nf, (0.78+Math.random()*0.35)*nf, (0.6+Math.random()*0.8)*nf);
+      f.rotation.z=(Math.random()-0.5)*0.25; } }   // flicker length + lick sideways
+  }
+  // ----- arcade: pickups + drift style score (player, racing) -----
+  if(c.isPlayer && state==='race'){
+    arcadePickups(c, dt); updateObstacles(c, dt);
+    // ----- DRIFT CHAIN: holding a drift scores + escalates the combo multiplier; clean exit pays out -----
+    if(c.drifting && slip>1.6 && spd>8){
+      runScore += slip*dt*8*combo; comboTimer=2.6;
+      if(c.isPlayer && !timeTrial) questDrift(spd*dt);                              // DAILY QUEST: drift distance
+      c._driftT=(c._driftT||0)+dt;
+      if(c._driftT>=1.2){ c._driftT=0; combo=Math.min(combo+1,12); popup('🌀 DRIFT x'+combo,'#c98aff'); }   // each ~1.2s held bumps the chain
+    } else if((c._driftT||0)>0){
+      if(c._driftT>0.6) addScore(45,'🌀 DRIFT','#c98aff');   // reward a clean drift on exit
+      c._driftT=0;
+    }
+  }
+}
+
+function dropSkid(x,z,ang,ey){ ey=ey||0; for(let s=-1;s<=1;s+=2){ const m=skidPool[skidCursor]; skidCursor=(skidCursor+1)%skidPool.length;
+  m.position.set(x+Math.cos(ang)*0.7*s, 0.075+ey, z-Math.sin(ang)*0.7*s); m.rotation.y=ang; m.visible=true; } }   // (cos,-sin) = true perpendicular to heading
+
+function updateProgress(c, prev){
+  const S=SAMPLES, idx=c.trackIdx;
+  if(idx>S*0.45 && idx<S*0.58) c.halfPassed=true;
+  if(prev>S*0.78 && idx<S*0.22){            // forward across the start line
+    if(c.halfPassed && !c.finished){ onLapComplete(c); c.halfPassed=false; }
+  }
+}
+function onLapComplete(c){
+  c.lap++;
+  if(c.isPlayer){
+    const lt=raceTime-c.lapStart; c.lapStart=raceTime; lapTimes.push(lt);
+    if(bestLap===null || lt<bestLap){ bestLap=lt; if(c.lap>0) showBest(); }
+    if(c.lap>=CONFIG.laps) finishRace();
+    else if(c.lap===CONFIG.laps-1){ flash('FINAL LAP!','cd2'); }   // last-lap drama
+  } else { c.lapStart=raceTime; if(c.lap>=CONFIG.laps) c.finished=true; }
+}
+
+/* =========================================================================
+   AI input
+   ========================================================================= */
+function aiInput(c){
+  const speed=c.vel.length();
+  // how hard the track bends over the next stretch (heading change samples +6..+30 ahead)
+  const tNear=sampleTan[(c.trackIdx+6)%SAMPLES], tMid=sampleTan[(c.trackIdx+30)%SAMPLES];
+  const bend=Math.abs(angleDiff(Math.atan2(tMid.x,tMid.y), Math.atan2(tNear.x,tNear.y)));
+  // ADAPTIVE lookahead: far on straights, SHORT on sharp corners so we track the apex instead of aiming across it into the wall
+  const aim=Math.round(clamp(15 + speed*0.5 - bend*32, 9, 44));
+  const aheadI=(c.trackIdx+aim)%SAMPLES, a=samplePts[aheadI], n=sampleNorm[aheadI];
+  const _off = c.isPlayer ? c.lineOffset : obstacleAvoid(c, aheadI, c.lineOffset);   // AI weaves around dumpsters/bikes/trash
+  const tx=a.x+n.x*_off, tz=a.y+n.y*_off;
+  const desired=Math.atan2(tx-c.pos.x, tz-c.pos.y);
+  const diff=angleDiff(desired, c.heading);
+  const steer=clamp(diff*2.3,-1,1);                                  // a touch more steering authority to make tight corners
+  // sharpest of (the bend we measured) and (the kink just past the aim point)
+  const farI=(c.trackIdx+Math.round(aim*1.6)+8)%SAMPLES, f=samplePts[farI];
+  const curve=Math.max(bend, Math.abs(angleDiff(Math.atan2(f.x-tx, f.y-tz), desired)));
+  // brake toward a corner-appropriate speed (sharper corner -> slower) instead of a single threshold
+  const gripCarry = c.isPlayer ? (0.9+0.12*(c.gripMul||1)+0.03*(c.tireLvl||0)) : (1.07+0.45*(aiAccel-1));   // GRIP/TIRES let a car carry more corner speed; AI corner-carry scales with difficulty to match a maxed player
+  const targetSpd=clamp((64 - curve*58)*aiAggro*gripCarry, 21, 80);                            // aggression: carry MORE corner speed (brake later) on hard
+  let brake = speed > targetSpd+4.5;
+  if(curve>0.5 && !c._inCorner){ c._inCorner=true; c._missThis = !window.__auto && Math.random()<((c.aiMiss||0)*(c.isRival?0.25:1)); }   // decide the miss ONCE per corner; the RIVAL barely errs
+  else if(curve<0.28) c._inCorner=false;
+  const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.3 : 0.85);   // miss = brake soft (wide line); very sharp = brake hard so it actually makes the turn
+  const boostHard = (c.isRival ? 14 : 20) / aiAggro;                                          // aggression: deploy NITROUS readily (lower threshold) on hard
+  // AI COMPETITORS NEVER DRIFT (by request) — they corner on planted grip only (clean, fast lines).
+  // Drift is reserved for the human player + multiplayer humans (they use their own manual input, not aiInput).
+  return { throttle:!brake, brake, brakeMul, steer, drift: c.isPlayer && curve>0.88 && speed>36, boost: !brake && c.boost>boostHard };
+}
