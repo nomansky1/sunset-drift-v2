@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.74-->
+<!--BUILD:v9.75-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.74';
+(function(){ const BUILD='v9.75';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3861,13 +3861,13 @@ function loadCarModels(){
       undefined, ()=>{ carReady=true; if(cars&&cars.length) upgradeCars(); });   // body-only if wheels fail
   }, undefined, ()=>{}); }catch(e){}
   // fleet sports cars
-  [['sport','models/gen3/gt32.glb'],['super','models/gen3/electrichypercar2.glb'],
+  [['sport','models/gen3/gt33.glb'],['super','models/gen3/electrichypercar3.glb'],
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
-   ['racer','models/gen3/drifttuner2.glb'],['racecar','models/gen3/supergt2.glb'],['muscle','models/gen3/v8supercar2.glb'],
-   ['roadster','models/gen3/classiclemans2.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
+   ['racer','models/gen3/drifttuner3.glb'],['racecar','models/gen3/supergt3.glb'],['muscle','models/gen3/v8supercar3.glb'],
+   ['roadster','models/gen3/classiclemans3.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
-   ['kartB','models/gen3/f12.glb'],
-   ['kartC','models/gen3/indycar2.glb'],['kartD','models/gen3/formulae2.glb'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f])=>{   // CC0 Kenney Car Kit (modular, named wheels)
+   ['kartB','models/gen3/f13.glb'],
+   ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f])=>{   // CC0 Kenney Car Kit (modular, named wheels)
     try{ L.load(f, g=>{ fleetRaw[k]=g.scene; if(cars&&cars.length) upgradeCars(); }, undefined, ()=>{}); }catch(e){}
   });
   // sculpted upgrade parts (Blender, CC0) -> real spoiler/diffuser/lip/skirt instead of procedural boxes
