@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.72-->
+<!--BUILD:v9.73-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.72';
+(function(){ const BUILD='v9.73';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4965,18 +4965,33 @@ function damageCar(c, amt, by){ if(!c.alive) return;
     c.rig.group.visible=false; if(c.shadowMesh) c.shadowMesh.visible=false;
     if(c.isPlayer && !brWon){ brWon=true; brFinish(brAlive+1); }
     else if(brAlive<=1 && !brWon){ brWon=true; brFinish(1); } } }
-function brInput(c){                                                     // free-roam combat AI: stay inside the zone + orbit the nearest enemy
-  const dC=Math.hypot(c.pos.x-zoneCX, c.pos.y-zoneCZ); let tx,tz;
+function brInput(c){                                                     // free-roam combat AI: HUNTERS chase the player with strafing lines; others orbit their nearest target
+  const dC=Math.hypot(c.pos.x-zoneCX, c.pos.y-zoneCZ); let tx,tz,boost=false;
+  const hunting = !c.isPlayer && player.alive && (c._hunter || brAlive<=3);   // designated hunters; EVERYONE hunts the player once 3 remain
+  const t = hunting ? player : c._brTarget;
   if(dC>zoneR-16){ tx=zoneCX; tz=zoneCZ; }
-  else if(c._brTarget){ const t=c._brTarget, a=Math.atan2(c.pos.y-t.pos.y,c.pos.x-t.pos.x)+0.6; tx=t.pos.x+Math.cos(a)*BR.orbit; tz=t.pos.y+Math.sin(a)*BR.orbit; }
+  else if(t){
+    const dd=Math.hypot(t.pos.x-c.pos.x, t.pos.y-c.pos.y);
+    const side=Math.sin(raceTime*0.45+c.trackIdx*1.7)>0?1:-1;            // strafe side flips periodically -> weaving attack lines
+    if(dd>BR.orbit*1.7){                                                 // far: close the gap on an INTERCEPT course (lead the target), nitro when aligned
+      const lead=Math.min(dd*0.02, 1.1);
+      tx=t.pos.x+t.vel.x*lead; tz=t.pos.y+t.vel.y*lead;
+      boost = dd>60 && c.vel.length()>14 && (c.boost||0)>0.2; }
+    else { const a=Math.atan2(c.pos.y-t.pos.y, c.pos.x-t.pos.x)+side*0.7;   // close: pressure orbit — hunters press tighter + weave in and out
+      const orb=BR.orbit*(hunting?0.72:1)+Math.sin(raceTime*1.6+c.trackIdx)*7;
+      tx=t.pos.x+Math.cos(a)*orb; tz=t.pos.y+Math.sin(a)*orb; }
+  }
   else { tx=zoneCX+Math.sin(raceTime*0.3+c.trackIdx)*40; tz=zoneCZ+Math.cos(raceTime*0.3+c.trackIdx)*40; }
   const diff=angleDiff(Math.atan2(tx-c.pos.x, tz-c.pos.y), c.heading);
-  return { throttle:true, brake:Math.abs(diff)>1.5, steer:clamp(diff*2.2,-1,1), drift:false, boost:false }; }
+  return { throttle:true, brake:Math.abs(diff)>1.5, steer:clamp(diff*2.2,-1,1),
+    drift:Math.abs(diff)>0.9 && c.vel.length()>16, boost }; }             // hard direction changes become slides (reads aggressive + kicks smoke)
 function battleFrame(dt){ raceTime+=dt;
   const braking=keys.down||joyY<-0.3;
   const pin = window.__auto ? brInput(player) : { throttle: autoDrive?!braking:(keys.up||joyY>0.25), brake:braking, steer:clamp((keys.left?1:0)-(keys.right?1:0)+joyX,-1,1), drift:keys.space, boost:keys.shift };
   if(player.alive) updateCar(player, pin, dt);
-  for(let i=1;i<cars.length;i++){ const c=cars[i]; if(!c.alive) continue; c._brTarget=brTarget(c); updateCar(c, brInput(c), dt); }
+  for(let i=1;i<cars.length;i++){ const c=cars[i]; if(!c.alive) continue; c._brTarget=brTarget(c);
+    if((c._hunter||brAlive<=3) && player.alive && Math.hypot(player.pos.x-c.pos.x, player.pos.y-c.pos.y)<BR.range) c._brTarget=player;   // hunters lock their guns on the player when in range
+    updateCar(c, brInput(c), dt); }
   resolveCollisions();
   zoneR=Math.max(BR.zoneMin, zoneR-BR.shrink*dt); if(zoneMesh) zoneMesh.scale.set(zoneR,1,zoneR);
   if(player.alive) player._brTarget=brTarget(player);
@@ -4993,7 +5008,9 @@ function battleFrame(dt){ raceTime+=dt;
       if(c.isPlayer) camShake=Math.min(camShake+0.04,0.4);
       damageCar(c._brTarget, BR.dmg*gatMul(c), c);
       propsOnSegment(c.pos.x, c.pos.y, c._brTarget.pos.x, c._brTarget.pos.y, 2.2, BR.dmg*0.6, c); }   // stray gatling fire chews up props in the line of fire
-    if(!c.isPlayer && c._brTarget && c._rkT<=0){ const dd=Math.hypot(c._brTarget.pos.x-c.pos.x,c._brTarget.pos.y-c.pos.y); if(dd<BR.range && Math.random()<0.6) fireRocket(c); }   // AI occasionally launches a rocket
+    if(!c.isPlayer && c._brTarget && c._rkT<=0){ const dx=c._brTarget.pos.x-c.pos.x, dz=c._brTarget.pos.y-c.pos.y, dd=Math.hypot(dx,dz);
+      const aimOk=Math.abs(angleDiff(Math.atan2(dx,dz), c.heading))<0.55;                 // AI fires rockets AIMED: in range + roughly nose-on (no more wasted random launches)
+      if(dd<BR.range*0.9 && aimOk && Math.random()<0.9) fireRocket(c); }
     const hf=c.hp/(c.hpMax||BR.maxHP);                                                                          // progressive damage read-out: smoke hurt, fire critical
     if(hf<0.42){ c._dmgT=(c._dmgT||0)-dt; if(c._dmgT<=0){ c._dmgT=0.13; const x=c.pos.x,y=(c.visY||0)+0.75,z=c.pos.y;
       tireSmoke.emit(x,y,z,0,1.3,0, hf<0.2?0.6:0.45, hf<0.2?9:6);
@@ -5074,7 +5091,9 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   pickups.forEach(p=>{scene.remove(p.m); disposeGroup(p.m);}); pickups=[]; pickupTimer=0;
   cars.forEach((c,i)=>{ c.rig.group.visible=true;
     c.hpMax = c.isPlayer ? Math.round(BR.maxHP*(1+0.14*(warsenal.arm||0))) : BR.maxHP;   // ARMOR upgrade raises the player's max HP
-    c.hp=c.hpMax; c.alive=true; c._gunT=Math.random()*0.4; c._brTarget=null; c.boost=0; c._rkT=0; c._dmgT=0;
+    c.hp=c.hpMax; c.alive=true; c._gunT=Math.random()*0.4; c._brTarget=null; c._rkT=0; c._dmgT=0;
+    c.boost = c.isPlayer ? 0 : CONFIG.boostMax*0.6;                                       // AI carries nitro for intercept bursts
+    c._hunter = !c.isPlayer && (i%2===1);                                                 // every other AI actively hunts the player
     c.rkAmmo = c.isPlayer ? (BR.rkAmmo + (warsenal.rkt||0)) : 0;                          // ROCKETS upgrade grants extra starting ammo
     c.brName = c.isPlayer ? 'YOU' : (RACER_NAMES[1+((i-1)%(RACER_NAMES.length-1))]+' '+i);  // stable kill-feed name
     mountGun(c.rig);

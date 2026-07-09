@@ -122,7 +122,8 @@ function updateCar(c, inp, dt){
   c.pos.addScaledVector(c.vel, dt);
 
   // curb barrier: SLIDE along it — cancel only the into-wall velocity, keep your speed
-  { const p=samplePts[c.trackIdx]; _v.set(c.pos.x-p.x, c.pos.y-p.y); const dd=_v.length();
+  // (races only — Battle Royale is an OPEN arena: no track barriers, cars roam the whole district)
+  if(typeof brActive==='undefined' || !brActive){ const p=samplePts[c.trackIdx]; _v.set(c.pos.x-p.x, c.pos.y-p.y); const dd=_v.length();
     const limit=(sampleHW[c.trackIdx]||CONFIG.roadHalfWidth)-1.0;   // per-sample road edge (narrows at tight corners)
     if(dd>limit){ _v.multiplyScalar(1/dd);                 // outward normal
       const vOut=c.vel.dot(_v);                            // >0 = driving into the wall
