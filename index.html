@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.48-->
+<!--BUILD:v9.49-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.48';
+(function(){ const BUILD='v9.49';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3346,6 +3346,28 @@ function buildCranes(rng){
 }
 // parked low-poly cars along the roadside (simple body+cabin+wheels, varied colours)
 function buildParkedCars(rng){
+  // REAL pack cars curbside when the fleet GLBs are in (box fallback below covers the first build)
+  const keys=['hatch','pickup','sport','suv','taxi','muscle','roadster'].filter(k=>fleetRaw[k]);
+  if(keys.length){
+    const N=isTouch?9:16, matCache=new Map();
+    const clampMat=m=>{ if(!m) return m; if(matCache.has(m)) return matCache.get(m);
+      const c=m.clone(); if(c.metalness!=null) c.metalness=Math.min(c.metalness,0.4);   // raw GLBs carry metallic=1.0 (black mirror) — parked clones skip carPaint, clamp here
+      matCache.set(m,c); return c; };
+    for(let k=0;k<N;k++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+5.8+rng()*1.8;
+      const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+5.3) continue;
+      const ty=terrainHeight(x,z), e=(sampleElev[i]||0); if(e-ty>0.5) continue;         // embankment edge -> no room to park
+      const g=fleetRaw[keys[Math.floor(rng()*keys.length)]].clone();
+      const bb=new THREE.Box3().setFromObject(g), sz=new THREE.Vector3(), ctr=new THREE.Vector3(); bb.getSize(sz); bb.getCenter(ctr);
+      const sc=4.6/Math.max(sz.x,sz.z,0.001);
+      g.traverse(o=>{ if(o.isMesh){ o.castShadow=!isTouch; o.receiveShadow=false;
+        if(Array.isArray(o.material)) o.material=o.material.map(clampMat); else o.material=clampMat(o.material); }});
+      g.position.set(-ctr.x, -bb.min.y, -ctr.z);
+      const holder=new THREE.Group(); holder.scale.setScalar(sc); holder.add(g);
+      holder.position.set(x, Math.max(ty,e), z);
+      holder.rotation.y=roadAngleAt(x,z)+(rng()<0.5?0:Math.PI)+(rng()-0.5)*0.12;        // parallel-parked, slight natural jitter
+      scene.add(holder); }
+    return;
+  }
   const COLORS=[0xb23a3a,0x2a6fb2,0x2a9d54,0xd9c24a,0xe8e8ee,0x32343c,0x8a4ab0,0xe07a2a];
   const bodyGeo=new THREE.BoxGeometry(2.0,0.7,4.4); bodyGeo.translate(0,0.75,0);
   const cabGeo=new THREE.BoxGeometry(1.8,0.7,2.3); cabGeo.translate(0,1.4,-0.2);
