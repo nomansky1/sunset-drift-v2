@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.60-->
+<!--BUILD:v9.61-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.60';
+(function(){ const BUILD='v9.61';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3724,13 +3724,13 @@ function captureEnv(){
 }
 function buildLights(sunDir){
   if(nightMode){
-    scene.add(new THREE.HemisphereLight(0x3a4a7a, 0x05060c, 0.5));
-    scene.add(new THREE.AmbientLight(0x2a3358, 0.16));
+    scene.add(new THREE.HemisphereLight(0x3a4a7a, 0x05060c, 0.5*Math.PI));
+    scene.add(new THREE.AmbientLight(0x2a3358, 0.16*Math.PI));
   } else {
-    scene.add(new THREE.HemisphereLight(0xcdd9ec, 0x4a3a28, 0.98));   // cool sky + warm ground bounce; lowered fill = deeper form shadows (cinematic, not flat)
-    scene.add(new THREE.AmbientLight(0xffffff, 0.07));                 // just a sliver of flat lift (was 0.18 — it was washing out the form shadows)
+    scene.add(new THREE.HemisphereLight(0xcdd9ec, 0x4a3a28, 0.98*Math.PI));   // cool sky + warm ground bounce; lowered fill = deeper form shadows (cinematic, not flat)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.07*Math.PI));                 // just a sliver of flat lift (was 0.18 — it was washing out the form shadows)
   }
-  const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, nightMode?0.55:2.5);   // golden-hour key (~3800K)
+  const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, (nightMode?0.55:2.5)*Math.PI);   // golden-hour key (~3800K)
   // raise the SHADOW-casting light to a healthy elevation (grounded shadows) while the visual sun disc stays low/dramatic
   const ld=new THREE.Vector3(sunDir.x, Math.max(sunDir.y, 0.62), sunDir.z).normalize();
   sun.position.set(trackCentroid.x+ld.x*160, ld.y*160, trackCentroid.y+ld.z*160);
@@ -3742,7 +3742,7 @@ function buildLights(sunDir){
   sun.shadow.mapSize.set(isTouch?1024:4096, isTouch?1024:4096);
   sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.03; sun.shadow.radius=isTouch?3:4;   // normalBias 0.45->0.03: shadows REATTACH to the wheels/cars (kills peter-panning)
   scene.add(sun); sunLight=sun;
-  if(!nightMode){ const fill=new THREE.DirectionalLight(0x9db4d6, 0.22);                 // cool shadowless fill OPPOSITE the sun -> shaded sides read as real daylight, not dead-flat
+  if(!nightMode){ const fill=new THREE.DirectionalLight(0x9db4d6, 0.22*Math.PI);                 // cool shadowless fill OPPOSITE the sun -> shaded sides read as real daylight, not dead-flat
     fill.position.set(trackCentroid.x-ld.x*120, 60, trackCentroid.y-ld.z*120); fill.castShadow=false; scene.add(fill); }
 }
 
@@ -3916,7 +3916,7 @@ function upgradeCars(){
     if(rig.flames) rig.flames.forEach((f,fi)=>{ rig.group.add(f);   // re-attach exhaust flames (group was wiped above)
       if(rig.exhaustPts && rig.exhaustPts[fi]) f.position.copy(rig.exhaustPts[fi]); });   // fire comes out of THIS model's pipes
     if(c.isPlayer && !rig.headSpot){                                    // night driving beam (player only - cheap)
-      const sp=new THREE.SpotLight(0xfff2d0, 2.6, 42, 0.6, 0.55, 1.2);
+      const sp=new THREE.SpotLight(0xfff2d0, 2.6*Math.PI, 42, 0.6, 0.55, 1.2);
       sp.position.set(0, 1.1, (rig.dims?rig.dims.Lz:4.6)/2);
       sp.target.position.set(0, 0.1, 10); rig.group.add(sp); rig.group.add(sp.target);
       sp.visible=false; rig.headSpot=sp; }
@@ -4773,7 +4773,7 @@ function fireRocket(c){ if(!c.rig||!c.rig.rocketMuz||!c.rig.rocketMuz.length||(c
   const from=new THREE.Vector3(); muz.getWorldPosition(from);
   const q=new THREE.Quaternion(); muz.getWorldQuaternion(q); const fwd=new THREE.Vector3(0,0,1).applyQuaternion(q).normalize();
   const mesh=buildRocketMesh(); mesh.position.copy(from); scene.add(mesh);
-  if(!lowQuality){ const rl=new THREE.PointLight(0xff7b2e, 2.4, 30, 2.0); mesh.add(rl); }   // rocket illuminates the track + cars as it flies past (moves with the mesh, removed with it)
+  if(!lowQuality){ const rl=new THREE.PointLight(0xff7b2e, 2.4*Math.PI, 30, 2.0); mesh.add(rl); }   // rocket illuminates the track + cars as it flies past (moves with the mesh, removed with it)
   rockets.push({ mesh, owner:c, vel:fwd.clone().multiplyScalar(BR.rkSpeed), life:BR.rkLife, target:c._brTarget||null, trail:0 });
   sparks.emit(from.x,from.y,from.z, fwd.x*7,fwd.y*7+2,fwd.z*7, 0.16, 6);                 // launch puff
   if(audio&&audio.launch && (c.isPlayer || Math.hypot(c.pos.x-player.pos.x,c.pos.y-player.pos.y)<60)) audio.launch();
@@ -5217,6 +5217,7 @@ function buildComposer(){
 // ---- DYNAMIC POINT LIGHTS (rocket flight + explosion flash) — capped + skipped on LITE to protect the FPS moat ----
 let fxLights=[];
 function addFlash(x,y,z,color,intensity,dist,life){ if(lowQuality || fxLights.length>=4) return null;
+  intensity*=Math.PI;   // modern (non-legacy) lighting
   const l=new THREE.PointLight(color,intensity,dist,2.0); l.position.set(x,y,z); scene.add(l);
   fxLights.push({l, life, max:life, I:intensity}); return l; }
 function updateFxLights(dt){ for(let i=fxLights.length-1;i>=0;i--){ const f=fxLights[i]; f.life-=dt;
@@ -5414,7 +5415,7 @@ function init(){
   camera=new THREE.PerspectiveCamera(CONFIG.fovBase, innerWidth/innerHeight, 0.15, 3000);   // low near plane so the close/hood cam doesn't clip the road on a crest (was 0.5 -> background showed at the bottom)
   scene.add(camera);                                       // camera children (cockpit dash) only render when the camera is in the scene
   renderer=new THREE.WebGLRenderer({canvas:document.getElementById('game'), antialias:!isTouch, powerPreference:'high-performance'});
-  if('useLegacyLights' in renderer) renderer.useLegacyLights=true;   // r155 shim (see header) — flipped off in the modern-lighting stage
+  // modern lighting (useLegacyLights=false, the r155+ default): all light intensities above are ×π (legacy-equivalent luminance)
   renderer.setPixelRatio(lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled=!lowQuality; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -6302,7 +6303,7 @@ window.NETRACE=false;
     for(let i=0;i<650;i++){ const v=new THREE.Vector3(sr(),sr(),sr()); if(v.length()<0.05) continue; v.normalize().multiplyScalar(34+sr()*24); sp.push(v.x,v.y,v.z); }
     const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
     sc.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xdfe8ff,size:0.16,sizeAttenuation:true})));
-    sc.add(new THREE.AmbientLight(0xaebbe0,1.35)); const dl=new THREE.DirectionalLight(0xffffff,1.7); dl.position.set(5,3,6); sc.add(dl);
+    sc.add(new THREE.AmbientLight(0xaebbe0,1.35*Math.PI)); const dl=new THREE.DirectionalLight(0xffffff,1.7*Math.PI); dl.position.set(5,3,6); sc.add(dl);
     const mg=new THREE.SphereGeometry(0.05,10,10);
     GLOBE.forEach((gd,i)=>{ const co=(typeof COUNTRIES!=='undefined'&&COUNTRIES[i])||{col:0xffffff}; const pos=llToVec(gd.lat,gd.lon,1.73);
       const pin=new THREE.Mesh(mg,new THREE.MeshBasicMaterial({color:co.col})); pin.position.copy(pos); pin.userData.i=i; grp.add(pin);

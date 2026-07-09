@@ -18,6 +18,13 @@
 //   updateCar(pc,{throttle:true,steer:1,drift:true},1/60)
 //   => {x:-138.329258651, z:-136.596448756, h:28.933573462, v:8.959084759}
 
+
+window.__lockView = function(){                        // window-independent captures (user may resize/zoom Chrome)
+  renderer.setPixelRatio(1); renderer.setSize(1920,910,false);
+  camera.aspect=1920/910; camera.updateProjectionMatrix();
+  if(typeof composer!=='undefined'&&composer) composer.setSize(1920,910);
+  if(typeof fxaaPass!=='undefined'&&fxaaPass) fxaaPass.material.uniforms.resolution.value.set(1/1920,1/910);
+};
 window.__frozen = function(){
   try{ if(waterMat) waterMat.uniforms.uTime.value=0; }catch(e){}
   try{ (window._flagMats||[]).forEach(m=>{ if(m.userData.shader){ m.userData.shader.uniforms.uT.value=0; m.userData.shader.uniforms.uW.value=0; } }); }catch(e){}
@@ -32,7 +39,7 @@ window.__stats = function(){ renderer.info.autoReset=false; renderer.info.reset(
   renderer.info.autoReset=true; return r; };
 window.__goldenTrack = async function(run, t, sink){
   sink=sink||'http://127.0.0.1:8098/';
-  selectTrack(t);
+  selectTrack(t); __lockView();
   let s1=null;
   for(let i=0;i<25;i++){ await new Promise(r=>setTimeout(r,600)); __frozen();
     const s2=__stats(); if(s1 && s1.calls===s2.calls && s1.tris===s2.tris) break; s1=s2; }
@@ -53,7 +60,7 @@ window.__goldenTrack = async function(run, t, sink){
 window.__goldenAll = async function(run){
   for(let i=0;i<60;i++){ if(typeof propsReady!=='undefined'&&propsReady && Object.keys(fleetRaw).length>=19) break;
     await new Promise(r=>setTimeout(r,500)); }
-  aoPref=false; buildComposer();
+  aoPref=false; buildComposer(); __lockView();
   const out=[];
   for(let t=0;t<TRACKS.length;t++) out.push({t, ...(await __goldenTrack(run,t))});
   return out; };
