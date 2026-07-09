@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.68-->
+<!--BUILD:v9.69-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.68';
+(function(){ const BUILD='v9.69';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2454,7 +2454,26 @@ function buildBoostPads(){
     _P.set(pd.x, 0.09+(sampleElev[pd.idx]||0), pd.z); _M4.compose(_P,_Q,_S); padMesh.setMatrixAt(i,_M4); });
   padMesh.instanceMatrix.needsUpdate=true; scene.add(padMesh);
 }
-function buildPickups(){
+let wrenchList=[], wrenchGroup=null;
+function buildWrenches(){                                  // REPAIR pickups: floating 3D wrenches on the racing line
+  if(wrenchGroup&&wrenchGroup.parent) wrenchGroup.parent.remove(wrenchGroup);
+  wrenchList=[]; wrenchGroup=new THREE.Group(); scene.add(wrenchGroup);
+  const steel=new THREE.MeshStandardMaterial({color:0xd8dee8, metalness:0.85, roughness:0.28, emissive:0x8fd4ff, emissiveIntensity:0.35});
+  for(let k=0;k<4;k++){ const i=Math.floor((k+0.5)/4*SAMPLES)%SAMPLES;
+    const p=samplePts[i], n=sampleNorm[i], e=(sampleElev[i]||0);
+    const lat=((k%2)?1:-1)*(sampleHW[i]||CONFIG.roadHalfWidth)*0.45;
+    const g=new THREE.Group();
+    const handle=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.05,1.15), steel); g.add(handle);       // shaft
+    const jaw1=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.07,8,14,4.2), steel); jaw1.position.z=0.62; jaw1.rotation.x=Math.PI/2; g.add(jaw1);   // open-end head
+    const jaw2=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.07,8,14), steel); jaw2.position.z=-0.62; jaw2.rotation.x=Math.PI/2; g.add(jaw2);       // ring head
+    g.scale.setScalar(1.5);
+    g.position.set(p.x+n.x*lat, 1.15+e, p.y+n.y*lat);
+    wrenchGroup.add(g);
+    wrenchList.push({g, x:p.x+n.x*lat, z:p.y+n.y*lat, idx:i, alive:true, t:0}); }
+}
+function updateWrenches(dt){ for(const w of wrenchList){ if(!w.alive){ w.t-=dt; if(w.t<=0){ w.alive=true; w.g.visible=true; } continue; }
+  w.g.rotation.y+=dt*2.2; w.g.position.y=1.15+(sampleElev[w.idx]||0)+Math.sin(performance.now()*0.003+w.idx)*0.15; } }
+function buildPickups(){ buildWrenches();
   coinList=[]; coinMesh=null;
   const count=isTouch?20:26;
   for(let k=0;k<count;k++){ const idx=Math.floor((k+0.35)/count*SAMPLES)%SAMPLES; const p=samplePts[idx], n=sampleNorm[idx];
@@ -2477,7 +2496,7 @@ function buildPickups(){
 }
 function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpin=0; coinGrab=0;
   boostPads.forEach(p=>p.hit=0); if(typeof resetObstacles==='function') resetObstacles(); }
-function updateArcadeVisuals(dt){
+function updateArcadeVisuals(dt){ if(typeof updateWrenches==='function') updateWrenches(dt);
   if(player&&player.rig&&player.rig.headSpot) player.rig.headSpot.visible=!!nightMode;
   if(updateArcadeVisuals._night!==nightMode){ updateArcadeVisuals._night=nightMode;
     cars.forEach(c=>{ if(c.rig&&c.rig.lampMats){ c.rig.lampMats[0].emissiveIntensity=nightMode?2.2:0.7; c.rig.lampMats[1].emissiveIntensity=nightMode?2.0:0.8; } }); }
@@ -2499,6 +2518,10 @@ function arcadePickups(c, dt){       // player only, during a race
       c.boost=CONFIG.boostMax*(c.nosMax||1); c._padBoost=0.65*(c.nosFill||1); camShake=Math.min(camShake+0.3,1);   // pad fills the full (NOS) tank
       sparks.emit(pd.x,0.4+(c.visY||0),pd.z,(Math.random()-.5)*6,2.2,(Math.random()-.5)*6,0.3,12);
       audio&&audio.boost(); popup('⚡ BOOST','#ffb14d'); } }
+  for(let i=0;i<wrenchList.length;i++){ const w=wrenchList[i]; if(!w.alive) continue;   // REPAIR: drive through a wrench -> panels self-heal
+    const dx=c.pos.x-w.x, dz=c.pos.y-w.z; if(dx*dx+dz*dz<7.5){ w.alive=false; w.g.visible=false; w.t=(typeof brActive!=='undefined'&&brActive)?6:18;
+      if(typeof repairPanels==='function') repairPanels(c);
+      camShake=Math.min(camShake+0.15,1); audio&&audio.coin&&audio.coin(); popup('🔧 REPAIRED','#8fd4ff'); } }
   for(let i=0;i<coinList.length;i++){ const co=coinList[i]; if(!co.alive) continue;
     const dx=c.pos.x-co.x, dz=c.pos.y-co.z; if(dx*dx+dz*dz<7.0){ co.alive=false; coins++; coinGrab++; renderCoins(); saveCoins();
       sparks.emit(co.x,1.2+(c.visY||0),co.z,(Math.random()-.5)*5,3.6,(Math.random()-.5)*5,0.35,16); audio&&audio.coin();
@@ -5142,6 +5165,9 @@ function resolveCollisions(){
       a.pos.addScaledVector(_v,-push); b.pos.addScaledVector(_v,push);
       const va=a.vel.dot(_v), vb=b.vel.dot(_v);
       a.vel.addScaledVector(_v,(vb-va)*0.3); b.vel.addScaledVector(_v,(va-vb)*0.3);
+      if(Math.abs(va-vb)>12 && typeof applyDamage==='function'){                 // hard car-to-car contact dents BOTH cars on the contact side
+        applyDamage(a, _v.x, _v.y, Math.abs(va-vb)*0.8);
+        applyDamage(b, -_v.x, -_v.y, Math.abs(va-vb)*0.8); }
       if((a.isPlayer||b.isPlayer||brActive) && Math.abs(va-vb)>16){ const mx=(a.pos.x+b.pos.x)/2, mz=(a.pos.y+b.pos.y)/2, gy=(a.visY||0);
         if(a.isPlayer||b.isPlayer) camShake=Math.min(camShake+0.4,1.0);
         sparks.emit(mx,gy+0.6,mz,(Math.random()-.5)*5,1.2,(Math.random()-.5)*5,0.3,9);
