@@ -35,3 +35,10 @@ Branded/copyrighted vehicle models are intentionally NOT used, since this game i
   Tverskaya, Fort Mumbai, Copacabana, Berlin Mitte) — building footprints & heights from **OpenStreetMap**,
   © OpenStreetMap contributors, licensed **ODbL** (openstreetmap.org/copyright). Geometry generated in Blender
   from the data; low-poly stylization ours.
+
+## SunsetDriftCars library (owner-provided)
+- 23-car racing library + per-car Armor/Gatling/Rocket kit meshes (Downloads/SunsetDriftCars),
+  processed via Blender headless (island wheel split, decimate, Draco). First wired: Super GT
+  ('racecar' slot, models/gen3/supergt1.glb; kits in models/br-kits/).
+- LICENSE: owner-generated (Rodin/hyper3d). Commercial-use confirmation from the owner's Rodin
+  plan pending before Steam release.
