@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.49-->
+<!--BUILD:v9.50-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.49';
+(function(){ const BUILD='v9.50';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2315,7 +2315,7 @@ function buildTrackMeshes(){
     t.repeat.set(CONFIG.roadHalfWidth*0.85,0.5); t.anisotropy=aniso; return t; };   // tighter tiling = more visible asphalt grit
   const roadMat=new THREE.MeshStandardMaterial({ map:roadMap,
     normalMap:grain('textures/road_normal.jpg'), normalScale:new THREE.Vector2(1.0,1.0),
-    roughnessMap:grain('textures/road_rough.jpg'), roughness:0.6, metalness:0.04, envMapIntensity:0.45,   // matte asphalt: the old gloss (r.42 m.1) was tuned while the road was invisible - at grazing angles it mirrored the sky
+    roughnessMap:grain('textures/road_rough.jpg'), roughness:0.88, metalness:0.0, envMapIntensity:0.12,   // FULLY MATTE asphalt (owner: no gloss on any road) - only the rain mode below may add wet sheen
     emissiveMap:roadMap, emissive:0xffffff, emissiveIntensity:0.42, side:THREE.DoubleSide,   // DoubleSide is LOAD-BEARING: the ribbon index order winds face-DOWN, so FrontSide backface-culled the whole road from above (players raced on the bare terrain corridor)
     polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4 }); // render ON TOP of the terrain corridor (no z-fight bleed-through)
   roadMat.onBeforeCompile=(shader)=>{                    // scrolling speed chevrons on the road shoulders (fade in with speed)
@@ -2330,10 +2330,10 @@ function buildTrackMeshes(){
   roadMatRef=roadMat;
   const rth=currentTheme?currentTheme.theme:'city';        // per-theme road tint (same texture everywhere = consistent)
   if(rth==='desert'){ roadMat.color=new THREE.Color(0x554c3e); roadMat.emissiveIntensity=0.16; roadMat.roughness=0.78; }   // dark dusty desert highway (contrasts the sand)
-  else if(rth==='coast'){ roadMat.color=new THREE.Color(0x6f6a64); roadMat.emissiveIntensity=0.28; roadMat.roughness=0.52; roadMat.metalness=0.15; roadMat.envMapIntensity=0.6; }   // sea-damp asphalt, gentle sunset sheen (not a mirror)
-  else if(rth==='forest'){ roadMat.color=new THREE.Color(0x6a6d74); roadMat.emissiveIntensity=0.3; roadMat.roughness=0.6; roadMat.metalness=0.1; roadMat.envMapIntensity=0.5; }   // damp forest tarmac, subtle sheen
-  else if(rth==='beach'){ roadMat.color=new THREE.Color(0x5a554d); roadMat.emissiveIntensity=0.18; roadMat.roughness=0.62; }   // untinted the full-noon beach sun clipped the asphalt to sand-white (road became invisible)
-  else if(rth==='snow'){ roadMat.color=new THREE.Color(0x4f545e); roadMat.emissiveIntensity=0.2; roadMat.roughness=0.58; roadMat.metalness=0.12; }   // cold wet tarmac -> reads dark against the snowfield
+  else if(rth==='coast'){ roadMat.color=new THREE.Color(0x6f6a64); roadMat.emissiveIntensity=0.28; }   // warm coast tint, matte like every road
+  else if(rth==='forest'){ roadMat.color=new THREE.Color(0x6a6d74); roadMat.emissiveIntensity=0.3; }   // cool forest tint, matte
+  else if(rth==='beach'){ roadMat.color=new THREE.Color(0x5a554d); roadMat.emissiveIntensity=0.18; }   // untinted the full-noon beach sun clipped the asphalt to sand-white (road became invisible)
+  else if(rth==='snow'){ roadMat.color=new THREE.Color(0x4f545e); roadMat.emissiveIntensity=0.2; }   // cold dark tarmac against the snowfield, matte
   if(rainOn){                                            // wet asphalt: darker + glossy reflective sheen
     roadMat.color=new THREE.Color(0x6e6e76); roadMat.roughness=0.16; roadMat.metalness=0.5; roadMat.emissiveIntensity=0.26;
     roadMat.envMapIntensity=1.9; roadMat.normalScale.set(0.4,0.4);   // mirror the captured sunset sky down the wet road
