@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.71-->
+<!--BUILD:v9.72-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.71';
+(function(){ const BUILD='v9.72';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2556,10 +2556,10 @@ function _mkPothole(M){ const m=new THREE.Mesh(new THREE.CircleGeometry(1.55,18)
 function buildObstacles(){
   if(obGroup&&obGroup.parent) obGroup.parent.remove(obGroup);
   obstacles=[]; obDebris=[]; _obDebI=0; obGroup=new THREE.Group(); scene.add(obGroup);
-  if(typeof brActive!=='undefined' && brActive) return;                 // no hazards in battle royale
   const M=_obMats(), rng=mulberry32(4242);
   const dg=new THREE.BoxGeometry(0.32,0.32,0.32);                       // shared debris fragments (rebuilt per track)
   for(let i=0;i<26;i++){ const m=new THREE.Mesh(dg, i%2?M.steel:M.bag); m.visible=false; m.castShadow=true; obGroup.add(m); obDebris.push({m,vx:0,vy:0,vz:0,spin:0,life:0}); }
+  if(typeof brActive!=='undefined' && brActive) return;                 // no RACE hazards in battle royale (BR scatters its own destructibles; the debris pool above is shared)
   const N=Math.max(13, Math.round(SAMPLES/38));   // denser hazard mix (owner: more obstacles on the racetrack)
   const seq=['pothole','trash','dumpster','ramp','pothole','bike','trash','pothole','dumpster','ramp','bike','trash'];
   for(let k=0;k<N;k++){ const idx=Math.floor((k+0.5)/N*SAMPLES)%SAMPLES; if(idx<14||idx>SAMPLES-14) continue;
@@ -4866,6 +4866,8 @@ function detonateRocket(r){ const p=r.mesh.position.clone();
   for(const o of cars){ if(!o.alive) continue; const dx=o.pos.x-p.x, dz=o.pos.y-p.z, dd=Math.hypot(dx,dz);
     if(dd<BR.rkSplash){ const fall=1-dd/BR.rkSplash; damageCar(o, BR.rkDmg*fall*(o===r.owner?0.2:1), r.owner);
       if(o.alive){ const kb=fall*8; o.vel.x+=(dx/(dd||1))*kb; o.vel.y+=(dz/(dd||1))*kb; } } }   // knockback shove
+  for(const o of brProps){ if(!o.alive) continue; const dd=Math.hypot(o.x-p.x, o.z-p.z);        // rockets level nearby destructibles
+    if(dd<BR.rkSplash) damageProp(o, BR.rkDmg*(1-dd/BR.rkSplash), r.owner); }
   const pd=Math.hypot(p.x-player.pos.x, p.z-player.pos.y); if(pd<26) camShake=Math.min(camShake+(1-pd/26)*0.7, 1.1);
   addFlash(p.x, p.y+1.2, p.z, 0xffa64d, 6.5, 40, 0.28);                 // blast light flash lights up the scene
   if(audio&&audio.boom) audio.boom(clamp(1-pd/70, 0.15, 1)); }   // distance-weighted blast
@@ -4989,13 +4991,14 @@ function battleFrame(dt){ raceTime+=dt;
       if(c._trTog) addTracer(mz.clone(), new THREE.Vector3(c._brTarget.pos.x,(c._brTarget.visY||0)+1,c._brTarget.pos.y));   // tracer every other round (rapid gatling fire)
       sparks.emit(c._brTarget.pos.x,(c._brTarget.visY||0)+1,c._brTarget.pos.y,(Math.random()-.5)*3,1.5,(Math.random()-.5)*3,0.16,4);   // impact sparks
       if(c.isPlayer) camShake=Math.min(camShake+0.04,0.4);
-      damageCar(c._brTarget, BR.dmg*gatMul(c), c); }
+      damageCar(c._brTarget, BR.dmg*gatMul(c), c);
+      propsOnSegment(c.pos.x, c.pos.y, c._brTarget.pos.x, c._brTarget.pos.y, 2.2, BR.dmg*0.6, c); }   // stray gatling fire chews up props in the line of fire
     if(!c.isPlayer && c._brTarget && c._rkT<=0){ const dd=Math.hypot(c._brTarget.pos.x-c.pos.x,c._brTarget.pos.y-c.pos.y); if(dd<BR.range && Math.random()<0.6) fireRocket(c); }   // AI occasionally launches a rocket
     const hf=c.hp/(c.hpMax||BR.maxHP);                                                                          // progressive damage read-out: smoke hurt, fire critical
     if(hf<0.42){ c._dmgT=(c._dmgT||0)-dt; if(c._dmgT<=0){ c._dmgT=0.13; const x=c.pos.x,y=(c.visY||0)+0.75,z=c.pos.y;
       tireSmoke.emit(x,y,z,0,1.3,0, hf<0.2?0.6:0.45, hf<0.2?9:6);
       if(hf<0.2) sparks.emit(x,y,z,(Math.random()-.5)*1.2,2.2,(Math.random()-.5)*1.2,0.32,4); } } }
-  updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt);
+  updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt); updateBRProps(dt); obUpdateDebris(dt);
   for(const c of cars){ if(!c.alive) continue; const dC=Math.hypot(c.pos.x-zoneCX,c.pos.y-zoneCZ); if(dC>zoneR) damageCar(c, BR.zoneDps*dt); }
   for(let i=brTracers.length-1;i>=0;i--){ const t=brTracers[i]; t.t-=dt; if(t.t<=0){ scene.remove(t.ln); t.ln.geometry.dispose(); t.ln.material.dispose(); brTracers.splice(i,1); } else t.ln.material.opacity=(t.t/0.06)*0.9; }
   cars.forEach(c=>{ if(c.alive) syncCarMesh(c); });
@@ -5003,13 +5006,66 @@ function battleFrame(dt){ raceTime+=dt;
   if(cinePass) cinePass.uniforms.uSpeed.value=clamp(player.vel.length()/CONFIG.topSpeed-0.35,0,1)*0.5;
   if(camShake>0) camShake=Math.max(0,camShake-dt*1.6);
   updateCamera(dt); updateBRHud(); }
+/* ---- BR DESTRUCTIBLE PROPS: per-object HP; rockets/gatling/ramming break them with real explosions
+   (flash + layered fireball + rising smoke column + flung debris + fading ground scorch) ---- */
+let brProps=[], brScorch=[], brSmokes=[];
+const BRPROP_HP={dumpster:26, bike:12, trash:6};
+function buildBRProps(){ clearBRProps();
+  const M=_obMats(), rng=mulberry32(9911);
+  const seq=['dumpster','trash','bike','dumpster','trash','trash','bike','dumpster'];
+  for(let k=0;k<26;k++){ const ang=rng()*6.283, rr=24+rng()*Math.max(30, zoneR-40);
+    const x=zoneCX+Math.cos(ang)*rr, z=zoneCZ+Math.sin(ang)*rr, y=terrainHeight(x,z);
+    const type=seq[k%seq.length];
+    const mesh = type==='dumpster'?_mkDumpster(M) : type==='bike'?_mkBike(M) : _mkTrash(M,rng);
+    mesh.position.set(x, y+0.02, z); if(type!=='bike') mesh.rotation.y=rng()*6.283;
+    scene.add(mesh);
+    brProps.push({x,z,y,type,mesh,hp:BRPROP_HP[type],alive:true}); } }
+function clearBRProps(){ brProps.forEach(o=>{ scene.remove(o.mesh); disposeGroup(o.mesh); }); brProps=[];
+  brScorch.forEach(s=>{ scene.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); }); brScorch=[]; brSmokes=[]; }
+function damageProp(o, amt, by){ if(!o.alive) return; o.hp-=amt;
+  sparks.emit(o.x, o.y+0.7, o.z, (Math.random()-.5)*4, 2.2, (Math.random()-.5)*4, 0.3, 5);
+  if(o.hp<=0) destroyProp(o, by); }
+function destroyProp(o, by){ o.alive=false; o.mesh.visible=false;
+  const y=o.y+0.6;
+  obSpawnDebris(o.x, y, o.z); obSpawnDebris(o.x, y+0.3, o.z);                       // two bursts -> chunks really fly
+  addExplosion(new THREE.Vector3(o.x, y+0.4, o.z));
+  addFlash(o.x, y+1.0, o.z, 0xffa64d, 5.0, 30, 0.24);
+  brSmokes.push({x:o.x, y, z:o.z, t:1.4});                                          // rising smoke column
+  { const g=new THREE.Mesh(new THREE.CircleGeometry(o.type==='dumpster'?2.6:1.7,16),
+      new THREE.MeshBasicMaterial({color:0x0a0a0c, transparent:true, opacity:0.55, depthWrite:false}));
+    g.rotation.x=-Math.PI/2; g.position.set(o.x, o.y+0.06, o.z);
+    g.material.polygonOffset=true; g.material.polygonOffsetFactor=-4; g.material.polygonOffsetUnits=-4;
+    scene.add(g); brScorch.push({m:g, t:14}); }                                     // scorch decal fades out
+  const pd=Math.hypot(o.x-player.pos.x, o.z-player.pos.y);
+  if(pd<26) camShake=Math.min(camShake+(1-pd/26)*0.5, 1);
+  if(audio&&audio.boom) audio.boom(clamp(1-pd/60, 0.12, 0.8));
+  if(by===player) popup('💥 DESTROYED','#ff8a4d'); }
+function propsOnSegment(ax,az,bx,bz,rad,amt,by){                                    // gatling line-of-fire vs props
+  const dx=bx-ax, dz=bz-az, len2=dx*dx+dz*dz||1;
+  for(const o of brProps){ if(!o.alive) continue;
+    const t=clamp(((o.x-ax)*dx+(o.z-az)*dz)/len2, 0, 1);
+    const px=ax+dx*t-o.x, pz=az+dz*t-o.z;
+    if(px*px+pz*pz<rad*rad) damageProp(o, amt, by); } }
+function updateBRProps(dt){
+  for(const o of brProps){ if(!o.alive) continue;
+    for(const c of cars){ if(!c.alive) continue; const dx=c.pos.x-o.x, dz=c.pos.y-o.z;
+      if(dx*dx+dz*dz<7.2){ const sp=c.vel.length(), h=Math.hypot(dx,dz)||1;
+        damageProp(o, 8+sp*0.8, c); c.vel.multiplyScalar(o.type==='dumpster'?0.55:0.8);
+        if(o.type==='dumpster'&&sp>10&&typeof applyDamage==='function') applyDamage(c, dx/h, dz/h, sp*0.5);   // hard dumpster hits dent the panels too
+        break; } } }
+  for(let i=brSmokes.length-1;i>=0;i--){ const s=brSmokes[i]; s.t-=dt; s.e=(s.e||0)-dt;
+    if(s.e<=0){ s.e=0.09; tireSmoke.emit(s.x, s.y+(1.4-s.t)*2.2, s.z, 0, 1.6, 0, 0.5, 1); }   // throttled column: ~16 puffs total, not a solid blob
+    if(s.t<=0) brSmokes.splice(i,1); }
+  for(let i=brScorch.length-1;i>=0;i--){ const s=brScorch[i]; s.t-=dt;
+    if(s.t<4) s.m.material.opacity=0.55*(s.t/4);
+    if(s.t<=0){ scene.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); brScorch.splice(i,1); } } }
 function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   if(brActive) endBattle();
   brActive=true; champ.active=false; dailyActive=false; brWon=false; brTracers=[];
   while(cars.length < BR.cars){ cars.push(makeCar(CONFIG.colors.ai[cars.length%CONFIG.colors.ai.length], false)); }   // spawn extra fighters for the battle (races stay at 4)
   upgradeCars();                                                         // build real models + liveries/kits for the new cars
   selectTrack(currentTrack);                                            // battle in the SELECTED environment (any track's world = the open arena)
-  zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone();
+  zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone(); buildBRProps();
   audio.start(); if(audio.setCar) audio.setCar((CARS[selectedCar]||{}).raw||'');
   playModeMusic('audio/combat.mp3', currentTheme?currentTheme.theme:'city');   // dedicated combat loop (falls back to theme beat)
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1; player.brakeLvl=0; player.turboMul=1;
@@ -5035,6 +5091,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   _f.set(Math.sin(player.heading),Math.cos(player.heading)); _scy=null;
   camera.position.set(player.pos.x-_f.x*CONFIG.camDist, CONFIG.camHeight, player.pos.y-_f.y*CONFIG.camDist); }
 function endBattle(){ brActive=false; document.body.classList.remove('inbattle');
+  clearBRProps();
   debris.forEach(d=>scene.remove(d.m)); debris=[];
   rockets.forEach(r=>{scene.remove(r.mesh); disposeGroup(r.mesh);}); rockets=[];
   explosions.forEach(e=>{scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose();}); explosions=[];
