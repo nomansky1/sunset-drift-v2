@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.67-->
+<!--BUILD:v9.68-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.67';
+(function(){ const BUILD='v9.68';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3840,7 +3840,7 @@ function loadCarModels(){
   // fleet sports cars
   [['sport','models/gen3/timeattack1.glb'],['super','models/gen3/exotichypercar1.glb'],
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
-   ['racer','models/gen3/drifttuner1.glb'],['racecar','models/gen3/supergt1.glb'],['muscle','models/gen3/v8supercar1.glb'],
+   ['racer','models/gen3/drifttuner1.glb'],['racecar','models/gen3/supergt2.glb'],['muscle','models/gen3/v8supercar1.glb'],
    ['roadster','models/gen3/classiclemans1.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
    ['kartB','models/gen3/f11.glb'],
@@ -4000,6 +4000,9 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     o.parent.add(g); o.position.set(0,0,0); g.add(o);
     wheels.push(g); if(/front/i.test(o.name||'')) front.push(g); });
   rig.chassis=chassis; rig.wheels=wheels; rig.front=front; rig.spinAcc=0;
+  rig.panels={};                                                    // DAMAGE panels (panel_* meshes from the split pipeline)
+  body.traverse(o=>{ if(o.isMesh && /^panel_/.test(o.name||'')){ rig.panels[o.name]=o;
+    o.userData._rp={p:o.position.clone(), r:o.rotation.clone(), col:(o.material&&o.material.color)?o.material.color.clone():null}; } });
   // EXHAUST TIPS: the Kenney GLBs have no exhausts — add twin dark pipes at each model's own
   // bumper height (normalized dims) and anchor the boost flames to THEM, not the doge-car spot
   { const W=rig.dims.W, H=rig.dims.H, Lz=rig.dims.Lz;

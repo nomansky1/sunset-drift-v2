@@ -6,6 +6,47 @@
 /* =========================================================================
    PHYSICS  — arcade vehicle with grip, drift, boost, soft walls
    ========================================================================= */
+
+// ----- PANEL DAMAGE (visual only; physics untouched) -----
+function applyDamage(c, nx, nz, impact){
+  if(!c.rig||!c.rig.panels) return;
+  let rel=Math.atan2(nx,nz)-c.heading;
+  while(rel>Math.PI)rel-=6.283185307; while(rel<-Math.PI)rel+=6.283185307;
+  const ar=Math.abs(rel);
+  let keys;
+  if(ar<0.7) keys=['panel_bumper_f','panel_hood'];
+  else if(ar>2.44) keys=['panel_bumper_r','panel_trunk'];
+  else keys=[rel>0?'panel_door_R':'panel_door_L','panel_roof'];
+  c.dmgP=c.dmgP||{};
+  const amt=Math.min(1.2, impact/22);
+  keys.forEach((k,i)=>{ if(c.rig.panels[k]) c.dmgP[k]=(c.dmgP[k]||0)+amt*(i?0.4:1); });
+}
+function updatePanelDamage(c){
+  if(!c.rig||!c.rig.panels||!c.dmgP) return;
+  const ey=c.visY||0;
+  for(const k in c.dmgP){ const m=c.rig.panels[k]; if(!m) continue; const v=c.dmgP[k];
+    if(v>=1.5){ if(m.visible){ m.visible=false;                        // panel TEARS OFF: sparks + smoke + flying debris
+        for(let i=0;i<8;i++) sparks.emit(c.pos.x,0.7+ey,c.pos.y,(Math.random()-.5)*8,2+Math.random()*3,(Math.random()-.5)*8,0.4,8);
+        if(typeof tireSmoke!=='undefined') tireSmoke.emit(c.pos.x,0.8+ey,c.pos.y,0,1.2,0,0.7,7);
+        if(typeof obSpawnDebris==='function') try{ obSpawnDebris(c.pos.x,0.8+ey,c.pos.y); }catch(e){} } continue; }
+    if(v>=0.95 && m.userData._rp){ const rp=m.userData._rp;            // loose panel WOBBLES while driving
+      m.rotation.x=rp.r.x+Math.sin(performance.now()*0.02+v*7)*0.013*v;   // small: panel pivots sit at the car origin, big angles fling far panels through the floor
+      m.rotation.z=rp.r.z+Math.cos(performance.now()*0.017+v*5)*0.010*v; }
+    if(v>=0.35 && m.material && !m.userData._dented){ m.userData._dented=true;   // DENT: scuffed paint
+      if(m.material.color) m.material.color.multiplyScalar(0.8);
+      if('roughness' in m.material) m.material.roughness=Math.min(1,(m.material.roughness||0.4)+0.28); }
+  }
+}
+function repairPanels(c){                                              // wrench/toolbox pickups call this (self-heal)
+  if(!c.rig||!c.rig.panels) return;
+  for(const k in c.rig.panels){ const m=c.rig.panels[k], rp=m.userData._rp;
+    m.visible=true; m.userData._dented=false;
+    if(rp){ m.rotation.copy(rp.r); if(rp.col&&m.material&&m.material.color) m.material.color.copy(rp.col); } }
+  c.dmgP={};
+  const ey=c.visY||0;
+  for(let i=0;i<12;i++) sparks.emit(c.pos.x,0.6+ey,c.pos.y,(Math.random()-.5)*5,2.5+Math.random()*2,(Math.random()-.5)*5,0.5,6);
+}
+
 function updateCar(c, inp, dt){
   // progress / nearest point on track (also used for off-track + ranking)
   const prev=c.trackIdx; const nr=nearest(c.pos, prev); c.trackIdx=nr.idx; c.trackDist=nr.dist;
@@ -88,6 +129,7 @@ function updateCar(c, inp, dt){
       if(vOut>0) c.vel.addScaledVector(_v, -vOut);         // remove the into-wall part -> slide along
       c.vel.multiplyScalar(Math.exp(-1.2*(1-0.22*tire)*dt));  // light scrape (TIRES keep more speed along the wall)
       c.pos.set(p.x + _v.x*limit, p.y + _v.y*limit);       // clamp to the curb (can't climb the sidewalk)
+      if(vOut>8 && typeof applyDamage==='function') applyDamage(c, _v.x, _v.y, vOut);   // panel damage on wall hits (all cars)
       if(c.isPlayer && vOut>14){ camShake=Math.min(camShake+0.45,1.0);
         sparks.emit(c.pos.x,0.5,c.pos.y,(Math.random()-.5)*4,1,(Math.random()-.5)*4,0.3,9);
         if(raceTime-(c._thudT||-1)>0.25){ c._thudT=raceTime; audio&&audio.thud(clamp(vOut/40,0.3,1)); }
@@ -187,6 +229,7 @@ function updateCar(c, inp, dt){
     if(burnout && tireSmoke && Math.random()<0.45)                          // launch blip: a fat puff out the exhaust
       tireSmoke.emit(exX, 0.5+ey, exZ, -fwx*1.6, 0.9, -fwz*1.6, 0.9, 5+Math.random()*3);
   }
+  updatePanelDamage(c);                                                     // progressive visible damage (dent -> wobble -> tear off)
   // ----- arcade: pickups + drift style score (player, racing) -----
   if(c.isPlayer && state==='race'){
     arcadePickups(c, dt); updateObstacles(c, dt);
