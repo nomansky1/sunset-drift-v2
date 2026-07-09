@@ -18,8 +18,10 @@ function applyDamage(c, nx, nz, impact){
   else if(ar>2.44) keys=['panel_bumper_r','panel_trunk'];
   else keys=[rel>0?'panel_door_R':'panel_door_L','panel_roof'];
   c.dmgP=c.dmgP||{};
-  const amt=Math.min(1.2, impact/22);
-  keys.forEach((k,i)=>{ if(c.rig.panels[k]) c.dmgP[k]=(c.dmgP[k]||0)+amt*(i?0.4:1); });
+  // races: gentler + capped BELOW the tear-off stage (full deterioration is BR-only — lap-1 pileups were shredding cars)
+  const br = typeof brActive!=='undefined' && brActive;
+  const amt=Math.min(1.2, impact/22)*(br?1:0.55);
+  keys.forEach((k,i)=>{ if(c.rig.panels[k]) c.dmgP[k]=Math.min(br?9:1.3, (c.dmgP[k]||0)+amt*(i?0.4:1)); });
 }
 function updatePanelDamage(c){
   if(!c.rig||!c.rig.panels||!c.dmgP) return;
@@ -30,8 +32,8 @@ function updatePanelDamage(c){
         if(typeof tireSmoke!=='undefined') tireSmoke.emit(c.pos.x,0.8+ey,c.pos.y,0,1.2,0,0.7,7);
         if(typeof obSpawnDebris==='function') try{ obSpawnDebris(c.pos.x,0.8+ey,c.pos.y); }catch(e){} } continue; }
     if(v>=0.95 && m.userData._rp){ const rp=m.userData._rp;            // loose panel WOBBLES while driving
-      m.rotation.x=rp.r.x+Math.sin(performance.now()*0.02+v*7)*0.013*v;   // small: panel pivots sit at the car origin, big angles fling far panels through the floor
-      m.rotation.z=rp.r.z+Math.cos(performance.now()*0.017+v*5)*0.010*v; }
+      m.rotation.x=rp.r.x+Math.sin(performance.now()*0.008+v*7)*0.013*v;   // small + slow: panel pivots sit at the car origin, and fast jitter read as "shattered" on phones
+      m.rotation.z=rp.r.z+Math.cos(performance.now()*0.006+v*5)*0.010*v; }
     if(v>=0.35 && m.material && !m.userData._dented){ m.userData._dented=true;   // DENT: scuffed paint
       if(m.material.color) m.material.color.multiplyScalar(0.8);
       if('roughness' in m.material) m.material.roughness=Math.min(1,(m.material.roughness||0.4)+0.28); }

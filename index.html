@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.73-->
+<!--BUILD:v9.74-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.73';
+(function(){ const BUILD='v9.74';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3861,7 +3861,7 @@ function loadCarModels(){
       undefined, ()=>{ carReady=true; if(cars&&cars.length) upgradeCars(); });   // body-only if wheels fail
   }, undefined, ()=>{}); }catch(e){}
   // fleet sports cars
-  [['sport','models/gen3/timeattack2.glb'],['super','models/gen3/exotichypercar2.glb'],
+  [['sport','models/gen3/gt32.glb'],['super','models/gen3/electrichypercar2.glb'],
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
    ['racer','models/gen3/drifttuner2.glb'],['racecar','models/gen3/supergt2.glb'],['muscle','models/gen3/v8supercar2.glb'],
    ['roadster','models/gen3/classiclemans2.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
@@ -4751,8 +4751,8 @@ function mountGun(rig){ if(rig.gun||!rig.group) return;
   mountKitGun(rig); }   // molded per-car kit (Rodin export) swaps in async when its GLB arrives; procedural stays as fallback
 // ---- MOLDED BR KITS: per-car gatling/rocket/armor meshes exported WITH the car's centering shift,
 // so replaying the car's own normalization frame (rig._kitFrame) overlays them exactly on the body ----
-const KITBASE={racecar:'supergt', super:'exotichypercar', racer:'drifttuner', muscle:'v8supercar',
-  sport:'timeattack', roadster:'classiclemans', kartB:'f1', kartC:'indycar', kartD:'formulae'};
+const KITBASE={racecar:'supergt', super:'electrichypercar', racer:'drifttuner', muscle:'v8supercar',
+  sport:'gt3', roadster:'classiclemans', kartB:'f1', kartC:'indycar', kartD:'formulae'};
 let _kitLoader=null, brKitCache={};
 function loadKitGLB(url){ if(brKitCache[url]) return brKitCache[url];
   brKitCache[url]=new Promise((res,rej)=>{ try{
