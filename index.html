@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.61-->
+<!--BUILD:v9.62-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.61';
+(function(){ const BUILD='v9.62';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1844,13 +1844,14 @@ class Particles {
     g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(max),1));
     const m = new THREE.ShaderMaterial({
       uniforms:{ uColor:{ value:new THREE.Color(color) } },
-      vertexShader:`attribute float aLife; attribute float aSize; varying float vL;
+      vertexShader:`attribute float aLife; attribute float aSize; varying float vL; varying float vFade;
         void main(){ vL=aLife; vec4 mv=modelViewMatrix*vec4(position,1.0);
-        gl_PointSize=aSize*(300.0/max(1.0,-mv.z))*(0.35+0.65*aLife);
+        vFade=smoothstep(2.5,9.0,-mv.z);                                 // fade puffs near the camera -> smoke never whites-out the view
+        gl_PointSize=min(aSize*(300.0/max(1.0,-mv.z))*(0.35+0.65*aLife), 110.0);
         gl_Position=projectionMatrix*mv; }`,
-      fragmentShader:`precision mediump float; varying float vL; uniform vec3 uColor;
+      fragmentShader:`precision mediump float; varying float vL; varying float vFade; uniform vec3 uColor;
         void main(){ vec2 c=gl_PointCoord-0.5; float d=1.0-smoothstep(0.22,0.5,length(c));
-        if(d<=0.001) discard; gl_FragColor=vec4(uColor, d*vL*0.7); }`,
+        if(d<=0.001) discard; gl_FragColor=vec4(uColor, d*vL*0.62*vFade); }`,
       transparent:true, depthWrite:false
     });
     this.geo = g; this.pts = new THREE.Points(g,m); this.pts.frustumCulled=false; scn.add(this.pts);
@@ -5338,7 +5339,8 @@ function buildWorld(idx){
     renderer.toneMappingExposure = 1.0;
     if(bloomPass){ bloomPass.strength = isTouch?0.65:0.8; bloomPass.threshold = 0.7; }   // neon + lights pop (not car paint)
   } else {
-    renderer.toneMappingExposure = bright ? 0.74 : warm ? 0.80 : 0.98;   // lowered to offset the stronger hemi+fill (form without blow-out); dusk 1.18->0.98 filmic
+    const mTrim = isTouch ? (bright?0.85:warm?0.90:0.96) : 1;            // PHONES clip the bright themes (owner: overexposed on mobile) -> trim exposure per tier
+    renderer.toneMappingExposure = (bright ? 0.74 : warm ? 0.80 : 0.98) * mTrim;
     if(bloomPass){
       bloomPass.strength  = bright ? 0.2 : warm ? 0.26 : (isTouch?0.32:0.4);
       bloomPass.threshold = bright ? 0.99 : warm ? 0.96 : 0.93;   // dusk: only the brightest lit windows bloom (not a neon smear)

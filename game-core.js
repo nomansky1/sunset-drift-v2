@@ -147,7 +147,8 @@ function updateCar(c, inp, dt){
   const hardBrake = inp.brake && spd>14 && c.vel.dot(_f)>0;         // locking the brakes at speed
   if(spd<0.8) c._stopT=0.5; else if(c._stopT>0) c._stopT-=dt;       // "recently at a standstill" flag
   const burnout = inp.throttle && spd>2.5 && spd<8 && c._stopT>0;   // wheelspin only while pulling AWAY from a stop (not wedged at ~0)
-  const screech = (c.drifting && slip>(1.6+0.35*tire)) || hardBrake || burnout;   // TIRES grip harder before squealing
+  const aiSlide = !c.isPlayer && slip>2.6 && spd>18;                // AI corner hard on grip -> they get slide smoke too (owner request)
+  const screech = (c.drifting && slip>(1.6+0.35*tire)) || hardBrake || burnout || aiSlide;   // TIRES grip harder before squealing
   if(c.isPlayer && tire>0 && c.drifting && slip>2.4 && raceTime-(c._gripCue||-9)>1.6){ c._gripCue=raceTime; popup('🛞 GRIP','#7ce0ff'); }
   const rx=c.pos.x-Math.sin(c.heading)*1.6, rz=c.pos.y-Math.cos(c.heading)*1.6;
   const ey=c.visY||0;                                            // ground effects ride the road elevation
@@ -157,7 +158,7 @@ function updateCar(c, inp, dt){
       const intensity = offT?1 : clamp(slip/3 + (hardBrake?0.6:0) + (burnout?0.7:0), 0.4, 1.6);
       for(let s=-1;s<=1;s+=2){ const wx=rx+Math.cos(c.heading)*0.85*s, wz=rz-Math.sin(c.heading)*0.85*s;
         if(offT) dust.emit(wx,0.35+ey,wz,(Math.random()-.5)*2,1.3+Math.random(),(Math.random()-.5)*2, 0.55, 12+Math.random()*8);
-        else if(s>0 || Math.random()<0.5) tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.6, 0.45+Math.random()*0.5, (Math.random()-.5)*0.6, 0.4+intensity*0.08, 3+intensity*1.3+Math.random()*2);   // minimal, tight to the tire (small puffs, not a big cloud)
+        else if(c.isPlayer ? true : Math.random()<0.35) tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.9, 0.8+Math.random()*0.7, (Math.random()-.5)*0.9, 0.7+intensity*0.25, 5+intensity*2.5+Math.random()*3);   // REALISTIC drift cloud: bigger, softer, rises + lingers (near-camera fade in the shader keeps the view clear)
       }
       if(c.skidTimer<=0 && skidPool.length){ dropSkid(rx,rz,c.heading,ey); c.skidTimer=0.022; }
     }
@@ -171,6 +172,20 @@ function updateCar(c, inp, dt){
     const on=c.boosting, nf=c.nosForce||1;
     for(const f of c.rig.flames){ f.visible=on; if(on){ f.scale.set((0.78+Math.random()*0.35)*nf, (0.78+Math.random()*0.35)*nf, (0.6+Math.random()*0.8)*nf);
       f.rotation.z=(Math.random()-0.5)*0.25; } }   // flicker length + lick sideways
+  }
+  // ----- ENGINE IDLE + EXHAUST SMOKE (visual only; physics untouched) -----
+  { const stand = spd<0.8;
+    const fwx=Math.sin(c.heading), fwz=Math.cos(c.heading);
+    const exX=c.pos.x-fwx*2.25, exZ=c.pos.y-fwz*2.25;                       // rear bumper / exhaust line
+    if(stand){
+      c.rig.group.rotation.z += Math.sin(performance.now()*0.045)*0.0022;   // subtle idle tremble (engine running)
+      c._exT=(c._exT||0)-dt;
+      if(c.isPlayer && tireSmoke && c._exT<=0){ c._exT=0.5+Math.random()*0.25;
+        tireSmoke.emit(exX+(Math.random()-.5)*0.3, 0.45+ey, exZ+(Math.random()-.5)*0.3,
+          -fwx*0.5, 0.55+Math.random()*0.3, -fwz*0.5, 0.85, 2.6+Math.random()*1.2); }   // lazy idle wisps from the pipes
+    }
+    if(burnout && tireSmoke && Math.random()<0.45)                          // launch blip: a fat puff out the exhaust
+      tireSmoke.emit(exX, 0.5+ey, exZ, -fwx*1.6, 0.9, -fwz*1.6, 0.9, 5+Math.random()*3);
   }
   // ----- arcade: pickups + drift style score (player, racing) -----
   if(c.isPlayer && state==='race'){
