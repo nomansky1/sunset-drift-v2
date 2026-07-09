@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.50-->
+<!--BUILD:v9.51-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.50';
+(function(){ const BUILD='v9.51';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2989,7 +2989,7 @@ function buildTrackBuildings(rng){
   if(!(th==='city'||th==='docks'||th==='coast'||th==='beach')) return;   // built-up themes only (wilderness keeps its scatter)
   const TYPES = th==='beach' ? ['limestone','concrete','sandstone'] : ['brick','concrete','glass','limestone','dark','steel'];
   const facadeTex=TYPES.map(t=>makeFacadeTexture(rng,t));
-  const rows=facadeTex.map(()=>[]); const _c=new THREE.Color();
+  const rows=facadeTex.map(()=>[]), roofs=[]; const _c=new THREE.Color();
   const box=new THREE.BoxGeometry(1,1,1); box.translate(0,0.5,0);
   let cum=0, last=-999;
   for(let i=0;i<SAMPLES;i++){ const jn=(i+1)%SAMPLES; cum+=samplePts[i].distanceTo(samplePts[jn]);
@@ -3005,6 +3005,11 @@ function buildTrackBuildings(rng){
       const fi=Math.floor(rng()*TYPES.length), tint=0.6+rng()*0.4, ang=Math.atan2(p.x-x, p.y-z);   // face the road
       const q=new THREE.Quaternion().setFromAxisAngle(_UP, ang), y=terrainHeight(x,z);
       rows[fi].push({ mtx:new THREE.Matrix4().compose(new THREE.Vector3(x,y,z), q, new THREE.Vector3(fw,H,fd)), tint });
+      let top=y+H;                                                        // RELIEF: setback tier + roof clutter -> towers stop reading as single flat boxes
+      if(H>24 && rng()<0.6){ const f2=0.62+rng()*0.16, H2=H*(0.24+rng()*0.14);
+        rows[fi].push({ mtx:new THREE.Matrix4().compose(new THREE.Vector3(x,top,z), q, new THREE.Vector3(fw*f2,H2,fd*f2)), tint:tint*0.94 });
+        top+=H2; }
+      if(H>14) roofs.push({x,z,top,ang,s:1+rng()});
       camColliders.push({x,z, r:Math.hypot(fw,fd)*0.5+1, top:y+H});
     }
   }
@@ -3014,6 +3019,12 @@ function buildTrackBuildings(rng){
     arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(b.tint); m.setColorAt(k,_c); });
     m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true;
     m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); });
+  if(roofs.length){                                                        // rooftop AC/plant boxes on the trackside towers
+    const rb=new THREE.InstancedMesh(box, new THREE.MeshStandardMaterial({color:0x51555e, roughness:0.9, metalness:0.1}), roofs.length);
+    const q=new THREE.Quaternion(), pv=new THREE.Vector3(), sv=new THREE.Vector3(), m=new THREE.Matrix4();
+    roofs.forEach((r,k)=>{ q.setFromAxisAngle(_UP,r.ang); sv.set(2.0*r.s,1.1*r.s,1.5*r.s);
+      pv.set(r.x,r.top,r.z); m.compose(pv,q,sv); rb.setMatrixAt(k,m); });
+    rb.instanceMatrix.needsUpdate=true; scene.add(rb); }
 }
 function buildVariantVeg(){
   const v=currentTheme?currentTheme.label:null; if(!v) return;
