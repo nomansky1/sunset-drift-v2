@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.59-->
+<!--BUILD:v9.60-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.59';
+(function(){ const BUILD='v9.60';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1063,7 +1063,8 @@
 
 <!-- Three.js loaded as a classic global script so this single file runs anywhere,
      including when opened directly on a phone (no JS-module / file:// restrictions). -->
-<script src="vendor/three-bundle-r147.js"></script>
+<script src="vendor/three-bundle-r155.js"></script>
+<script>/* r155 STAGED MIGRATION SHIMS: keep pre-r152 color + pre-r155 lighting semantics; the modern-pipeline retune is its own later gated stage */ if(window.THREE&&THREE.ColorManagement) THREE.ColorManagement.enabled=false;</script>
 <!-- post-processing (bloom) — classic global builds for r137 -->
 <!-- model + HDRI loaders -->
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -2308,10 +2309,10 @@ function buildTrackMeshes(){
     shader.uniforms.uScroll={value:0}; shader.uniforms.uSpd={value:0}; roadMat.userData.shader=shader;
     shader.fragmentShader='uniform float uScroll; uniform float uSpd;\n'+shader.fragmentShader.replace('#include <emissivemap_fragment>',
       `#include <emissivemap_fragment>
-       { float cx=abs(vUv.x-0.5);
+       { float cx=abs(vMapUv.x-0.5);
          float band=smoothstep(0.34,0.39,cx)*(1.0-smoothstep(0.43,0.47,cx));          // a band near each road shoulder
-         float chev=step(0.66, fract(vUv.y*3.0 - uScroll));                            // dashes rushing toward the camera
-         totalEmissiveRadiance += vec3(1.0,0.74,0.34) * band * chev * uSpd * 2.4; }`);
+         float chev=step(0.66, fract(vMapUv.y*3.0 - uScroll));                         // dashes rushing toward the camera
+         totalEmissiveRadiance += vec3(1.0,0.74,0.34) * band * chev * uSpd * 2.4; }`);   // r152+ per-map varyings: vUv -> vMapUv (roadMat always has a map)
   };
   roadMatRef=roadMat;
   const rth=currentTheme?currentTheme.theme:'city';        // per-theme road tint (same texture everywhere = consistent)
@@ -5413,6 +5414,7 @@ function init(){
   camera=new THREE.PerspectiveCamera(CONFIG.fovBase, innerWidth/innerHeight, 0.15, 3000);   // low near plane so the close/hood cam doesn't clip the road on a crest (was 0.5 -> background showed at the bottom)
   scene.add(camera);                                       // camera children (cockpit dash) only render when the camera is in the scene
   renderer=new THREE.WebGLRenderer({canvas:document.getElementById('game'), antialias:!isTouch, powerPreference:'high-performance'});
+  if('useLegacyLights' in renderer) renderer.useLegacyLights=true;   // r155 shim (see header) — flipped off in the modern-lighting stage
   renderer.setPixelRatio(lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled=!lowQuality; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
