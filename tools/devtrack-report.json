@@ -1,0 +1,950 @@
+{
+ "generated": "2026-07-09",
+ "pass": 17,
+ "total": 18,
+ "notes": {
+  "waiver": "roadster (Classic_LeMans): front wheels sit inside covered fender skirts by design \u2014 bbox bottom reads 0.22-0.31 above the floor point and x is asymmetric in the SOURCE mesh; visually seated (see Downloads/sunset-drift-v2-devtrack/360_roadster.jpg). Accepted 2026-07-09."
+ },
+ "vehicles": [
+  {
+   "raw": "hatch",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.807,
+       0.391,
+       1.461
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.807,
+       0.391,
+       1.461
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       -0.807,
+       0.391,
+       -1.299
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.807,
+       0.391,
+       -1.299
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "pickup",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.807,
+       0.391,
+       1.461
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.807,
+       0.391,
+       1.461
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       -0.807,
+       0.391,
+       -1.299
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.807,
+       0.391,
+       -1.299
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "sport",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.776,
+       0.35,
+       1.039
+      ],
+      "ext": 0.59,
+      "bottom": 0.055,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       -0.775,
+       0.369,
+       -1.615
+      ],
+      "ext": 0.556,
+      "bottom": 0.091,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.779,
+       0.35,
+       1.029
+      ],
+      "ext": 0.59,
+      "bottom": 0.055,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       0.782,
+       0.367,
+       -1.616
+      ],
+      "ext": 0.55,
+      "bottom": 0.092,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "suv",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.807,
+       0.391,
+       1.461
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.807,
+       0.391,
+       1.461
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       -0.807,
+       0.391,
+       -1.299
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.807,
+       0.391,
+       -1.299
+      ],
+      "ext": 0.782,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "super",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.782,
+       0.36,
+       -1.7
+      ],
+      "ext": 0.603,
+      "bottom": 0.064,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       -0.772,
+       0.35,
+       1.012
+      ],
+      "ext": 0.586,
+      "bottom": 0.057,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.782,
+       0.377,
+       -1.393
+      ],
+      "ext": 0.784,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     },
+     {
+      "pos": [
+       0.773,
+       0.354,
+       1.208
+      ],
+      "ext": 0.721,
+      "bottom": 0.005,
+      "name": "wheel_front_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "taxi",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.721,
+       0.341,
+       -1.41
+      ],
+      "ext": 0.693,
+      "bottom": 0,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       -0.721,
+       0.341,
+       1.097
+      ],
+      "ext": 0.693,
+      "bottom": 0,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.721,
+       0.341,
+       -1.41
+      ],
+      "ext": 0.693,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     },
+     {
+      "pos": [
+       0.721,
+       0.341,
+       1.097
+      ],
+      "ext": 0.693,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "racer",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.731,
+       0.353,
+       -1.335
+      ],
+      "ext": 0.745,
+      "bottom": 0.015,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       -0.759,
+       0.402,
+       1.656
+      ],
+      "ext": 0.701,
+      "bottom": 0.064,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.79,
+       0.338,
+       -1.177
+      ],
+      "ext": 0.523,
+      "bottom": 0.076,
+      "name": "wheel_rear_R"
+     },
+     {
+      "pos": [
+       0.825,
+       0.196,
+       1.354
+      ],
+      "ext": 0.626,
+      "bottom": 0.003,
+      "name": "wheel_front_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "roadster",
+   "pass": false,
+   "fails": [
+    "x-asymmetry 0.14",
+    "wheel_front_L floats 0.225",
+    "wheel_front_R floats 0.311"
+   ],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.852,
+       0.537,
+       1.891
+      ],
+      "ext": 0.645,
+      "bottom": 0.225,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       -0.824,
+       0.254,
+       -1.37
+      ],
+      "ext": 0.781,
+      "bottom": 0,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.708,
+       0.553,
+       2.121
+      ],
+      "ext": 0.486,
+      "bottom": 0.311,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       0.87,
+       0.164,
+       -1.38
+      ],
+      "ext": 0.588,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "muscle",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.81,
+       0.372,
+       -1.307
+      ],
+      "ext": 0.822,
+      "bottom": 0.005,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       -0.783,
+       0.378,
+       1.317
+      ],
+      "ext": 0.81,
+      "bottom": 0.006,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.83,
+       0.388,
+       1.268
+      ],
+      "ext": 0.975,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       0.916,
+       0.379,
+       -1.306
+      ],
+      "ext": 0.768,
+      "bottom": 0.007,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "police",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.833,
+       0.386,
+       -1.453
+      ],
+      "ext": 0.78,
+      "bottom": 0,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       -0.833,
+       0.386,
+       1.505
+      ],
+      "ext": 0.78,
+      "bottom": 0,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.833,
+       0.386,
+       -1.453
+      ],
+      "ext": 0.78,
+      "bottom": 0,
+      "name": "wheel_rear_R"
+     },
+     {
+      "pos": [
+       0.833,
+       0.386,
+       1.505
+      ],
+      "ext": 0.78,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "racecar",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.748,
+       0.334,
+       1.327
+      ],
+      "ext": 0.742,
+      "bottom": 0.003,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       -0.748,
+       0.352,
+       -1.313
+      ],
+      "ext": 0.748,
+      "bottom": 0.001,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.746,
+       0.346,
+       1.321
+      ],
+      "ext": 0.762,
+      "bottom": 0,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       0.749,
+       0.35,
+       -1.328
+      ],
+      "ext": 0.777,
+      "bottom": 0.001,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "kart",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -1.232,
+       0.676,
+       -1.523
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-back-right"
+     },
+     {
+      "pos": [
+       1.232,
+       0.676,
+       0.682
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-front-left"
+     },
+     {
+      "pos": [
+       -1.232,
+       0.676,
+       0.682
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-front-right"
+     },
+     {
+      "pos": [
+       1.232,
+       0.676,
+       -1.523
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-back-left"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "firetruck",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.744,
+       0.406,
+       1.299
+      ],
+      "ext": 0.812,
+      "bottom": 0,
+      "name": "wheel-front-right"
+     },
+     {
+      "pos": [
+       0.744,
+       0.406,
+       1.299
+      ],
+      "ext": 0.812,
+      "bottom": 0,
+      "name": "wheel-front-left"
+     },
+     {
+      "pos": [
+       -0.744,
+       0.406,
+       -0.893
+      ],
+      "ext": 0.812,
+      "bottom": 0,
+      "name": "wheel-back-right"
+     },
+     {
+      "pos": [
+       0.744,
+       0.406,
+       -0.893
+      ],
+      "ext": 0.812,
+      "bottom": 0,
+      "name": "wheel-back-left"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "ambulance",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.637,
+       0.425,
+       1.465
+      ],
+      "ext": 0.849,
+      "bottom": 0,
+      "name": "wheel-front-right"
+     },
+     {
+      "pos": [
+       0.637,
+       0.425,
+       1.465
+      ],
+      "ext": 0.849,
+      "bottom": 0,
+      "name": "wheel-front-left"
+     },
+     {
+      "pos": [
+       -0.637,
+       0.425,
+       -1.253
+      ],
+      "ext": 0.849,
+      "bottom": 0,
+      "name": "wheel-back-right"
+     },
+     {
+      "pos": [
+       0.637,
+       0.425,
+       -1.253
+      ],
+      "ext": 0.849,
+      "bottom": 0,
+      "name": "wheel-back-left"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "kartB",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.848,
+       0.4,
+       1.823
+      ],
+      "ext": 0.991,
+      "bottom": 0.078,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       -1,
+       0.411,
+       -1.755
+      ],
+      "ext": 0.799,
+      "bottom": 0.012,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.886,
+       0.414,
+       1.428
+      ],
+      "ext": 0.898,
+      "bottom": 0.098,
+      "name": "wheel_front_R"
+     },
+     {
+      "pos": [
+       0.998,
+       0.407,
+       -1.755
+      ],
+      "ext": 0.791,
+      "bottom": 0.012,
+      "name": "wheel_rear_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "kartC",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.719,
+       0.374,
+       -1.588
+      ],
+      "ext": 0.749,
+      "bottom": 0.003,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       -0.746,
+       0.372,
+       1.232
+      ],
+      "ext": 0.776,
+      "bottom": 0,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       0.761,
+       0.374,
+       -1.588
+      ],
+      "ext": 0.752,
+      "bottom": 0.004,
+      "name": "wheel_rear_R"
+     },
+     {
+      "pos": [
+       0.804,
+       0.254,
+       1.227
+      ],
+      "ext": 0.678,
+      "bottom": 0.002,
+      "name": "wheel_front_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "kartD",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -0.75,
+       0.433,
+       1.205
+      ],
+      "ext": 0.8,
+      "bottom": 0.033,
+      "name": "wheel_front_L"
+     },
+     {
+      "pos": [
+       -0.743,
+       0.445,
+       -1.225
+      ],
+      "ext": 0.807,
+      "bottom": 0.043,
+      "name": "wheel_rear_L"
+     },
+     {
+      "pos": [
+       0.704,
+       0.441,
+       -1.233
+      ],
+      "ext": 0.793,
+      "bottom": 0.045,
+      "name": "wheel_rear_R"
+     },
+     {
+      "pos": [
+       0.816,
+       0.43,
+       1.209
+      ],
+      "ext": 0.798,
+      "bottom": 0.031,
+      "name": "wheel_front_R"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  },
+  {
+   "raw": "kartE",
+   "pass": true,
+   "fails": [],
+   "metrics": {
+    "wheels": [
+     {
+      "pos": [
+       -1.232,
+       0.676,
+       0.682
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-front-right"
+     },
+     {
+      "pos": [
+       1.232,
+       0.676,
+       0.682
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-front-left"
+     },
+     {
+      "pos": [
+       -1.232,
+       0.676,
+       -1.523
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-back-right"
+     },
+     {
+      "pos": [
+       1.232,
+       0.676,
+       -1.523
+      ],
+      "ext": 1.352,
+      "bottom": 0,
+      "name": "wheel-back-left"
+     }
+    ],
+    "spun": 4,
+    "steered": 2,
+    "frontCount": 2
+   }
+  }
+ ]
+}
