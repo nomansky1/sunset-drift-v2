@@ -363,6 +363,9 @@
     background:rgba(12,8,20,.86); border:1px solid rgba(150,170,255,.35);
     box-shadow:0 8px 30px rgba(0,0,0,.5), 0 0 24px rgba(110,150,255,.18); }
   #trackPreview.hidden{ display:none; }
+  .cotd{ position:absolute; top:4px; left:6px; font-size:10px; font-weight:900; letter-spacing:.4px; color:#ffd24a;
+    text-shadow:0 0 8px rgba(255,180,40,.8), 0 1px 3px #000; animation:cotdPulse 2s ease-in-out infinite; }
+  @keyframes cotdPulse{ 0%,100%{opacity:.85} 50%{opacity:1; transform:scale(1.08)} }
   #tpTxt{ display:flex; flex-direction:column; gap:2px; max-width:46vw; }
   #tpTxt b{ font-size:15px; letter-spacing:.6px; color:#fff; text-shadow:0 0 10px rgba(150,180,255,.6); }
   #tpTxt span{ font-size:10.5px; color:#b8b0d0; letter-spacing:.4px; }
@@ -929,6 +932,14 @@
         <div class="trackBtn" data-i="12"><div class="ic">🗽</div><b>MANHATTAN GP</b><span>New York Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
         <div class="trackBtn" data-i="13"><div class="ic">🌴</div><b>OCEAN DRIVE GP</b><span>Miami Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
         <div class="trackBtn" data-i="14"><div class="ic">🏰</div><b>VIEJO SAN JUAN</b><span>Puerto Rico Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="15"><div class="ic">🎡</div><b>WESTMINSTER GP</b><span>London Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="16"><div class="ic">🗼</div><b>CHAMPS CIRCUIT</b><span>Paris Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="17"><div class="ic">🗾</div><b>SHIBUYA SPRINT</b><span>Tokyo Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="18"><div class="ic">🧱</div><b>MITTE RING</b><span>Berlin Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="19"><div class="ic">🏙️</div><b>DOWNTOWN DUBAI</b><span>Dubai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="20"><div class="ic">⛰️</div><b>COPACABANA RUN</b><span>Rio Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="21"><div class="ic">❄️</div><b>TVERSKAYA LOOP</b><span>Moscow Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="22"><div class="ic">🕌</div><b>FORT DISTRICT</b><span>Mumbai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
       </div>
       <div id="nextCarBtn">NEXT · CHOOSE CAR &nbsp;▸</div>
     </div>
@@ -1688,8 +1699,36 @@ const TRACKS=[
   { name:'VIEJO SAN JUAN', sub:'PUERTO RICO · REAL STREETS (1814m)', theme:'coast', groundHex:'#c9a06a', fog:0xffc890, water:-4,
     sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88], osm:'sanjuan', hwMul:1.2,
     ctrl:[[186.0,-86.6],[38.8,-83.2],[35.4,-58.0],[19.1,-60.3],[5.9,17.5],[-179.0,5.9],[-186.0,53.0],[-24.4,84.4],[156.8,86.6],[186.0,-84.4]] },   // REAL Old San Juan loop (OSM) — (c) OpenStreetMap contributors, ODbL
+
+  { name:'WESTMINSTER GP', sub:'LONDON · REAL STREETS (3890m)', theme:'city', groundHex:'#3a3d44', fog:0xb9c4cf, sky:{top:0x4a5a78,bot:0xd8dde6,sun:0xfff2d8}, sun:[-0.4,0.28,-0.8], osm:'london', hwMul:1.2,
+    ctrl:[[-93.3,-170.0],[-54.7,-115.4],[32.3,-168.5],[139.4,26.7],[140.6,52.4],[97.2,118.8],[68.2,186.0],[-111.4,177.2],[-113.1,69.6],[-139.7,-19.7],[-131.6,-51.7],[-140.6,-108.6],[-130.0,-109.0],[-133.7,-186.0],[-95.8,-170.9]] },   // REAL london streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'CHAMPS CIRCUIT', sub:'PARIS · REAL STREETS (3343m)', theme:'city', groundHex:'#3c3a40', fog:0xe6c89a, sky:{top:0x39306a,bot:0xffc47e,sun:0xfff2c8}, sun:[0.4,0.14,-0.86], osm:'paris', hwMul:1.2,
+    ctrl:[[-141.7,120.4],[-17.6,23.2],[-10.1,24.1],[-9.1,17.0],[24.9,-10.1],[55.7,4.7],[104.5,-55.0],[119.6,-45.9],[156.0,-59.4],[167.0,-73.7],[179.1,-72.0],[186.0,-120.4],[103.8,-102.4],[42.8,-81.0],[36.1,-84.1],[-121.4,6.1],[-186.0,75.8],[-144.0,117.9]] },   // REAL paris streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'SHIBUYA SPRINT', sub:'TOKYO · REAL STREETS (3500m)', theme:'city', groundHex:'#2b2e37', fog:0xc26a8a, sky:{top:0x241a4a,bot:0xc25a80,sun:0xffd8ea}, sun:[0.5,0.12,-0.85], osm:'tokyo', hwMul:1.2,
+    ctrl:[[177.7,-73.4],[124.2,-15.4],[150.4,5.1],[97.8,49.6],[75.0,59.2],[79.5,75.5],[53.0,82.3],[54.5,111.4],[3.1,119.2],[-55.0,115.9],[-126.4,146.5],[-143.7,131.5],[-147.9,141.3],[-173.2,131.0],[-186.0,141.3],[-183.1,96.7],[-139.5,77.9],[-121.2,85.7],[-106.3,58.8],[-53.6,73.6],[-32.7,40.6],[-30.9,11.3],[-16.0,13.5],[-8.3,-24.5],[27.0,-40.3],[33.3,-66.5],[79.0,-53.7],[107.1,-83.2],[113.8,-105.4],[159.1,-146.5],[182.8,-116.9],[186.0,-101.4],[166.3,-86.2],[176.9,-74.3]] },   // REAL tokyo streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'MITTE RING', sub:'BERLIN · REAL STREETS (4033m)', theme:'city', groundHex:'#35383f', fog:0xcfdae2, sky:{top:0x2f7fd0,bot:0xd2e8f7,sun:0xfff4e0}, sun:[-0.5,0.34,-0.78], osm:'berlin', hwMul:1.2,
+    ctrl:[[70.1,-180.5],[74.9,-122.6],[15.1,-64.8],[-53.5,-30.8],[-92.5,-21.5],[-89.2,8.0],[-164.6,18.3],[-156.1,50.6],[-166.1,73.4],[-151.8,94.2],[-159.3,183.1],[-154.8,186.0],[-20.2,141.7],[35.9,131.8],[32.4,100.7],[96.9,93.9],[85.9,-14.5],[166.1,-29.8],[153.4,-130.9],[163.7,-186.0],[73.7,-180.8]] },   // REAL berlin streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'DOWNTOWN DUBAI', sub:'DUBAI · REAL STREETS (3907m)', theme:'desert', groundHex:'#c89a5a', fog:0xe8b878, sky:{top:0x3a4a86,bot:0xf0a860,sun:0xfff0c0}, sun:[0.4,0.16,-0.85], osm:'dubai', hwMul:1.2,
+    ctrl:[[123.6,-88.8],[27.8,-144.6],[11.7,-121.0],[-4.9,-107.9],[-100.5,-88.2],[-142.4,-62.8],[-171.5,-21.1],[-180.9,34.6],[-186.0,37.9],[-151.3,99.8],[-116.8,129.6],[-69.2,144.6],[-18.8,139.0],[8.9,125.3],[48.4,89.4],[103.3,56.3],[126.7,31.9],[186.0,-52.4],[143.9,-77.1]] },   // REAL dubai streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'COPACABANA RUN', sub:'RIO · REAL STREETS (3235m)', theme:'beach', groundHex:'#e8d2a0', fog:0xbfe0e8, water:-6, sky:{top:0x2a8fd8,bot:0xcfeeff,sun:0xfff4d0}, sun:[0.3,0.18,-0.9], osm:'rio', hwMul:1.2,
+    ctrl:[[186.0,-121.6],[73.2,-51.4],[-11.2,11.4],[-85.4,87.3],[-135.6,157.7],[-186.0,126.7],[-138.8,47.8],[-93.3,-2.2],[-50.0,-40.3],[43.4,-105.0],[86.2,-110.2],[166.2,-157.7],[183.6,-125.5]] },   // REAL rio streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'TVERSKAYA LOOP', sub:'MOSCOW · REAL STREETS (3617m)', theme:'snow', groundHex:'#e8eef5', fog:0xdfeaf2, sky:{top:0x4a6a9a,bot:0xdce8f4,sun:0xffffff}, sun:[0.2,0.34,-0.78], osm:'moscow', hwMul:1.2,
+    ctrl:[[-186.0,-21.9],[-162.8,3.3],[-143.1,46.6],[-118.0,69.2],[-120.9,87.9],[57.4,134.2],[114.5,162.3],[186.0,73.0],[93.2,-78.0],[63.0,-119.1],[18.4,-162.3],[-21.7,-124.5],[-33.2,-131.5],[-183.9,-23.5]] },   // REAL moscow streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'FORT DISTRICT', sub:'MUMBAI · REAL STREETS (3541m)', theme:'city', groundHex:'#403a34', fog:0xe8b880, sky:{top:0x50306a,bot:0xffb060,sun:0xfff0c8}, sun:[0.45,0.12,-0.86], osm:'mumbai', hwMul:1.2,
+    ctrl:[[184.8,-130.1],[183.9,-143.7],[154.4,-139.9],[79.5,-162.4],[27.4,-90.7],[-83.8,-101.7],[-186.0,36.9],[-167.9,55.9],[-168.3,89.2],[-112.0,121.6],[-41.7,132.6],[55.1,162.4],[88.0,152.3],[110.3,131.6],[136.4,33.8],[170.1,-17.2],[186.0,-110.1]] },   // REAL mumbai streets (OSM) — (c) OpenStreetMap contributors, ODbL
 ];
 let _trackDiffCache=null;
+// CITY OF THE DAY — the featured real-city circuit rotates daily (UTC): star badge + DOUBLE COINS.
+// This is the retention loop on top of the OSM self-growth pipeline: new cities auto-join the rotation.
+function cityOfTheDay(){ const osm=[]; TRACKS.forEach((t,i)=>{ if(t.osm) osm.push(i); });
+  if(!osm.length) return -1;
+  const day=Math.floor(Date.now()/86400000);
+  return osm[day%osm.length]; }
+function markCityOfTheDay(){ const c=cityOfTheDay(); if(c<0) return;
+  document.querySelectorAll('.trackBtn').forEach(b=>{ const i=+b.dataset.i;
+    let st=b.querySelector('.cotd');
+    if(i===c){ if(!st){ st=document.createElement('div'); st.className='cotd'; st.textContent='⭐ 2X'; b.appendChild(st); } }
+    else if(st) st.remove(); }); }
 function trackDifficulties(){ if(_trackDiffCache) return _trackDiffCache;
   const curv=(ctrl)=>{ try{ const v=ctrl.map(pt=>new THREE.Vector3(pt[0],0,pt[1]));
     const pts=new GDCatmullRom3(v,true,'centripetal',0.5).getSpacedPoints(160); let sm=0, n=pts.length;
@@ -5378,8 +5417,10 @@ function finishRace(){
     saveDaily(); }
   const styleCoins=Math.round(runScore/40);              // drift/style pays
   const diffMul = Math.max(1, TRACK_DIFF[currentTrack]||1);   // harder (later) tracks pay more; easy tracks still pay base
-  const reward=Math.round((([240,140,90,50][r-1]||30) + Math.max(0, Math.round((22-(bestLap||raceTime))*8)) + styleCoins) * diffMul);   // place + lap-speed + style, scaled by track difficulty
+  const cotdMul = (typeof cityOfTheDay==='function' && currentTrack===cityOfTheDay()) ? 2 : 1;   // CITY OF THE DAY pays double
+  const reward=Math.round((([240,140,90,50][r-1]||30) + Math.max(0, Math.round((22-(bestLap||raceTime))*8)) + styleCoins) * diffMul) * cotdMul;   // place + lap-speed + style, scaled by track difficulty
   coins+=reward; saveCoins(); renderCoins();
+  if(cotdMul>1) popup('⭐ CITY OF THE DAY — 2X COINS!','#ffd24a');
   try{ if(typeof LB!=='undefined' && !brActive) LB.submitTrack(trackKeyNow(), lbName(), Math.round(raceTime*1000)); }catch(e){}
   { const rb=document.getElementById('resBoard'); if(rb){ rb.innerHTML='';                     // WORLD BOARD, right on the results card
     if(typeof LB!=='undefined' && LB.remote && !brActive){ const bk=trackKeyNow(), me=lbName();
@@ -5861,6 +5902,7 @@ function init(){
     if(champ.active){ currentTrack=champ.order[champ.round]; selectTrack(currentTrack); startGame(); } else showMenu(); });
   document.querySelectorAll('.trackBtn').forEach(b=> b.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     const i=+b.dataset.i; if(trackLocked(i)){ popup('🔒 WIN THE TRACK BEFORE IT TO UNLOCK','#ffd24a'); return; } selectTrack(i); showTrackPreview(i); }));
+  try{ markCityOfTheDay(); }catch(e){}
   const togDiff=document.getElementById('togDiff'), DIFF_ORDER=['easy','normal','hard'];
   const applyDiff=()=>{ togDiff.textContent='⚙ '+difficulty.toUpperCase(); togDiff.classList.toggle('on', difficulty!=='normal'); const D=DIFF[difficulty]||DIFF.normal; aiCap=D.cap; aiAggro=D.aggro||1; };
   try{ const d=localStorage.getItem('sd_diff'); if(d&&DIFF[d]) difficulty=d; }catch(_){}

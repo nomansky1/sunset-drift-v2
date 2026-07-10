@@ -11,6 +11,14 @@ CITIES = {
   'nyc':     {'bbox':(40.7520,-73.9950,40.7650,-73.9750), 'name':'MANHATTAN GP',  'sub':'NEW YORK · STREET CIRCUIT'},
   'miami':   {'bbox':(25.7710,-80.1360,25.7860,-80.1240), 'name':'OCEAN DRIVE GP','sub':'MIAMI · SOUTH BEACH STREETS'},
   'sanjuan': {'bbox':(18.4580,-66.1250,18.4700,-66.0950), 'name':'VIEJO SAN JUAN','sub':'PUERTO RICO · OLD TOWN STREETS', 'target':(1800,6500), 'sep':42},
+  'london':  {'bbox':(51.5000,-0.1350,51.5150,-0.1050), 'name':'WESTMINSTER GP','sub':'LONDON · REAL STREETS'},
+  'paris':   {'bbox':(48.8650,2.2950,48.8760,2.3200),   'name':'CHAMPS CIRCUIT','sub':'PARIS · REAL STREETS'},
+  'tokyo':   {'bbox':(35.6550,139.6900,35.6650,139.7100),'name':'SHIBUYA SPRINT','sub':'TOKYO · REAL STREETS'},
+  'berlin':  {'bbox':(52.5120,13.3700,52.5250,13.4000), 'name':'MITTE RING','sub':'BERLIN · REAL STREETS'},
+  'dubai':   {'bbox':(25.1900,55.2650,25.2050,55.2850), 'name':'DOWNTOWN DUBAI','sub':'DUBAI · REAL STREETS'},
+  'rio':     {'bbox':(-22.9750,-43.1950,-22.9620,-43.1750),'name':'COPACABANA RUN','sub':'RIO · REAL STREETS'},
+  'moscow':  {'bbox':(55.7550,37.5900,55.7700,37.6150), 'name':'TVERSKAYA LOOP','sub':'MOSCOW · REAL STREETS'},
+  'mumbai':  {'bbox':(18.9250,72.8250,18.9400,72.8400), 'name':'FORT DISTRICT','sub':'MUMBAI · REAL STREETS'},
 }
 HIGHWAYS = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified'
 

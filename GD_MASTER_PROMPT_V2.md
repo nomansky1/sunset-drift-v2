@@ -91,3 +91,14 @@ lint (`node --check` all scripts) → local serve → feature-specific numeric/p
 DEVCAM screenshots (before/after) → golden gates where rendering changed → deploy → live
 poll → owner-visible summary with screenshots. Marketing clips (DEVCAM.seq) captured for any
 visually striking phase.
+
+## Self-improvement mechanism (added 2026-07-10, owner directive)
+The game GROWS from the real world on demand — no hand-built tracks needed:
+1. `tools/osm-circuit.py <city>` — add a bbox to CITIES, run it: pulls the real road graph from
+   OpenStreetMap (never Google), finds a raceable loop (length/self-separation gated), emits ctrl[].
+2. Bake the ctrl[] as a TRACKS entry with `osm:'<key>'` — the city's real OSM downtown district and
+   any hero landmark auto-attach; hwMul:1.2 widens real streets; preview card + DEVCAM clips are data-driven.
+3. `gd-blender/build_landmarks.py` — add a procedural PBR hero per city (reference-based).
+4. Gates: DEVTRACK.runAll() for models, __phys() fingerprint, AI-lap sim per track.
+RETENTION: CITY OF THE DAY rotates daily through every osm track (star badge + 2X coins) — each new
+city added by this pipeline automatically joins the rotation. 11 real cities live as of v9.88.
