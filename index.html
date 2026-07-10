@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.94-->
+<!--BUILD:v9.95-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -259,6 +259,10 @@
   .cta2{ pointer-events:auto; font-size:min(4.2vw,18px); font-weight:800; padding:12px 24px; border-radius:6px;
          background:rgba(255,255,255,.10); color:#fff; border:1.5px solid rgba(255,255,255,.22); box-shadow:none; animation:none; cursor:pointer; }
   .cta2.battle{ background:linear-gradient(160deg,rgba(158,44,32,.62),rgba(96,26,32,.55)); border-color:rgba(255,116,84,.6); color:#ffcbbf; }
+  #brZone{ font-size:11px; font-weight:800; letter-spacing:1.2px; color:#8fd0ff; text-shadow:0 1px 4px #000; }
+  #brZone.tight{ color:#ff6a5a; animation:cotdPulse 1.1s ease-in-out infinite; }
+  #brArrows{ position:fixed; inset:0; z-index:21; pointer-events:none; display:none; }
+  .brArrow{ position:fixed; font-size:22px; opacity:0; transition:opacity .15s linear; text-shadow:0 0 8px rgba(255,90,60,.8), 0 1px 3px #000; will-change:transform; }
   #brHud{ position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:22; pointer-events:none; display:none; flex-direction:column; align-items:center; gap:5px; }
   #brHud.show{ display:flex; }
   #brAlive{ font-weight:900; letter-spacing:1px; font-size:min(4.4vw,16px); color:#ffd24a; text-shadow:0 2px 6px #000; }
@@ -901,7 +905,8 @@
 </div>
 
 <!-- menu -->
-<div id="brHud"><div id="brAlive">🔥 6 ALIVE</div><div id="brHpWrap"><div id="brHpFill"></div></div><div id="brRockets">🚀 ×3</div></div>
+<div id="brHud"><div id="brAlive">🔥 6 ALIVE</div><div id="brHpWrap"><div id="brHpFill"></div></div><div id="brRockets">🚀 ×3</div><div id="brZone">ZONE 300m</div></div>
+<div id="brArrows"><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span></div>
 <div id="lowHp"></div>
 <div id="hitMark">✕</div>
 <div id="killFeed"></div>
@@ -1113,7 +1118,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.94';
+(function(){ const BUILD='v9.95';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5343,7 +5348,7 @@ function battleFrame(dt){ raceTime+=dt;
   updateHpBars();
   if(cinePass) cinePass.uniforms.uSpeed.value=clamp(player.vel.length()/CONFIG.topSpeed-0.35,0,1)*0.5;
   if(camShake>0) camShake=Math.max(0,camShake-dt*1.6);
-  updateCamera(dt); updateBRHud(); }
+  updateCamera(dt); updateBRHud(); updateBRArrows(); }
 /* ---- BR DESTRUCTIBLE PROPS: per-object HP; rockets/gatling/ramming break them with real explosions
    (flash + layered fireball + rising smoke column + flung debris + fading ground scorch) ---- */
 let brProps=[], brScorch=[], brSmokes=[];
@@ -5471,7 +5476,25 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
   const bar=document.getElementById('brHpFill'); if(bar) bar.style.width=(f*100)+'%';
   const al=document.getElementById('brAlive'); if(al) al.textContent='🔥 '+brAlive+' ALIVE';
   const rk=document.getElementById('brRockets'); if(rk){ rk.textContent='🚀 ×'+(player.rkAmmo||0); rk.classList.toggle('empty',(player.rkAmmo||0)<=0); }
-  const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0; }
+  const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0;
+  const zn=document.getElementById('brZone'); if(zn){ zn.textContent='ZONE '+Math.round(zoneR)+'m'; zn.classList.toggle('tight', zoneR<BR.zoneMin+40); } }
+// off-screen ENEMY DIRECTION ARROWS at the screen edge (red = hunter locked on you) — combat awareness QoL
+const _brV=new THREE.Vector3();
+function updateBRArrows(){ const cont=document.getElementById('brArrows'); if(!cont) return;
+  if(!brActive || state!=='race'){ cont.style.display='none'; return; }
+  cont.style.display='block';
+  const kids=cont.children; let k=0;
+  for(const c of cars){ if(c.isPlayer || !c.alive || k>=kids.length) continue;
+    _brV.set(c.pos.x,(c.visY||0)+1,c.pos.y).project(camera);
+    const behind=_brV.z>1; let x=_brV.x, y=_brV.y; if(behind){ x=-x; y=-y; }
+    const el=kids[k];
+    if(!behind && Math.abs(x)<0.9 && Math.abs(y)<0.82){ el.style.opacity='0'; k++; continue; }   // visible on screen -> no arrow
+    const cx=Math.max(-0.9,Math.min(0.9,x)), cy=Math.max(-0.82,Math.min(0.82,y));
+    el.style.left=((cx*0.5+0.5)*innerWidth)+'px'; el.style.top=((-cy*0.5+0.5)*innerHeight)+'px';
+    el.style.transform='translate(-50%,-50%) rotate('+(Math.atan2(x,y)*180/Math.PI).toFixed(1)+'deg)';
+    el.style.color = c._hunter ? '#ff5a4d' : '#ffc23b';
+    el.style.opacity='0.9'; k++; }
+  for(;k<kids.length;k++) kids[k].style.opacity='0'; }
 function finishRace(){
   player.finished=true; state='finished'; hidePauseUI();
   const solo = timeTrial || !!window.NETRACE;              // no AI field -> "1st of 4" would be fake
