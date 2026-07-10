@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.08-->
+<!--BUILD:v10.09-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1152,7 +1152,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.08';
+(function(){ const BUILD='v10.09';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2501,7 +2501,7 @@ function buildTrackMeshes(){
   const roadMat=new THREE.MeshStandardMaterial({ map:roadMap, color:_rt,
     normalMap:grain('textures/road_normal.jpg'), normalScale:new THREE.Vector2(1.0,1.0),
     roughnessMap:grain('textures/road_rough.jpg'), roughness:0.88, metalness:0.0, envMapIntensity:0.12,   // FULLY MATTE asphalt (owner: no gloss on any road) - only the rain mode below may add wet sheen
-    emissiveMap:roadMap, emissive:_rt, emissiveIntensity:0.42, side:THREE.DoubleSide,   // DoubleSide is LOAD-BEARING: the ribbon index order winds face-DOWN, so FrontSide backface-culled the whole road from above (players raced on the bare terrain corridor)
+    emissiveMap:roadMap, emissive:_rt, emissiveIntensity:nightMode?0.42:0.15, side:THREE.DoubleSide,   // DoubleSide is LOAD-BEARING: the ribbon index order winds face-DOWN, so FrontSide backface-culled the whole road from above (players raced on the bare terrain corridor)
     polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4 }); // render ON TOP of the terrain corridor (no z-fight bleed-through)
   roadMat.onBeforeCompile=(shader)=>{                    // scrolling speed chevrons on the road shoulders (fade in with speed)
     shader.uniforms.uScroll={value:0}; shader.uniforms.uSpd={value:0}; roadMat.userData.shader=shader;
@@ -3077,11 +3077,13 @@ function buildCity(rng){
   const addInst=(tex,emis,arr,emI,rough,metal)=>{ if(!arr.length) return;
     const mat=new THREE.MeshStandardMaterial({map:tex, emissiveMap:emis, emissive:0xffffff, emissiveIntensity:emI, roughness:rough, metalness:metal});
     const m=new THREE.InstancedMesh(box, mat, arr.length);
-    arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(b.tint); m.setColorAt(k,_c); });
+    const tCap=nightMode?1:0.8;                                     // day: cap near-white walls — full-white albedo clips face-on to the low sun
+    arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(Math.min(b.tint,tCap)); m.setColorAt(k,_c); });
     m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true;
     m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); };
-  facadeTex.forEach((tex,fi)=>{ const g=TYPES[fi]==='glass'; addInst(tex.map, tex.emis, towers[fi], 0.85, g?0.28:0.92, g?0.32:0.03); });   // walls lit by the scene; ONLY windows glow (natural dusk)
-  storeTex.forEach((tex,si)=> addInst(tex, tex, stores[si], 0.28, 0.72, 0.05));
+  { const dayE=nightMode?0.85:0.30;                                       // daylight: windows barely lit — 0.85 emissive walls flooded the frame through bloom (owner: overexposed)
+  facadeTex.forEach((tex,fi)=>{ const g=TYPES[fi]==='glass'; addInst(tex.map, tex.emis, towers[fi], dayE, g?0.28:0.92, g?0.32:0.03); }); }
+  storeTex.forEach((tex,si)=> addInst(tex, tex, stores[si], nightMode?0.32:0.16, 0.72, 0.05));
   // NYC rooftop water towers (a North-American skyline signature — other cities skip them)
   if(waterTowers.length && nation().wt){ const _m=new THREE.Matrix4();
     const tankMat=new THREE.MeshStandardMaterial({color:0x5a4636, roughness:0.9});
@@ -3093,7 +3095,7 @@ function buildCity(rng){
   // glowing billboards on the road-facing walls
   billboards.slice(0,16).forEach((b,k)=>{
     const tex=makeBillboardTexture(k);
-    const mat=new THREE.MeshStandardMaterial({map:tex, emissiveMap:tex, emissive:0xffffff, emissiveIntensity:0.9, side:THREE.DoubleSide, roughness:0.5});
+    const mat=new THREE.MeshStandardMaterial({map:tex, emissiveMap:tex, emissive:0xffffff, emissiveIntensity:nightMode?0.9:0.4, side:THREE.DoubleSide, roughness:0.5});
     const bw=Math.min(b.fw,14), pl=new THREE.Mesh(new THREE.PlaneGeometry(bw,bw*0.5), mat);
     const dx=trackCentroid.x-b.x, dz=trackCentroid.y-b.z, dl=Math.hypot(dx,dz)||1, ox=dx/dl, oz=dz/dl;
     pl.position.set(b.x+ox*(b.fw*0.5+0.3), b.y, b.z+oz*(b.fd*0.5+0.3)); pl.rotation.y=Math.atan2(ox,oz); scene.add(pl);
@@ -3271,9 +3273,10 @@ function buildTrackBuildings(rng){
     }
   }
   facadeTex.forEach((tex,fi)=>{ const arr=rows[fi]; if(!arr.length) return; const g=TYPES[fi]==='glass';
-    const mat=new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff, emissiveIntensity:0.85, roughness:g?0.28:0.9, metalness:g?0.32:0.03});
+    const mat=new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.85:0.30, roughness:g?0.28:0.9, metalness:g?0.32:0.03});
     const m=new THREE.InstancedMesh(box, mat, arr.length);
-    arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(b.tint); m.setColorAt(k,_c); });
+    const tCap2=nightMode?1:0.8;
+    arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(Math.min(b.tint,tCap2)); m.setColorAt(k,_c); });
     m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true;
     m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); });
   if(roofs.length){                                                        // rooftop AC/plant boxes on the trackside towers
@@ -3935,8 +3938,8 @@ function buildSky(){
     for(let i=0;i<7;i++){ const yy=S*0.52 + i*(S*0.46/7); x2.fillRect(0, yy, S, 2.4+i*1.7); }
     x2.globalCompositeOperation='source-over';
     const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
-    const sun=new THREE.Mesh(new THREE.PlaneGeometry(300,300),
-      new THREE.MeshBasicMaterial({map:tex, transparent:true, fog:false, depthWrite:false, blending:THREE.AdditiveBlending}));
+    const sun=new THREE.Mesh(new THREE.PlaneGeometry(260,260),
+      new THREE.MeshBasicMaterial({map:tex, transparent:true, opacity:0.82, fog:false, depthWrite:false, blending:THREE.AdditiveBlending}));   // additive disc capped — at full punch it flooded half the frame through bloom (owner: overexposed)
     sun.position.copy(sunPos); sun.lookAt(0,sunPos.y,0); scene.add(sun);
   }
   return sunDir;
@@ -3996,10 +3999,10 @@ function buildLights(sunDir){
     scene.add(new THREE.HemisphereLight(0x3a4a7a, 0x05060c, 0.5*Math.PI));
     scene.add(new THREE.AmbientLight(0x2a3358, 0.16*Math.PI));
   } else {
-    scene.add(new THREE.HemisphereLight(0xcdd9ec, 0x4a3a28, 0.98*Math.PI));   // cool sky + warm ground bounce; lowered fill = deeper form shadows (cinematic, not flat)
+    scene.add(new THREE.HemisphereLight(0xcdd9ec, 0x4a3a28, 0.74*Math.PI));   // cool sky + warm ground bounce; lowered fill = deeper form shadows (cinematic, not flat)
     scene.add(new THREE.AmbientLight(0xffffff, 0.07*Math.PI));                 // just a sliver of flat lift (was 0.18 — it was washing out the form shadows)
   }
-  const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, (nightMode?0.55:2.5)*Math.PI);   // golden-hour key (~3800K)
+  const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, (nightMode?0.55:1.4)*Math.PI);   // golden-hour key (~3800K); 2.5PI clipped every sun-facing wall to white (owner: overexposed)
   // raise the SHADOW-casting light to a healthy elevation (grounded shadows) while the visual sun disc stays low/dramatic
   const ld=new THREE.Vector3(sunDir.x, Math.max(sunDir.y, 0.62), sunDir.z).normalize();
   sun.position.set(trackCentroid.x+ld.x*160, ld.y*160, trackCentroid.y+ld.z*160);
@@ -5985,7 +5988,7 @@ function buildComposer(){
       composer.addPass(new THREE.RenderPass(scene,camera));
     }
     const res=new THREE.Vector2(Math.round(innerWidth*(isTouch?0.5:0.75)), Math.round(innerHeight*(isTouch?0.5:0.75)));
-    bloomPass=new THREE.UnrealBloomPass(res, isTouch?0.55:0.7, 0.4, 0.82);  // strength, radius, threshold
+    bloomPass=new THREE.UnrealBloomPass(res, isTouch?0.4:0.6, isTouch?0.26:0.34, 0.86);  // strength, radius, threshold — phones run bloom at HALF res so the kernel smears 2x wider: keep it tight (owner: overexposed flood)
     composer.addPass(bloomPass);
     cinePass=new THREE.ShaderPass(CINEMATIC_SHADER);
     cinePass.uniforms.uVignette.value=isTouch?0.24:0.5;
@@ -6141,17 +6144,18 @@ function buildWorld(idx){
   const warm   = t==='coast';                                       // bright sunset (still glowy, but don't clip white)
   if(nightMode){
     renderer.toneMappingExposure = 1.0;
-    if(bloomPass){ bloomPass.strength = isTouch?0.65:0.8; bloomPass.threshold = 0.7; }   // neon + lights pop (not car paint)
+    if(bloomPass){ bloomPass.strength = isTouch?0.5:0.8; bloomPass.threshold = isTouch?0.78:0.7; }   // neon + lights pop (not car paint); phones tighter — half-res bloom floods
   } else {
-    const mTrim = isTouch ? (bright?0.85:warm?0.90:0.96) : 1;            // PHONES clip the bright themes (owner: overexposed on mobile) -> trim exposure per tier
-    renderer.toneMappingExposure = (bright ? 0.68 : warm ? 0.78 : 0.90) * mTrim;   // owner: daytime sun/glare too bright
+    const mTrim = isTouch ? (bright?0.80:warm?0.84:0.88) : 1;            // PHONES clip the bright themes (owner: overexposed on mobile) -> trim exposure per tier
+    renderer.toneMappingExposure = (bright ? 0.68 : warm ? 0.78 : 0.88) * mTrim;   // owner: daytime sun/glare too bright
     if(bloomPass){
-      bloomPass.strength  = bright ? 0.2 : warm ? 0.26 : (isTouch?0.32:0.4);
-      bloomPass.threshold = bright ? 0.99 : warm ? 0.96 : 0.93;   // dusk: only the brightest lit windows bloom (not a neon smear)
+      bloomPass.strength  = bright ? 0.16 : warm ? 0.2 : 0.2;
+      bloomPass.threshold = bright ? 0.99 : 0.97;   // dusk: only the brightest lit windows bloom (not a neon smear)
+      bloomPass.radius    = 0.22;                    // wide radius smeared half the frame at half-res (owner phone shot)
     }
   }
   if(cinePass){                                            // per-ENVIRONMENT cinematic grade (contrast, saturation, teal-orange, vignette)
-    const G={ city:[1.18,0.98,1.30,0.50], coast:[1.14,1.04,1.15,0.46], docks:[1.12,0.96,0.90,0.44],
+    const G={ city:[1.18,0.98,1.12,0.50], coast:[1.14,1.04,1.15,0.46], docks:[1.12,0.96,0.90,0.44],
       beach:[1.10,1.08,0.75,0.40], forest:[1.13,1.02,0.90,0.46], snow:[1.10,0.92,0.70,0.42], desert:[1.16,1.03,1.25,0.50] }[t]||[1.16,0.97,1.15,0.48];
     cinePass.uniforms.uContrast.value=G[0]; cinePass.uniforms.uSat.value=G[1];
     cinePass.uniforms.uTone.value=G[2]; cinePass.uniforms.uVignette.value=G[3]; }
