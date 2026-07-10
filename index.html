@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.99-->
+<!--BUILD:v10.00-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1121,7 +1121,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.99';
+(function(){ const BUILD='v10.00';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2434,6 +2434,7 @@ function buildRoadSkirts(){
   scene.add(buildRibbon(CONFIG.roadHalfWidth, -1.0, null, null, null, 1, null, dirt, true));   // thin underside deck -> the road has real thickness seen from below (no paper edge)
 }
 function buildTrackMeshes(){
+  if(typeof brActive!=='undefined' && brActive) return;   // BR = full city, no racetrack/kerbs/barriers (owner)
   const loader=new THREE.TextureLoader();
   const aniso=(renderer.capabilities&&renderer.capabilities.getMaxAnisotropy)?renderer.capabilities.getMaxAnisotropy():4;
   // REAL asphalt: lane-marking diffuse (across the width once) + tiled normal/roughness relief
@@ -2584,6 +2585,7 @@ function padChevronTex(){
   return new THREE.CanvasTexture(c);
 }
 function buildBoostPads(){
+  if(typeof brActive!=='undefined' && brActive) return;
   boostPads=[]; padMesh=null;
   const count=8;
   for(let k=0;k<count;k++){ const idx=Math.floor((k+0.5)/count*SAMPLES)%SAMPLES; const p=samplePts[idx];
@@ -2615,7 +2617,8 @@ function buildWrenches(){                                  // REPAIR pickups: fl
 }
 function updateWrenches(dt){ for(const w of wrenchList){ if(!w.alive){ w.t-=dt; if(w.t<=0){ w.alive=true; w.g.visible=true; } continue; }
   w.g.rotation.y+=dt*2.2; w.g.position.y=1.15+(sampleElev[w.idx]||0)+Math.sin(performance.now()*0.003+w.idx)*0.15; } }
-function buildPickups(){ buildWrenches();
+function buildPickups(){ if(typeof brActive!=='undefined' && brActive) return;
+  buildWrenches();
   coinList=[]; coinMesh=null;
   const count=isTouch?20:26;
   for(let k=0;k<count;k++){ const idx=Math.floor((k+0.35)/count*SAMPLES)%SAMPLES; const p=samplePts[idx], n=sampleNorm[idx];
@@ -3273,7 +3276,9 @@ function buildGrassFill(){
     sv.set(sc, 0.8+rng()*0.8, sc); pv.set(g[0], g[1]+0.02, g[2]); m.compose(pv,q,sv); im.setMatrixAt(k,m); });
   im.instanceMatrix.needsUpdate=true; scene.add(im);
 }
-function scatterProps(){ const rng=mulberry32(7777);
+function scatterProps(){ if(typeof brActive!=='undefined' && brActive) return;   // BR city builds its own props
+  const rng=mulberry32(7777);
+  void 0;
   const th=currentTheme?currentTheme.theme:'city';
   if(th==='coast') buildCoast(rng);
   else if(th==='beach') buildCoast(rng);                 // palms line the beach road
@@ -4158,7 +4163,8 @@ function placeLowCityBackdrop(rng){
   const dk=(typeof nationDistrictKey==='function')?nationDistrictKey():null;    // race a nation with a REAL city -> its actual OSM district is the downtown
   const srcRaw=(dk&&districtRaw[dk])||lowCityRaw, srcBox=(dk&&districtBox[dk])||lowCityBox;
   if(!srcRaw||!srcBox) return;
-  brColliders=[]; brGrid=null;                                     // rebuilt with the district below (BR building collision)
+  brColliders=[]; brGrid=null;
+  if(brActive) return;                                             // BR: buildBRCity() replaces the (tiny diorama) district entirely
   const sz=new THREE.Vector3(); srcBox.getSize(sz); const span=Math.max(sz.x,sz.z)||100;
   // fit the downtown into the ROAD-FREE space around the centroid. The new non-ring tracks cut INTO the
   // infield — the old blind trackRadius*1.45 sizing put 60-80% of the road INSIDE this collision-less mesh
@@ -5353,6 +5359,105 @@ function battleFrame(dt){ raceTime+=dt;
   if(cinePass) cinePass.uniforms.uSpeed.value=clamp(player.vel.length()/CONFIG.topSpeed-0.35,0,1)*0.5;
   if(camShake>0) camShake=Math.max(0,camShake-dt*1.6);
   updateCamera(dt); updateBRHud(); updateBRArrows(); }
+/* ---- BR CITY: a full-scale street-grid city built for battle (owner: no racetrack in BR — roads,
+   sidewalks, parks, properly-scaled buildings, parked cars, and exact building collision) ---- */
+let brCity=null, _brFacadeMats=null;
+function brFacadeMats(){ if(_brFacadeMats) return _brFacadeMats;
+  const rng=mulberry32(424242), TYPES=['glass','brick','concrete','limestone','dark','terracotta','sandstone','steel'];
+  _brFacadeMats=TYPES.map(t=>{ const tex=makeFacadeTexture(rng,t);
+    const m=new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff,
+      emissiveIntensity:t==='glass'?0.32:0.03, roughness:t==='glass'?0.28:0.92, metalness:t==='glass'?0.35:0.0});
+    SHARED.add(m); SHARED.add(tex.map); SHARED.add(tex.emis); return m; });
+  return _brFacadeMats; }
+function clearBRCity(){ if(brCity){ scene.remove(brCity); brCity.traverse(o=>{ if(o.isMesh&&o.geometry&&!SHARED.has(o.geometry)) o.geometry.dispose(); }); brCity=null; } }
+function brSolidAt(grid,x,z){ const gx=((x-grid.x0)/grid.cell)|0, gz=((z-grid.z0)/grid.cell)|0;
+  if(gx<0||gx>=grid.w||gz<0||gz>=grid.h) return false; return !!grid.solid[gz*grid.w+gx]; }
+function buildBRCity(){
+  clearBRCity();
+  const g=new THREE.Group(); brCity=g;
+  const rng=mulberry32(20260710);
+  const BLOCK=46, ROAD=16, CELL=BLOCK+ROAD, N=isTouch?5:7, half=(N*CELL)/2;
+  const cx=zoneCX, cz=zoneCZ;
+  // ONE ground plane with the whole street grid BAKED into a canvas (asphalt, dashes, sidewalk aprons)
+  { const S=2048, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
+    const u=S/(N*CELL);
+    x.fillStyle='#33363c'; x.fillRect(0,0,S,S);
+    for(let i=0;i<2600;i++){ x.fillStyle='rgba(255,255,255,'+(rng()*0.03)+')'; x.fillRect(rng()*S, rng()*S, 2,2); }
+    for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
+      const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u;
+      x.fillStyle='#8d8d86'; x.fillRect(bx-3.5*u, bz-3.5*u, bw+7*u, bw+7*u); }
+    x.fillStyle='#d8d8ce';
+    for(let i=0;i<=N;i++){ const off=(i*CELL+ROAD/2)*u;
+      for(let d=0;d<S;d+=8*u){ x.fillRect(off-0.18*u, d, 0.36*u, 3.6*u); x.fillRect(d, off-0.18*u, 3.6*u, 0.36*u); } }
+    const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=isTouch?2:8;
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL, N*CELL),
+      new THREE.MeshStandardMaterial({map:tex, roughness:0.96, metalness:0}));
+    ground.rotation.x=-Math.PI/2; ground.position.set(cx, 0.06, cz); ground.receiveShadow=!isTouch; g.add(ground);
+  }
+  const mats=brFacadeMats();
+  const treeTrunks=[], treeTops=[];
+  const parkM=new THREE.MeshStandardMaterial({color:0x4e7a3a, roughness:0.95});
+  const walkM=new THREE.MeshStandardMaterial({color:0x8d8d86, roughness:0.9});
+  const grid={x0:cx-half, z0:cz-half, cell:4.2, w:Math.ceil(N*CELL/4.2), h:Math.ceil(N*CELL/4.2)};
+  grid.solid=new Uint8Array(grid.w*grid.h);
+  function markSolid(x0,z0,x1,z1){ const g0x=Math.max(0,((x0-grid.x0)/grid.cell)|0), g1x=Math.min(grid.w-1,((x1-grid.x0)/grid.cell)|0);
+    const g0z=Math.max(0,((z0-grid.z0)/grid.cell)|0), g1z=Math.min(grid.h-1,((z1-grid.z0)/grid.cell)|0);
+    for(let gz=g0z;gz<=g1z;gz++) for(let gx=g0x;gx<=g1x;gx++) grid.solid[gz*grid.w+gx]=1; }
+  for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
+    const bx=cx-half+ROAD+ix*CELL+BLOCK/2, bz=cz-half+ROAD+iz*CELL+BLOCK/2;
+    const walk=new THREE.Mesh(new THREE.BoxGeometry(BLOCK+7,0.22,BLOCK+7), walkM);
+    walk.position.set(bx,0.11,bz); walk.receiveShadow=!isTouch; g.add(walk);
+    if(rng()<0.16){                                              // PARK block: lawn + trees
+      const lawn=new THREE.Mesh(new THREE.BoxGeometry(BLOCK-2,0.26,BLOCK-2), parkM);
+      lawn.position.set(bx,0.16,bz); g.add(lawn);
+      const nT=5+((rng()*5)|0);
+      for(let t=0;t<nT;t++){ const tx=bx+(rng()-0.5)*(BLOCK-10), tz=bz+(rng()-0.5)*(BLOCK-10), th=3+rng()*3;
+        treeTrunks.push({x:tx,z:tz,h:th}); treeTops.push({x:tx,z:tz,h:th,r:1.8+rng()*1.6}); }
+      continue;
+    }
+    const centerBias=1.55 - (Math.hypot(bx-cx,bz-cz)/half);      // downtown core is TALLER
+    const nB=1+((rng()*3)|0);
+    for(let b=0;b<nB;b++){
+      const w=14+rng()*(nB>1?16:30), d=14+rng()*(nB>1?16:30);
+      const px=bx+(rng()-0.5)*Math.max(2,(BLOCK-w-4)), pz=bz+(rng()-0.5)*Math.max(2,(BLOCK-d-4));
+      const h=8+Math.pow(rng(),1.6)*36*Math.max(0.4,centerBias);
+      const m=mats[(rng()*mats.length)|0];
+      const bld=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+      bld.position.set(px, h/2+0.2, pz); bld.castShadow=!isTouch; bld.receiveShadow=false;
+      g.add(bld);
+      markSolid(px-w/2-0.6, pz-d/2-0.6, px+w/2+0.6, pz+d/2+0.6);
+    }
+  }
+  if(treeTrunks.length){                                         // trees: 2 instanced meshes total
+    const tg=new THREE.CylinderGeometry(0.28,0.4,1,6), tm=new THREE.MeshStandardMaterial({color:0x5a4028, roughness:0.9});
+    const bg=new THREE.IcosahedronGeometry(1,1), bm=new THREE.MeshStandardMaterial({color:0x4d8a3a, roughness:0.9});
+    const ti=new THREE.InstancedMesh(tg,tm,treeTrunks.length), bi=new THREE.InstancedMesh(bg,bm,treeTops.length);
+    const M=new THREE.Matrix4(), P=new THREE.Vector3(), Q=new THREE.Quaternion(), SC=new THREE.Vector3();
+    treeTrunks.forEach((t,i)=>{ P.set(t.x,t.h/2+0.2,t.z); SC.set(1,t.h,1); M.compose(P,Q,SC); ti.setMatrixAt(i,M); });
+    treeTops.forEach((t,i)=>{ P.set(t.x,t.h+t.r*0.7,t.z); SC.set(t.r,t.r,t.r); M.compose(P,Q,SC); bi.setMatrixAt(i,M); });
+    ti.castShadow=bi.castShadow=!isTouch; g.add(ti); g.add(bi);
+  }
+  // PARKED CARS along the roads ("add other cars"): static clones from the NPC pool
+  const pool=['hatch','pickup','taxi','suv','truck','police'].filter(k=>fleetRaw[k]);
+  if(pool.length){ let placed=0; const capN=isTouch?8:16;
+    for(let i=0;i<N && placed<capN; i++){
+      for(const side of [-1,1]){ if(placed>=capN) break;
+        const rx=cx-half+i*CELL+ROAD/2 + side*(ROAD/2-2.4);
+        const rz=cz-half+ROAD+(rng()*(N-0.5))*CELL - CELL*0.25;
+        if(brSolidAt(grid,rx,rz)) continue;
+        const npc=fleetRaw[pool[(rng()*pool.length)|0]].clone();
+        const bb=new THREE.Box3().setFromObject(npc), szv=new THREE.Vector3(); bb.getSize(szv);
+        const sc=4.1/Math.max(szv.x,szv.z,0.001);
+        npc.scale.setScalar(sc); npc.position.set(rx, -bb.min.y*sc+0.06, rz); npc.rotation.y=(side>0?0:Math.PI);
+        npc.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; } });
+        g.add(npc); markSolid(rx-1.4, rz-2.4, rx+1.4, rz+2.4); placed++;
+      } }
+  }
+  scene.add(g);
+  brGrid=grid;                                                    // EXACT collision from the layout itself
+  let solidN=0; for(let i=0;i<grid.solid.length;i++) solidN+=grid.solid[i];
+  console.log('[BR] city built:', N+'x'+N, 'blocks; solid cells', solidN);
+}
 /* ---- BR DESTRUCTIBLE PROPS: per-object HP; rockets/gatling/ramming break them with real explosions
    (flash + layered fireball + rising smoke column + flung debris + fading ground scorch) ---- */
 let brProps=[], brScorch=[], brSmokes=[];
@@ -5423,7 +5528,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   while(cars.length < BR.cars){ cars.push(makeCar(CONFIG.colors.ai[cars.length%CONFIG.colors.ai.length], false)); }   // spawn extra fighters for the battle (races stay at 4)
   upgradeCars();                                                         // build real models + liveries/kits for the new cars
   selectTrack(currentTrack);                                            // battle in the SELECTED environment (any track's world = the open arena)
-  zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone(); buildBRProps();
+  zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone(); buildBRCity(); buildBRProps();
   audio.start(); if(audio.setCar) audio.setCar((CARS[selectedCar]||{}).raw||'');
   playModeMusic('audio/combat.mp3', currentTheme?currentTheme.theme:'city');   // dedicated combat loop (falls back to theme beat)
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1; player.brakeLvl=0; player.turboMul=1;
@@ -5440,7 +5545,9 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
     mountGun(c.rig);
     mountArmor(c.rig, c.isPlayer ? Math.max(1, warsenal.arm||0) : (1+(i%2)));
     mountNitro(c.rig);
-    const a=(i/cars.length)*6.283, rr=trackRadius*0.5; c.pos.set(zoneCX+Math.cos(a)*rr, zoneCZ+Math.sin(a)*rr); c.heading=Math.atan2(zoneCX-c.pos.x, zoneCZ-c.pos.y); c.vel.set(0,0); c.air=0; c.trackIdx=i*47; syncCarMesh(c); });
+    const a=(i/cars.length)*6.283, rr=trackRadius*0.5; c.pos.set(zoneCX+Math.cos(a)*rr, zoneCZ+Math.sin(a)*rr);
+    for(let n=0;n<30 && brGrid && brSolidAt(brGrid,c.pos.x,c.pos.y); n++){ c.pos.x+=Math.cos(a)*4.2; c.pos.y+=Math.sin(a)*4.2; }   // never spawn inside a building
+    c.heading=Math.atan2(zoneCX-c.pos.x, zoneCZ-c.pos.y); c.vel.set(0,0); c.air=0; c.trackIdx=i*47; syncCarMesh(c); });
   buildHpBars(); for(let i=0;i<3;i++) spawnPickup(i%2?'rkt':'heal'); brSupplyT=9;   // seed the arena with crates + arm the first supply drop
   brAlive=cars.length;
   raceTime=0; countdown=3.0; goTimer=0; lastBeepN=99; state='countdown';
@@ -5451,7 +5558,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   _f.set(Math.sin(player.heading),Math.cos(player.heading)); _scy=null;
   camera.position.set(player.pos.x-_f.x*CONFIG.camDist, CONFIG.camHeight, player.pos.y-_f.y*CONFIG.camDist); }
 function endBattle(){ brActive=false; document.body.classList.remove('inbattle');
-  clearBRProps();
+  clearBRProps(); clearBRCity(); brGrid=null;
   brShells.forEach(s=>scene.remove(s.m)); brShells=[];
   debris.forEach(d=>scene.remove(d.m)); debris=[];
   rockets.forEach(r=>{scene.remove(r.mesh); disposeGroup(r.mesh);}); rockets=[];
