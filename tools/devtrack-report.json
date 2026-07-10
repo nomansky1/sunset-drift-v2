@@ -946,5 +946,27 @@
     "frontCount": 2
    }
   }
+ ],
+ "audits": [
+  {
+   "date": "2026-07-10",
+   "build": "v9.94",
+   "fleet": "17/18 pass, rigidity 0 on all 18 (roadster waiver unchanged)",
+   "perf": {
+    "desktopFPS": {
+     "manhattan": 61,
+     "docks": 61,
+     "goldenMile": 61
+    },
+    "drawCalls": {
+     "goldenMile": 328,
+     "manhattan": 554,
+     "shibuya": 466,
+     "docks": 388,
+     "alpine": 98
+    },
+    "verdict": "calls above paper budget on city circuits but instancing in place + 60fps locked; phones covered by isTouch paths + dynamic resolution; no trim applied"
+   }
+  }
  ]
 }
