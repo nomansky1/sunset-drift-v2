@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.04-->
+<!--BUILD:v10.05-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -467,16 +467,22 @@
   .gdLogo{ font-family:"Arial Black","Archivo Black",system-ui,sans-serif; font-weight:900; font-style:italic; text-transform:uppercase;
     line-height:.8; letter-spacing:-1px; text-align:center; pointer-events:none; user-select:none; -webkit-user-select:none; }
   .gdLogo .l1,.gdLogo .l2{ display:block;
-    background:linear-gradient(177deg,#9df6ff 0%,#ff86ec 44%,#ff2f9c 100%); -webkit-background-clip:text; background-clip:text;
+    background:linear-gradient(120deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.95) 50%, rgba(255,255,255,0) 58%),
+               linear-gradient(177deg,#9df6ff 0%,#ff86ec 44%,#ff2f9c 100%);
+    background-size:280% 100%, 100% 100%; background-position:120% 0, 0 0;
+    animation:gdShine 4.6s ease-in-out infinite; -webkit-background-clip:text; background-clip:text;
     -webkit-text-fill-color:transparent; color:transparent; -webkit-text-stroke:1px rgba(255,255,255,.22);
     filter:drop-shadow(1.5px 2px 0 #c81f74) drop-shadow(3px 4px 0 #8f1552) drop-shadow(4.5px 6px 0 #5c0d38)
            drop-shadow(0 0 15px rgba(255,90,210,.85)) drop-shadow(0 0 32px rgba(120,240,255,.45)); }
   .gdLogo .l1{ font-size:min(12vw,50px); } .gdLogo .l2{ font-size:min(15vw,62px); margin-top:-.05em; }
-  .gdLogo .sub{ display:block; font-style:normal; font-weight:800; letter-spacing:3px; font-size:min(3.4vw,13px);
+  .gdLogo .sub{ display:block; white-space:nowrap; font-style:normal; font-weight:800; letter-spacing:3px; font-size:min(3.4vw,13px);
     color:#cfe9ff; -webkit-text-fill-color:#cfe9ff; margin-top:5px; filter:drop-shadow(0 0 8px rgba(120,220,255,.7)); }
   #gdLogoGlobe{ position:absolute; top:calc(env(safe-area-inset-top,6px) + 6px); left:50%; transform:translateX(-50%); z-index:3;
     animation:gdPulse 3.2s ease-in-out infinite; }
   @keyframes gdPulse{ 0%,100%{ filter:none; } 50%{ filter:brightness(1.12); } }
+  @keyframes gdShine{ 0%,55%{ background-position:120% 0, 0 0; } 80%,100%{ background-position:-60% 0, 0 0; } }   /* chrome glint sweeping the letters */
+  #gdLogoGlobe .l1,#gdLogoGlobe .l2{ animation:gdShine 4.6s ease-in-out infinite, gdFloat 5.4s ease-in-out infinite; }
+  @keyframes gdFloat{ 0%,100%{ transform:translateY(0) rotate(-.4deg); } 50%{ transform:translateY(-4px) rotate(.4deg); } }
   /* ---------- 3D WORLD GLOBE SELECTOR ---------- */
   #globeModal{ position:fixed; inset:0; z-index:70; display:none;
     background:radial-gradient(circle at 50% 38%, #0d1030 0%, #060414 62%, #030209 100%); }
@@ -513,7 +519,9 @@
     border-radius:11px; cursor:pointer; letter-spacing:1px; flex:0 0 auto; }
   #globeRace:active{ transform:scale(.95); }
   #globeActions{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,10px) + 12px);
-    display:flex; gap:8px; z-index:2; flex-wrap:wrap; justify-content:center; max-width:96vw; }
+    display:flex; gap:8px; z-index:2; flex-wrap:wrap; justify-content:center;
+    width:max-content; max-width:96vw; }   /* width:max-content — abs-pos shrink-to-fit at left:50% otherwise gets HALF the viewport and stacks the buttons on phones */
+  @media (max-width:430px){ .gaBtn{ font-size:11px; padding:10px 11px; } #globeActions{ gap:6px; } }
   .gaBtn{ pointer-events:auto; background:rgba(24,20,40,.72); border:1px solid rgba(255,255,255,.22); color:#e8e2f4;
     font-weight:900; font-size:12px; letter-spacing:.6px; padding:11px 15px; border-radius:11px; cursor:pointer;
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); white-space:nowrap; }
@@ -1127,7 +1135,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.04';
+(function(){ const BUILD='v10.05';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
