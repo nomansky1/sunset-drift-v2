@@ -19,6 +19,17 @@ CITIES = {
   'rio':     {'bbox':(-22.9750,-43.1950,-22.9620,-43.1750),'name':'COPACABANA RUN','sub':'RIO · REAL STREETS'},
   'moscow':  {'bbox':(55.7550,37.5900,55.7700,37.6150), 'name':'TVERSKAYA LOOP','sub':'MOSCOW · REAL STREETS'},
   'mumbai':  {'bbox':(18.9250,72.8250,18.9400,72.8400), 'name':'FORT DISTRICT','sub':'MUMBAI · REAL STREETS'},
+  'seoul':        {'bbox':(37.5650,126.9750,37.5760,126.9950), 'name':'JONGNO SPRINT',  'sub':'SEOUL · REAL STREETS', 'sep':85},
+  'shanghai':     {'bbox':(31.2280,121.4680,31.2400,121.4880), 'name':'BUND CIRCUIT',   'sub':'SHANGHAI · REAL STREETS', 'sep':80},
+  'rome':         {'bbox':(41.8950,12.4700,41.9060,12.4900),   'name':'ROMA CENTRO',    'sub':'ROME · REAL STREETS'},
+  'barcelona':    {'bbox':(41.3850,2.1600,41.3960,2.1800),     'name':'EIXAMPLE GRID',  'sub':'BARCELONA · REAL STREETS'},
+  'mexicocity':   {'bbox':(19.4270,-99.1500,19.4380,-99.1300), 'name':'ZOCALO GP',      'sub':'MEXICO CITY · REAL STREETS', 'sep':100, 'target':(1800,4600)},
+  'buenosaires':  {'bbox':(-34.6120,-58.3850,-34.6000,-58.3650),'name':'MICROCENTRO GP','sub':'BUENOS AIRES · REAL STREETS'},
+  'sydney':       {'bbox':(-33.8750,151.2000,-33.8620,151.2150),'name':'HARBOUR CIRCUIT','sub':'SYDNEY · REAL STREETS'},
+  'cairo':        {'bbox':(30.0400,31.2330,30.0520,31.2480),   'name':'NILE DOWNTOWN',  'sub':'CAIRO · REAL STREETS'},
+  'havana':       {'bbox':(23.1300,-82.3650,23.1420,-82.3500), 'name':'HABANA VIEJA',   'sub':'HAVANA · REAL STREETS'},
+  'toronto':      {'bbox':(43.6450,-79.3900,43.6560,-79.3750), 'name':'BAY STREET GP',  'sub':'TORONTO · REAL STREETS', 'sep':85},
+  'johannesburg': {'bbox':(-26.2100,28.0350,-26.1980,28.0500), 'name':'JOZI CBD',       'sub':'JOHANNESBURG · REAL STREETS', 'sep':70},
 }
 HIGHWAYS = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified'
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.05-->
+<!--BUILD:v10.06-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1135,7 +1135,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.05';
+(function(){ const BUILD='v10.06';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1306,7 +1306,7 @@ const TRACK_HOME=[16,16,13,3,20,34,33,26,32,2,0,5];             // menu-launch h
 const NATION={
   us:{district:{city:'nyc',coast:'miami',beach:'miami'}, grp:'usa',  wt:true, city:{city:'NEW YORK',coast:'MIAMI',beach:'MIAMI BEACH',desert:'LAS VEGAS',docks:'SEATTLE',forest:'PORTLAND',snow:'ASPEN'},
       biz:["JOE'S PIZZA",'5TH AVE DELI','LIBERTY BANK','BROADWAY CAFE','DUANE DRUGS','THE PLAZA HOTEL','24HR BODEGA','HARLEM JAZZ']},
-  ca:{grp:'usa',  wt:true, city:{snow:'WHISTLER',forest:'VANCOUVER',city:'TORONTO'},
+  ca:{district:'toronto', grp:'usa',  wt:true, city:{snow:'WHISTLER',forest:'VANCOUVER',city:'TORONTO'},
       biz:["TIM'S COFFEE",'MAPLE DELI','ROYAL BANK','POUTINE HOUSE','REXALL DRUGS','HOTEL FAIRMONT','DEPANNEUR 24H','HOCKEY BAR']},
   gb:{district:'london', grp:'europe', city:{city:'LONDON'},
       biz:['FISH & CHIPS','THE CROWN PUB','BARCLAYS BANK','THE TEA ROOM','BOOTS PHARMACY','THE SAVOY','TESCO EXPRESS','SOHO JAZZ']},
@@ -1314,36 +1314,36 @@ const NATION={
       biz:['BOULANGERIE','CAFE DE PARIS','BANQUE DE PARIS','LE BISTRO','PHARMACIE','HOTEL RITZ','TABAC 24H','MOULIN CLUB']},
   de:{district:'berlin', grp:'europe', city:{city:'BERLIN'},
       biz:['CURRYWURST HAUS','BACKEREI BROT','DEUTSCHE BANK','KAFFEEHAUS','APOTHEKE','HOTEL ADLON','SPATI 24H','TECHNO KLUB']},
-  it:{grp:'europe', city:{coast:'AMALFI',city:'ROME'},
+  it:{district:'rome', grp:'europe', city:{coast:'AMALFI',city:'ROME'},
       biz:['PIZZERIA NAPOLI','GELATERIA LUNA','BANCA ROMA','CAFFE ESPRESSO','FARMACIA','GRAND HOTEL','ALIMENTARI','OPERA BAR']},
-  es:{grp:'europe', city:{coast:'BARCELONA',city:'MADRID'},
+  es:{district:'barcelona', grp:'europe', city:{coast:'BARCELONA',city:'MADRID'},
       biz:['TAPAS BAR','PANADERIA SOL','CAIXA BANC','CAFE CORTADO','FARMACIA','HOTEL SOL','MERCADO 24H','FLAMENCO CLUB']},
   ru:{district:'moscow', grp:'europe', city:{snow:'MOSCOW',city:'MOSCOW'},
       biz:['PELMENI HOUSE','BLINI CAFE','SBER BANK','SAMOVAR TEA','APTEKA','HOTEL METROPOL','PRODUKTY 24','BALALAIKA BAR']},
   jp:{district:'tokyo', grp:'phonk', city:{city:'TOKYO'},
       biz:['RAMEN ICHIBAN','SUSHI ZEN','PACHINKO HALL','KARAOKE ECHO','KONBINI 24H','HOTEL SAKURA','DONKI MARKET','GOLDEN GAI BAR']},
-  kr:{grp:'phonk', city:{city:'SEOUL'},
+  kr:{district:'seoul', grp:'phonk', city:{city:'SEOUL'},
       biz:['KIMCHI HOUSE','NOODLE BAR','K-BANK','BUBBLE TEA','OLIVE PHARMACY','HOTEL LOTTE','GS MART 24H','K-POP KARAOKE']},
-  cn:{grp:'phonk', city:{city:'SHANGHAI'},
+  cn:{district:'shanghai', grp:'phonk', city:{city:'SHANGHAI'},
       biz:['DIM SUM HOUSE','TEA PAVILION','BANK OF CHINA','NOODLE EXPRESS','PHARMACY 999','JADE HOTEL','NIGHT MARKET','DRAGON CLUB']},
   in:{district:'mumbai', grp:'india', city:{desert:'JAIPUR',city:'MUMBAI'},
       biz:['CHAI POINT','TANDOOR PALACE','SPICE BAZAAR','BOLLYWOOD CINEMA','MUMBAI PHARMA','HOTEL RAJ','SAREE EMPORIUM','CRICKET CLUB']},
   ae:{district:'dubai', grp:'arabic', city:{desert:'DUBAI'},
       biz:['GOLD SOUK','BURJ CAFE','OASIS BANK','DESERT ROSE','AL NOOR MARKET','MIRAGE HOTEL','FALCON CLUB','SHEIKH PLAZA']},
-  eg:{grp:'arabic', city:{desert:'CAIRO'},
+  eg:{district:'cairo', grp:'arabic', city:{desert:'CAIRO'},
       biz:['KEBAB HOUSE','KOSHARY CORNER','BANK MISR','AHWA CAFE','NILE PHARMACY','PYRAMID HOTEL','SOUK 24H','OUD LOUNGE']},
-  za:{grp:'afro',  city:{desert:'KAROO',city:'JOHANNESBURG'},
+  za:{district:'johannesburg', grp:'afro',  city:{desert:'KAROO',city:'JOHANNESBURG'},
       biz:['BRAAI SHACK','BILTONG & CO','STANDARD BANK','ROOIBOS CAFE','CLICKS PHARMA','SAFARI LODGE','SPAZA 24H','KWAITO CLUB']},
-  au:{grp:'usa',  city:{desert:'ALICE SPRINGS',city:'SYDNEY'},
+  au:{district:'sydney', grp:'usa',  city:{desert:'ALICE SPRINGS',city:'SYDNEY'},
       biz:['MEAT PIE SHOP','BONDI SURF CO','OUTBACK BANK','FLAT WHITE CAFE','CHEMIST WHSE','HOTEL BONDI','SERVO 24H','PUB ROCK BAR']},
   br:{district:'rio', grp:'funk',  city:{beach:'RIO DE JANEIRO',swamp:'MANAUS',city:'SAO PAULO'},
       biz:['PADARIA PAO','CHURRASCARIA','BANCO DO BRASIL','ACAI CAFE','DROGARIA','COPACABANA HOTEL','MERCADO 24H','SAMBA CLUB']},
-  mx:{grp:'latin', city:{beach:'CANCUN',desert:'BAJA',city:'MEXICO CITY'},
+  mx:{district:'mexicocity', grp:'latin', city:{beach:'CANCUN',desert:'BAJA',city:'MEXICO CITY'},
       biz:['TAQUERIA EL PASTOR','PANADERIA ROSA','BANCO AZTECA','CAFE DE OLLA','FARMACIA GDL','HOTEL MAYA','ABARROTES 24H','MARIACHI BAR']},
-  pr:{grp:'latin', city:{tropical:'SAN JUAN',beach:'SAN JUAN'},
+  pr:{district:'sanjuan', grp:'latin', city:{tropical:'SAN JUAN',beach:'SAN JUAN'},
       biz:['LA LECHONERA','EL JIBARO','BANCO POPULAR','CAFE CON LECHE','FARMACIA CARIDAD','EL CONVENTO','COLMADO 24H','SALSA CLUB']},
-  do:{grp:'latin', city:{tropical:'SANTO DOMINGO'}}, cu:{grp:'latin', city:{city:'HAVANA'}},
-  ar:{grp:'latin', city:{city:'BUENOS AIRES'}}, co:{grp:'latin', city:{forest:'BOGOTA',swamp:'CARTAGENA'}},
+  do:{grp:'latin', city:{tropical:'SANTO DOMINGO'}}, cu:{district:'havana', grp:'latin', city:{city:'HAVANA'}},
+  ar:{district:'buenosaires', grp:'latin', city:{city:'BUENOS AIRES'}}, co:{grp:'latin', city:{forest:'BOGOTA',swamp:'CARTAGENA'}},
   ve:{grp:'latin', city:{coast:'CARACAS'}}, pe:{grp:'latin', city:{desert:'LIMA'}}, cl:{grp:'latin', city:{coast:'VALPARAISO'}},
   ec:{grp:'latin', city:{forest:'QUITO'}}, uy:{grp:'latin', city:{coast:'MONTEVIDEO'}}, bo:{grp:'latin', city:{snow:'LA PAZ'}},
   pa:{grp:'latin', city:{docks:'PANAMA CITY'}, biz:['CEVICHERIA','CANAL CAFE','BANCO NACIONAL','EMPANADA HOUSE','FARMACIA ARROCHA','HOTEL CASCO','MINI SUPER 24H','REGGAETON CLUB']},
@@ -1743,6 +1743,28 @@ const TRACKS=[
     ctrl:[[-186.0,-21.9],[-162.8,3.3],[-143.1,46.6],[-118.0,69.2],[-120.9,87.9],[57.4,134.2],[114.5,162.3],[186.0,73.0],[93.2,-78.0],[63.0,-119.1],[18.4,-162.3],[-21.7,-124.5],[-33.2,-131.5],[-183.9,-23.5]] },   // REAL moscow streets (OSM) — (c) OpenStreetMap contributors, ODbL
   { name:'FORT DISTRICT', sub:'MUMBAI · REAL STREETS (3541m)', theme:'city', groundHex:'#403a34', fog:0xe8b880, sky:{top:0x50306a,bot:0xffb060,sun:0xfff0c8}, sun:[0.45,0.12,-0.86], osm:'mumbai', roadTint:0xecdcc4, hwMul:1.2,
     ctrl:[[184.8,-130.1],[183.9,-143.7],[154.4,-139.9],[79.5,-162.4],[27.4,-90.7],[-83.8,-101.7],[-186.0,36.9],[-167.9,55.9],[-168.3,89.2],[-112.0,121.6],[-41.7,132.6],[55.1,162.4],[88.0,152.3],[110.3,131.6],[136.4,33.8],[170.1,-17.2],[186.0,-110.1]] },   // REAL mumbai streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'JONGNO SPRINT', sub:'SEOUL · REAL STREETS (2051m)', theme:'city', groundHex:'#2b2e37', fog:0xc26a8a, sky:{top:0x241a4a,bot:0xc25a80,sun:0xffd8ea}, sun:[0.5,0.12,-0.85], osm:'seoul', roadTint:0xd8deea, hwMul:1.2,
+    ctrl:[[87.1,178.3],[117.3,176.3],[99.1,-25.3],[69.2,-162.0],[53.5,-161.4],[43.1,-186.0],[-6.8,-161.8],[-81.0,-160.9],[-117.3,-101.3],[-113.7,112.6],[-52.5,113.9],[-50.8,160.1],[-23.6,159.3],[-21.8,186.0],[34.8,182.5]] },   // REAL seoul streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'BUND CIRCUIT', sub:'SHANGHAI · REAL STREETS (2281m)', theme:'city', groundHex:'#2b2e37', fog:0xc26a8a, sky:{top:0x241a4a,bot:0xc25a80,sun:0xffd8ea}, sun:[0.5,0.12,-0.85], osm:'shanghai', roadTint:0xd8deea, hwMul:1.2,
+    ctrl:[[162.1,-108.8],[161.2,-140.5],[60.1,-107.9],[-186.0,-1.5],[-182.9,16.6],[-107.0,140.5],[63.8,32.1],[186.0,6.3],[163.7,-102.2]] },   // REAL shanghai streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'ROMA CENTRO', sub:'ROME · REAL STREETS (4249m)', theme:'city', groundHex:'#33363d', fog:0xd8a06a, sky:{top:0x33215e,bot:0xff9a5a,sun:0xfff2c0}, sun:[-0.5,0.12,-0.85], osm:'rome', roadTint:0xefe6d4, hwMul:1.2,
+    ctrl:[[-137.8,-104.8],[-134.7,-96.9],[-112.6,-100.6],[-112.2,-91.3],[-101.1,-90.2],[-98.0,-75.3],[-64.7,-72.4],[24.3,-111.4],[46.8,-116.1],[87.8,-69.2],[154.7,-83.7],[186.0,-60.9],[104.2,18.0],[98.5,41.3],[104.1,95.0],[89.6,105.6],[72.2,107.7],[68.4,98.6],[48.1,100.5],[30.2,87.0],[-83.8,115.7],[-107.2,116.1],[-177.6,98.9],[-186.0,-5.3],[-163.0,-6.1],[-156.6,-95.6],[-148.5,-99.0]] },   // REAL rome streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'EIXAMPLE GRID', sub:'BARCELONA · REAL STREETS (3294m)', theme:'coast', groundHex:'#c9a06a', fog:0xffc890, water:-4, sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88], osm:'barcelona', roadTint:0xf2e2cc, hwMul:1.2,
+    ctrl:[[-19.6,179.5],[-76.7,125.5],[-4.9,41.8],[-149.7,-117.1],[-80.2,-186.0],[149.7,50.1],[53.0,178.8],[33.3,186.0],[-16.1,180.2]] },   // REAL barcelona streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'ZOCALO GP', sub:'MEXICO CITY · REAL STREETS (2307m)', theme:'city', groundHex:'#33363d', fog:0xd8a06a, sky:{top:0x33215e,bot:0xff9a5a,sun:0xfff2c0}, sun:[-0.5,0.12,-0.85], osm:'mexicocity', roadTint:0xecdcc4, hwMul:1.2,
+    ctrl:[[-38.6,-170.3],[-41.1,-159.9],[-149.7,-186.0],[-174.2,-56.8],[-82.1,-40.7],[-116.3,157.7],[66.1,186.0],[96.6,-9.1],[156.4,0.6],[174.2,-129.3],[-30.7,-168.7]] },   // REAL mexicocity streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'MICROCENTRO GP', sub:'BUENOS AIRES · REAL STREETS (3279m)', theme:'city', groundHex:'#35383f', fog:0xcfdae2, sky:{top:0x2f7fd0,bot:0xd2e8f7,sun:0xfff4e0}, sun:[-0.5,0.34,-0.78], osm:'buenosaires', roadTint:0xe4e6e6, hwMul:1.2,
+    ctrl:[[-179.4,23.3],[-186.0,-60.0],[179.3,-88.1],[186.0,-8.1],[120.9,-2.1],[118.3,60.6],[89.1,83.5],[28.1,88.1],[-30.2,50.9],[-177.8,63.3],[-179.2,26.9]] },   // REAL buenosaires streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'HARBOUR CIRCUIT', sub:'SYDNEY · REAL STREETS (3316m)', theme:'coast', groundHex:'#c9a06a', fog:0xffc890, water:-4, sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88], osm:'sydney', roadTint:0xf0ecd8, hwMul:1.2,
+    ctrl:[[-86.6,-186.0],[-59.3,-183.5],[-47.1,-174.3],[7.5,-178.9],[10.7,-151.0],[37.9,-151.7],[99.0,-101.2],[82.3,48.0],[103.4,60.2],[111.6,87.0],[100.5,186.0],[-82.8,152.5],[-111.6,-153.0],[-86.6,-182.4]] },   // REAL sydney streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'NILE DOWNTOWN', sub:'CAIRO · REAL STREETS (2969m)', theme:'desert', groundHex:'#c89a5a', fog:0xe8b878, sky:{top:0x3a4a86,bot:0xf0a860,sun:0xfff0c0}, sun:[0.4,0.16,-0.85], osm:'cairo', roadTint:0xf4e6c8, hwMul:1.2,
+    ctrl:[[-186.0,-100.4],[-66.4,-12.3],[-105.3,54.7],[100.4,150.3],[186.0,136.6],[173.2,66.2],[173.0,9.3],[106.0,7.4],[107.7,-65.6],[-31.3,-73.9],[-142.3,-150.3],[-177.7,-110.3]] },   // REAL cairo streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'HABANA VIEJA', sub:'HAVANA · REAL STREETS (3463m)', theme:'coast', groundHex:'#c9a06a', fog:0xffc890, water:-4, sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88], osm:'havana', roadTint:0xf2e2cc, hwMul:1.2,
+    ctrl:[[149.8,170.6],[108.7,6.8],[53.0,-143.9],[12.2,-134.1],[-36.2,-140.4],[-32.6,-171.6],[-148.4,-186.0],[-149.8,-87.8],[-86.2,-78.7],[-88.9,-54.7],[-80.7,-51.7],[-71.7,4.6],[-42.0,4.4],[-34.0,51.2],[-12.3,47.9],[-5.2,87.7],[54.4,186.0],[147.8,170.9]] },   // REAL havana streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'BAY STREET GP', sub:'TORONTO · REAL STREETS (1979m)', theme:'city', groundHex:'#35383f', fog:0xcfdae2, sky:{top:0x2f7fd0,bot:0xd2e8f7,sun:0xfff4e0}, sun:[-0.5,0.34,-0.78], osm:'toronto', roadTint:0xdfe3e8, hwMul:1.2,
+    ctrl:[[85.6,-186.0],[167.7,84.1],[114.5,121.6],[-84.7,183.7],[-95.1,186.0],[-167.7,-66.4],[-13.0,-112.9],[-25.4,-154.6],[80.8,-184.7]] },   // REAL toronto streets (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'JOZI CBD', sub:'JOHANNESBURG · REAL STREETS (2825m)', theme:'city', groundHex:'#33363d', fog:0xd8a06a, sky:{top:0x33215e,bot:0xff9a5a,sun:0xfff2c0}, sun:[-0.5,0.12,-0.85], osm:'johannesburg', roadTint:0xecdcc4, hwMul:1.2,
+    ctrl:[[128.5,-186.0],[142.2,-71.2],[106.1,-66.3],[128.5,109.8],[9.5,125.4],[14.4,167.6],[-23.0,172.6],[-131.9,186.0],[-142.2,107.0],[-71.0,97.9],[-92.2,-80.7],[19.9,-94.4],[15.4,-131.7],[59.4,-137.6],[54.9,-176.7],[91.6,-181.4]] },   // REAL johannesburg streets (OSM) — (c) OpenStreetMap contributors, ODbL
 ];
 let _trackDiffCache=null;
 // CITY PASSPORT — one stamp per real city WON; conquer all 11 (retention: collection goal on top of CotD)
@@ -7115,13 +7137,19 @@ window.NETRACE=false;
       if(best>=0) select(best); });
   }
   let spinT=null, tiltT=null;
+  function trackForCountry(i,theme){                          // country's REAL circuit first, theme fallback
+    const d=((typeof NATION!=='undefined')&&NATION[(COUNTRIES[i]||{}).key]||{}).district;
+    const dk=(typeof d==='string')?d:(d&&(d[theme]||d.city));
+    let ti=(dk&&typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>t.osm===dk):-1;
+    if(ti<0&&typeof TRACKS!=='undefined') ti=TRACKS.findIndex(t=>(t.label||t.theme)===theme);
+    return ti<0?0:ti; }
   function select(i){ picked=i; const co=COUNTRIES[i], gd=GLOBE[i], car=(typeof CARS!=='undefined'&&CARS[i])?CARS[i].name:'CAR';
     { const p0=llToVec(gd.lat,gd.lon,1.73); spinT=Math.atan2(p0.x,p0.z); tiltT=Math.max(-0.9,Math.min(0.9,-Math.asin(p0.y/1.73)*0.55)); }
     const gc0=document.getElementById('globeCard'); if(gc0){ gc0.classList.remove('pop'); void gc0.offsetWidth; gc0.classList.add('pop'); }
     const fl=document.getElementById('globeFlag'); if(typeof flagURL==='function') fl.src=flagURL(co.key);
     document.getElementById('globeCountry').textContent=co.name;
-    let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; const trk=TRACKS[ti]||{};
-    document.getElementById('globeMeta').textContent=((typeof nationCityFor==='function')?nationCityFor(i,gd.theme)+' · ':'')+(trk.name||gd.theme.toUpperCase());
+    const ti=trackForCountry(i,gd.theme), trk=TRACKS[ti]||{};
+    document.getElementById('globeMeta').textContent=(trk.osm?(trk.sub||'').split('·')[0].trim():((typeof nationCityFor==='function')?nationCityFor(i,gd.theme):''))+' · '+(trk.name||gd.theme.toUpperCase());
     const gt=document.getElementById('gcTrack'); if(gt && typeof trackThumb==='function' && trk.ctrl){ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b'; gt.innerHTML=trackThumb(trk.ctrl, acc); }
     const dd=document.getElementById('gcDiff'); if(dd){ let d=3; try{ d=trackDifficulties()[ti]||3; }catch(e){} dd.innerHTML='DIFFICULTY  <span class="on">'+'\u2605'.repeat(d)+'</span><span class="off">'+'\u2605'.repeat(5-d)+'</span>'; }
     const cc=document.getElementById('gcCar'); if(cc){ const GNAME={latin:'REGGAETON',funk:'BAILE FUNK',usa:'HIP-HOP',europe:'ELECTRO',phonk:'DRIFT PHONK',india:'BHANGRA',arabic:'ARABIC TRAP',afro:'AFRO HOUSE'};
@@ -7139,7 +7167,7 @@ window.NETRACE=false;
     selectedCar=picked%CARS.length; try{ if(typeof saveSelCar==='function') saveSelCar(); else localStorage.setItem('sd_car',selectedCar); }catch(_){}
     if(typeof renderShop==='function') renderShop(); if(typeof upgradeCars==='function') upgradeCars();
     window.__globeCountry=picked;   // race in the picked COUNTRY -> city name, flags, signage, music genre
-    let ti=(typeof TRACKS!=='undefined')?TRACKS.findIndex(t=>(t.label||t.theme)===gd.theme):-1; if(ti<0) ti=0; currentTrack=ti;
+    const ti=trackForCountry(i,gd.theme); currentTrack=ti;
     try{ if(typeof selectTrack==='function') selectTrack(currentTrack); }catch(_){}
     close();
     if(typeof ownedCars!=='undefined' && ownedCars[selectedCar]){ const sb=document.getElementById('startBtn'); if(sb) sb.click(); }
