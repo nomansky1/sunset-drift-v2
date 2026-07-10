@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.06-->
+<!--BUILD:v10.07-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1135,7 +1135,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.06';
+(function(){ const BUILD='v10.07';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1262,7 +1262,7 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'INTERCEPTOR', kind:'glb', raw:'police',   yaw:0, spd:86, grip:84, price:1300},
              {name:'GT',          kind:'glb', raw:'racecar',  yaw:0, spd:98, grip:70, price:1600},
              {name:'KART',        kind:'glb', raw:'kart',     yaw:0, spd:80, grip:95, price:1500},
-             {name:'HAULER',      kind:'glb', raw:'truck',    yaw:0, spd:93, grip:60, price:1900, retired:true},   // owner: trucks OUT of racing (kept as world NPC props); flag not splice - sd_owned/upgrades are index-keyed
+             {name:'CANALERO',    kind:'glb', raw:'timeattack', yaw:0, spd:95, grip:70, price:1900},   // Panama's ride — Time Attack build (replaced the retired box truck; truck raw stays as a world NPC prop)
              {name:'FIRETRUCK',   kind:'glb', raw:'firetruck',yaw:0, spd:86, grip:66, price:2200},
              {name:'AMBULANCE',   kind:'glb', raw:'ambulance',yaw:0, spd:90, grip:64, price:2400},
              {name:'PATRIOT',     kind:'glb', raw:'kartB',    yaw:0, spd:82, grip:93, price:2600},
@@ -4093,7 +4093,7 @@ function loadCarModels(){
    ['racer','models/gen3/drifttuner3.glb'],['racecar','models/gen3/supergt3.glb'],['muscle','models/gen3/v8supercar3.glb'],
    ['roadster','models/gen3/classiclemans3.glb?r3'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
-   ['kartB','models/gen3/f13.glb'],
+   ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/timeattack3.glb'],
    ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f])=>{   // CC0 Kenney Car Kit (modular, named wheels)
     try{ L.load(f, g=>{ fleetRaw[k]=g.scene; if(cars&&cars.length) upgradeCars(); }, undefined, ()=>{}); }catch(e){}
   });
@@ -4342,6 +4342,14 @@ function buildDogeCar(rig, color){
   rig.dims={W:sz.x*sc, H:sz.y*sc, Lz:sz.z*sc, yaw:carYaw||0};   // true normalized size for the upgrade kit
   const scaleG=new THREE.Group(); scaleG.scale.setScalar(sc); scaleG.rotation.y=carYaw; scaleG.add(asm);
   rig.group.add(scaleG);
+  // GROUND THE TYRES: on some bodies a low splitter defines the bbox floor and the wheels hover
+  // (sport floats 5.5cm). Drop the chassis so the lowest wheel touches y=0 — but never push the
+  // body itself more than a 0.03 skim into the road.
+  if(wheels.length){ const bx=new THREE.Box3(); let wMin=1e9, bMin=1e9;
+    wheels.forEach(w=>{ bx.setFromObject(w); wMin=Math.min(wMin, bx.min.y); });
+    body.traverse(o=>{ if(o.isMesh&&o.visible&&!/wheel|tyre|tire/i.test(o.name||'')){ bx.setFromObject(o); bMin=Math.min(bMin, bx.min.y); } });
+    const drop=Math.min(Math.max(wMin,0), Math.max(bMin,0)+0.03);
+    if(drop>0.012) chassis.position.y -= drop/sc; }
   rig.chassis=chassis; rig.wheels=wheels; rig.front=front; rig.spinAcc=0;
 }
 function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) — normalized + glossy
@@ -4387,9 +4395,19 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     const headM=new THREE.MeshStandardMaterial({color:0xfff6d8, emissive:0xfff0c0, emissiveIntensity:nightMode?2.2:0.7, roughness:0.3});
     const tailM=new THREE.MeshStandardMaterial({color:0x4d1014, emissive:0xff2018, emissiveIntensity:nightMode?2.0:0.8, roughness:0.4});
     rig.lampMats=[headM,tailM];
+    // MOLD the lamps onto each car's real nose/tail contour (wedge noses sit far inside the bbox
+    // plane — a fixed Lz/2 lamp floats in the air there). Raycast body surface, embed 1cm.
+    const _lr=new THREE.Raycaster(), _lo=new THREE.Vector3(), _ld=new THREE.Vector3();
+    rig.group.updateWorldMatrix(true,true);
+    const surfZ=(sx2,y2,dir)=>{ _lo.set(sx2*lx, y2, dir*(Lz/2+1.4)); rig.group.localToWorld(_lo);
+      _ld.set(0,0,-dir).applyQuaternion(rig.group.quaternion);
+      _lr.set(_lo,_ld);
+      const h2=_lr.intersectObject(chassis,true);
+      return h2.length? rig.group.worldToLocal(h2[0].point.clone()).z : dir*Lz/2; };
     for(const sx of [-1,1]){
-      const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, Lz/2+0.01); rig.group.add(hl);
-      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, -Lz/2-0.01); rig.group.add(tl); }
+      const hz=surfZ(sx, ly, 1), tz=surfZ(sx, ly, -1);
+      const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, hz+0.005); rig.group.add(hl);
+      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, tz-0.005); rig.group.add(tl); }
   }
 }
 // rounded (molded) box: a rounded-rect profile extruded + beveled -> no hard square edges
@@ -4726,7 +4744,7 @@ function syncCarMesh(c){
   c.shadowMesh.visible = !!(c.rig && c.rig.group && c.rig.group.visible);
 }
 
-</script><script src="spline.js"></script><script src="game-core.js?v989"></script><script>
+</script><script src="spline.js"></script><script src="game-core.js?v990"></script><script>
 
 /* =========================================================================
    CAMERA
@@ -5118,13 +5136,20 @@ function mountKitGun(rig){ if(!rig.kitBase||!rig._kitFrame||!rig.dims) return;
     if(!rig.group||!rig.gun||rig.gun.userData._kit) return;   // battle ended / already molded
     // kits re-exported centered X/Z with base y=0 -> park each at the car's OWN roofline / rear deck
     const sc=rig._kitFrame.sc, d=rig.dims, kg=new THREE.Group(); kg.userData._kit=true;
-    const roofY=Math.min(d.H,2.6)+0.02;
+    // mold to the REAL roof (bbox H floats the mount above wedge cars) + paint-match the housings
+    let roofY=Math.min(d.H,2.6)+0.02;
+    if(rig.chassis){ const rr=new THREE.Raycaster(), ro=new THREE.Vector3(0, d.H+3, -d.Lz*0.03), rd=new THREE.Vector3(0,-1,0);
+      rig.group.updateWorldMatrix(true,true); rig.group.localToWorld(ro); rr.set(ro, rd.applyQuaternion(rig.group.quaternion));
+      const hh=rr.intersectObject(rig.chassis,true); if(hh.length){ const ly2=rig.group.worldToLocal(hh[0].point.clone()).y; if(ly2>0.3) roofY=ly2+0.01; } }
+    const tint=new THREE.Color(rig.bodyColor!=null?rig.bodyColor:0x222428), _hsl={};
+    const paintKit=root=>root.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color){ o.material.color.getHSL(_hsl);
+      if(_hsl.l>0.22&&_hsl.l<0.85){ o.material=o.material.clone(); o.material.color.lerp(tint,0.6); } } });
     const yawP=new THREE.Group(); yawP.position.set(0, roofY, -d.Lz*0.03); kg.add(yawP);   // aim pivot on the roof
-    const gm=gat.clone(); gm.scale.setScalar(sc); yawP.add(gm);
+    const gm=gat.clone(); gm.scale.setScalar(sc); paintKit(gm); yawP.add(gm);
     yawP.updateWorldMatrix(true,true);
     const gb=new THREE.Box3().setFromObject(gm);              // bbox in yawP-local space (gm at origin)
     const mzl=new THREE.Object3D(); mzl.position.set(0, (gb.max.y+gb.min.y)*0.5-roofY+0.1, gb.max.z-yawP.position.z+0.05); yawP.add(mzl);
-    const rm=rkt.clone(); rm.scale.setScalar(sc);
+    const rm=rkt.clone(); rm.scale.setScalar(sc); paintKit(rm);
     const deckY=clamp(d.H*0.52,0.44,1.2); rm.position.set(0, deckY, -d.Lz*0.24); kg.add(rm);   // rocket pod on the rear deck
     const rmuz=[]; for(const sx of [-1,1]){ const o=new THREE.Object3D();
       o.position.set(sx*0.15, deckY+0.15, -d.Lz*0.24+0.4); kg.add(o); rmuz.push(o); }

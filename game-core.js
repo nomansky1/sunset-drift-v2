@@ -186,6 +186,11 @@ function updateCar(c, inp, dt){
   c._leanX = lerp(c._leanX||0, clamp((inp.brake?0.04:(inp.throttle?-0.028:0)),-0.06,0.06), 0.08);   // deeper brake dive / throttle squat, eased in
   c.rig.group.rotation.z = c._leanZ;
   c.rig.group.rotation.x = -(c._pitch||0) + c._leanX;                 // road grade + brake/throttle squat, one pivot
+  // KEEL COMPENSATION: the lean pivots at ground level, so the outboard wheels would swing BELOW the
+  // road (owner: "tires bleed into the ground"). Lift by the exact dip of the low corner. Road-grade
+  // pitch is NOT compensated — the road surface tilts with the car there.
+  { const d=c.rig.dims||{W:2.3,Lz:4.6};
+    c.rig.group.position.y += (d.W/2)*Math.abs(Math.sin(c._leanZ)) + (d.Lz/2)*Math.abs(Math.sin(c._leanX)); }
   if(c.rig.chassis){ c.rig.chassis.rotation.z=0; c.rig.chassis.rotation.x=0;
     if(c.rig._cx0!=null) c.rig.chassis.position.x=c.rig._cx0; }       // retire the old chassis-level lean on existing rigs
 
@@ -193,6 +198,13 @@ function updateCar(c, inp, dt){
   const slip=Math.abs(lateral), spd=c.vel.length();
   const offT=c.trackDist>CONFIG.roadHalfWidth;
   const hardBrake = inp.brake && spd>14 && c.vel.dot(_f)>0;         // locking the brakes at speed
+  // IDLE EXHAUST: soft grey puffs curl out of the real tailpipes while the engine idles
+  if(spd<1.8 && !inp.throttle && c.rig.exhaustPts && typeof tireSmoke!=='undefined'){
+    c._exhT=(c._exhT||0)-dt;
+    if(c._exhT<=0){ c._exhT=0.34+Math.random()*0.22;
+      const wp=new THREE.Vector3();
+      for(const ep of c.rig.exhaustPts){ wp.copy(ep); c.rig.group.localToWorld(wp);
+        tireSmoke.emit(wp.x, wp.y, wp.z, (Math.random()-0.5)*0.12, 0.32, -Math.sin(c.heading)*0.15, 0.11, 1); } } }
   if(spd<0.8) c._stopT=0.5; else if(c._stopT>0) c._stopT-=dt;       // "recently at a standstill" flag
   const burnout = inp.throttle && spd>2.5 && spd<8 && c._stopT>0;   // wheelspin only while pulling AWAY from a stop (not wedged at ~0)
   const aiSlide = !c.isPlayer && slip>2.6 && spd>18;                // AI corner hard on grip -> they get slide smoke too (owner request)
