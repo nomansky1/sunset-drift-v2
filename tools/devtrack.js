@@ -47,7 +47,43 @@ window.DEVTRACK = {
           Math.abs(m.rotation.x-base[k].r.x)+Math.abs(m.rotation.y-base[k].r.y)+Math.abs(m.rotation.z-base[k].r.z)); }
       player.dmgP={}; if(typeof repairPanels==='function') repairPanels(player); player.dmgP=saved||{};
     }
-    return {wheels:ws, spun, steered, frontCount:rig.front.length, rigidity:+rigidity.toFixed(5)};
+    // CORNERING STABILITY (owner): hard corners at speed must not bounce/tear the body.
+    // Run real physics with barriers/rescue off (freeRoam), sample panel + wheel-pivot deltas.
+    let cornering=0;
+    if(player && player.rig===rig){
+      const wasRoam=window.freeRoam; window.freeRoam=true;
+      const p=player, keep={x:p.pos.x, z:p.pos.y, h:p.heading};
+      p.pos.x=this.ox; p.pos.y=this.oz; p.heading=0; p.vel.set(0,0); p.spdMul=1; p.gripMul=1;
+      const base={}; for(const k in (rig.panels||{})) base[k]={p:rig.panels[k].position.clone(), r:rig.panels[k].rotation.clone()};
+      const wbase=rig.wheels.map(w=>w.position.clone());
+      for(let f=0;f<3*60;f++){ updateCar(p, {throttle:true, brake:false, steer:(f%120<60)?1:-1, drift:f%180<90, boost:false}, 1/60);
+        if(typeof updatePanelDamage==='function') updatePanelDamage(p); }
+      for(const k in (rig.panels||{})){ const m=rig.panels[k];
+        cornering=Math.max(cornering, m.position.distanceTo(base[k].p),
+          Math.abs(m.rotation.x-base[k].r.x)+Math.abs(m.rotation.y-base[k].r.y)+Math.abs(m.rotation.z-base[k].r.z)); }
+      rig.wheels.forEach((w,i)=>{ cornering=Math.max(cornering, w.position.distanceTo(wbase[i])); });
+      p.pos.x=keep.x; p.pos.y=keep.z; p.heading=keep.h; p.vel.set(0,0);
+      p.dmgP={}; if(typeof repairPanels==='function') repairPanels(p);
+      window.freeRoam=wasRoam;
+    }
+    // CAMERA-CYCLE STABILITY (owner): switching views (incl. cockpit) must not disturb the model
+    let camCycle=0, visRestored=true;
+    if(player && player.rig===rig && typeof CAM_VIEWS!=='undefined' && typeof updateCamera==='function' && typeof camView!=='undefined'){
+      const keepView=camView;
+      const base={}; for(const k in (rig.panels||{})) base[k]=rig.panels[k].position.clone();
+      const wbase=rig.wheels.map(w=>w.position.clone());
+      for(let v=0; v<CAM_VIEWS.length; v++){ camView=v; for(let f=0;f<6;f++) updateCamera(1/60); }
+      camView=keepView; for(let f=0;f<6;f++) updateCamera(1/60);
+      visRestored=rig.group.visible===true;
+      for(const k in (rig.panels||{})) camCycle=Math.max(camCycle, rig.panels[k].position.distanceTo(base[k]));
+      rig.wheels.forEach((w,i)=>{ camCycle=Math.max(camCycle, w.position.distanceTo(wbase[i])); });
+    }
+    // WHEEL PROPORTION (owner: rims/tires must look consistent): round face + sane width-to-diameter
+    const proportions=rig.wheels.map(w=>{ const b=new THREE.Box3().setFromObject(w), s=new THREE.Vector3(); b.getSize(s);
+      const dims=[s.x,s.y,s.z].sort((a,b2)=>a-b2);                 // [width, dia1, dia2]
+      return {round:+(dims[1]/dims[2]).toFixed(2), widthRatio:+(dims[0]/dims[2]).toFixed(2)}; });
+    return {wheels:ws, spun, steered, frontCount:rig.front.length, rigidity:+rigidity.toFixed(5),
+      cornering:+cornering.toFixed(5), camCycle:+camCycle.toFixed(5), visRestored, proportions};
   },
   check(m, dims){ const f=[], W=(dims&&dims.W)||2;
     if(m.wheels.length!==4) f.push('wheel count '+m.wheels.length);
@@ -66,6 +102,12 @@ window.DEVTRACK = {
     if(m.spun!==m.wheels.length) f.push('spin '+m.spun+'/'+m.wheels.length);
     if(m.frontCount!==2) f.push('front pivots '+m.frontCount);
     if((m.rigidity||0)>0.001) f.push('body NOT RIGID in race mode: panel moved '+m.rigidity);
+    if((m.cornering||0)>0.001) f.push('body/wheels UNSTABLE while cornering: moved '+m.cornering);
+    if((m.camCycle||0)>0.001) f.push('camera-view cycle disturbed the model: moved '+m.camCycle);
+    if(m.visRestored===false) f.push('car INVISIBLE after cockpit view cycle');
+    (m.proportions||[]).forEach((p,i)=>{
+      if(p.round<0.8) f.push('wheel '+i+' not round (face ratio '+p.round+')');
+      if(p.widthRatio<0.18||p.widthRatio>0.92) f.push('wheel '+i+' width/diameter off ('+p.widthRatio+')'); });   // the fleet's stylized wheels run wide (0.76-0.85) and read fine — only flag near-cubes
     return f;
   },
   async shoot(raw, opts){ opts=opts||{};

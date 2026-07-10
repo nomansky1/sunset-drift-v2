@@ -967,6 +967,12 @@
     },
     "verdict": "calls above paper budget on city circuits but instancing in place + 60fps locked; phones covered by isTouch paths + dynamic resolution; no trim applied"
    }
+  },
+  {
+   "date": "2026-07-10",
+   "build": "v10.04",
+   "gate": "extended per owner: cornering body-stability + camera-view-cycle + wheel proportion",
+   "fleet": "17/18 pass; max cornering delta 0.00000, max camera-cycle delta 0.00000 across all 18; roadster waiver unchanged"
   }
  ]
 }
