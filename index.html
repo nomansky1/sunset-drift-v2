@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.79-->
+<!--BUILD:v9.80-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -356,6 +356,20 @@
   /* ---------- COCKPIT / INTERIOR POV (full cabin) ---------- */
   #cockpit{ position:fixed; inset:0; z-index:7; pointer-events:none; }
   #cockpit.hidden{ display:none; }
+  /* NEON ICON SET — consistent stroke icons replace the emoji glyphs (crisp on every OS, tinted by the button) */
+  .ico svg, .uiIco{ width:1.15em; height:1.15em; display:block; margin:0 auto 1px;
+    fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;
+    filter:drop-shadow(0 0 3px rgba(255,255,255,.35)); }
+  #pauseBtn .uiIco rect{ fill:currentColor; stroke:none; }
+  /* COCKPIT + TOUCH: the dash is near-black exactly where the pads sit — pop the controls so they never vanish */
+  body.touch.ck-view #ckDash{ height:17vh; min-height:96px; }
+  body.touch.ck-view #ckWheel{ opacity:.5; }
+  body.touch.ck-view #ckBinnacle{ bottom:12vh; }
+  body.touch.ck-view .btn{ background:rgba(58,54,78,.82) !important; border-color:rgba(255,255,255,.6) !important;
+    box-shadow:0 5px 14px rgba(0,0,0,.6), 0 0 18px rgba(140,170,255,.3), inset 0 1px 1px rgba(255,255,255,.18) !important; }
+  body.touch.ck-view #btn-gas{ background:rgba(60,205,125,.72) !important; }
+  body.touch.ck-view #btn-brake{ background:rgba(235,80,80,.72) !important; }
+  body.touch.ck-view #joy-base{ background:rgba(58,54,78,.55); border:1px solid rgba(255,255,255,.45); }
   /* windshield frame: roof header + slanted A-pillars */
   #ckRoof{ position:absolute; top:0; left:0; right:0; height:7vh; min-height:26px;
     background:linear-gradient(180deg,#0b0a0f 0%, #0b0a0f 42%, rgba(11,10,15,.55) 78%, transparent);
@@ -780,8 +794,8 @@
        <div id="speedNum">0</div><div id="speedUnit">KM / H</div>
        <div id="boostWrap"><div id="boostBar"></div></div></div>
   <div id="scoreBox"></div>
-  <div id="pauseBtn">❚❚</div>
-  <div id="camBtn">📷</div>
+  <div id="pauseBtn"><svg viewBox="0 0 24 24" class="uiIco"><rect x="6" y="4" width="4" height="16" rx="1.4"/><rect x="14" y="4" width="4" height="16" rx="1.4"/></svg></div>
+  <div id="camBtn"><svg viewBox="0 0 24 24" class="uiIco"><path d="M4 8h3l2-2.5h6L17 8h3a1.6 1.6 0 0 1 1.6 1.6V18a1.6 1.6 0 0 1-1.6 1.6H4A1.6 1.6 0 0 1 2.4 18V9.6A1.6 1.6 0 0 1 4 8z"/><circle cx="12" cy="13.4" r="3.4"/></svg></div>
   <div id="rivalTag" class="hidden"></div>
 </div>
 <div id="flash"></div>
@@ -836,13 +850,13 @@
   <div id="joy" class="pad"><div id="joy-base"><div id="joy-knob"></div></div></div>
   <div id="actions" class="pad">
     <div class="actRow">
-      <div class="btn sm" id="btn-rocket"><span class="ico">🚀</span>FIRE</div>
-      <div class="btn sm" id="btn-drift"><span class="ico">✦</span>DRIFT</div>
-      <div class="btn sm" id="btn-boost"><span class="ico">🔥</span>BOOST</div>
+      <div class="btn sm" id="btn-rocket"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 2c3 2.5 4 6 4 9l2.5 3-3 .5c-.6 1.8-1.9 3.5-3.5 4.5-1.6-1-2.9-2.7-3.5-4.5l-3-.5L8 11c0-3 1-6.5 4-9z"/><circle cx="12" cy="10" r="1.7"/><path d="M10 20.5c.5 1.2 1.2 2 2 2.5.8-.5 1.5-1.3 2-2.5"/></svg></span>FIRE</div>
+      <div class="btn sm" id="btn-drift"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 18c2-7 7-12 15-14-2 4-2.5 7-1.5 10"/><path d="M8 20c1.5-4 4-7 8-9"/><circle cx="5.5" cy="20" r="1.4"/></svg></span>DRIFT</div>
+      <div class="btn sm" id="btn-boost"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 2c1 3.5 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.8 1.2-4C9.6 8.6 10 10 11 10.5 10.6 7 11 4.5 12 2z"/><path d="M12 22a5.5 5.5 0 0 1-5.5-5.5c0-1.4.5-2.7 1.3-3.7A5.5 5.5 0 0 0 12 22z"/></svg></span>BOOST</div>
     </div>
     <div class="actRow">
-      <div class="btn ped brake" id="btn-brake"><span class="ico">⬇</span>BRAKE</div>
-      <div class="btn ped gas big" id="btn-gas"><span class="ico">⬆</span>GAS</div>
+      <div class="btn ped brake" id="btn-brake"><span class="ico"><svg viewBox="0 0 24 24"><path d="M5 5l7 7 7-7"/><path d="M5 12l7 7 7-7"/></svg></span>BRAKE</div>
+      <div class="btn ped gas big" id="btn-gas"><span class="ico"><svg viewBox="0 0 24 24"><path d="M5 19l7-7 7 7"/><path d="M5 12l7-7 7 7"/></svg></span>GAS</div>
     </div>
   </div>
 </div>
@@ -1047,7 +1061,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.79';
+(function(){ const BUILD='v9.80';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
