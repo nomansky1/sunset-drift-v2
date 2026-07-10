@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.03-->
+<!--BUILD:v10.04-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -259,6 +259,11 @@
   .cta2{ pointer-events:auto; font-size:min(4.2vw,18px); font-weight:800; padding:12px 24px; border-radius:6px;
          background:rgba(255,255,255,.10); color:#fff; border:1.5px solid rgba(255,255,255,.22); box-shadow:none; animation:none; cursor:pointer; }
   .cta2.battle{ background:linear-gradient(160deg,rgba(158,44,32,.62),rgba(96,26,32,.55)); border-color:rgba(255,116,84,.6); color:#ffcbbf; }
+  #brRadar{ position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); right:12px; z-index:22; display:none;
+    width:132px; height:132px; border-radius:50%; overflow:hidden; border:1px solid rgba(140,170,255,.4);
+    background:rgba(10,8,18,.55); box-shadow:0 4px 16px rgba(0,0,0,.5), 0 0 14px rgba(110,150,255,.15); pointer-events:none; }
+  body.inbattle #brRadar{ display:block; }
+  body.inbattle #map3d{ display:none !important; }   /* the race track map means nothing in the open city */
   #brZone{ font-size:11px; font-weight:800; letter-spacing:1.2px; color:#8fd0ff; text-shadow:0 1px 4px #000; }
   #brZone.tight{ color:#ff6a5a; animation:cotdPulse 1.1s ease-in-out infinite; }
   #brArrows{ position:fixed; inset:0; z-index:21; pointer-events:none; display:none; }
@@ -909,6 +914,7 @@
 
 <!-- menu -->
 <div id="brHud"><div id="brAlive">🔥 6 ALIVE</div><div id="brHpWrap"><div id="brHpFill"></div></div><div id="brRockets">🚀 ×3</div><div id="brZone">ZONE 300m</div></div>
+<div id="brRadar"><canvas id="brRadarCv" width="132" height="132"></canvas></div>
 <div id="brArrows"><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span></div>
 <div id="lowHp"></div>
 <div id="hitMark">✕</div>
@@ -1121,7 +1127,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.03';
+(function(){ const BUILD='v10.04';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5294,7 +5300,8 @@ function damageCar(c, amt, by){ if(!c.alive) return;
       if(audio&&audio.coin) audio.coin(); }
     if(c===player) player._brStreak=0;
     if(navigator.vibrate){ try{navigator.vibrate(40);}catch(e){} }
-    c.rig.group.visible=false; if(c.shadowMesh) c.shadowMesh.visible=false;
+    c._burnT=9; c._burnTick=0;                                                    // GTA-style: the wreck BURNS in place (hidden after burnout)
+    if(c.rig&&c.rig.panels) for(const k in c.rig.panels){ const m=c.rig.panels[k]; if(m.material&&m.material.color) m.material.color.multiplyScalar(0.25); }   // charred shell
     if(c.isPlayer && !brWon){ brWon=true; brFinish(brAlive+1); }
     else if(brAlive<=1 && !brWon){ brWon=true; brFinish(1); } } }
 function brInput(c){                                                     // free-roam combat AI: HUNTERS chase the player with strafing lines; others orbit their nearest target
@@ -5349,6 +5356,13 @@ function battleFrame(dt){ raceTime+=dt;
     if(hf<0.42){ c._dmgT=(c._dmgT||0)-dt; if(c._dmgT<=0){ c._dmgT=0.13; const x=c.pos.x,y=(c.visY||0)+0.75,z=c.pos.y;
       tireSmoke.emit(x,y,z,0,1.3,0, hf<0.2?0.6:0.45, hf<0.2?9:6);
       if(hf<0.2) sparks.emit(x,y,z,(Math.random()-.5)*1.2,2.2,(Math.random()-.5)*1.2,0.32,4); } } }
+  for(const c of cars){ if(c._burnT>0){ c._burnT-=dt; c._burnTick=(c._burnTick||0)-dt;   // BURNING WRECKS: fire + smoke column + flickering glow
+      if(c._burnTick<=0){ c._burnTick=0.09;
+        const x=c.pos.x,y=(c.visY||0)+0.6,z=c.pos.y;
+        sparks.emit(x+(Math.random()-.5)*1.2, y, z+(Math.random()-.5)*1.2, (Math.random()-.5)*1.5, 2.6+Math.random()*2, (Math.random()-.5)*1.5, 0.34, 3);   // licking flames
+        if(Math.random()<0.55) tireSmoke.emit(x, y+0.9, z, 0, 1.8, 0, 0.55, 1);                                                                              // black smoke column
+        if(!lowQuality && Math.random()<0.12) addFlash(x, y+1, z, 0xff7a2e, 1.6, 14, 0.14); }                                                                // firelight flicker
+      if(c._burnT<=0){ c.rig.group.visible=false; if(c.shadowMesh) c.shadowMesh.visible=false; } } }
   updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt); updateBRProps(dt); obUpdateDebris(dt); updateShells(dt); updateFlung(dt);
   for(const c of cars){ if(!c.alive) continue; const dC=Math.hypot(c.pos.x-zoneCX,c.pos.y-zoneCZ); if(dC>zoneR) damageCar(c, BR.zoneDps*dt); }
   for(let i=brTracers.length-1;i>=0;i--){ const t=brTracers[i]; t.t-=dt; if(t.t<=0){ scene.remove(t.ln);
@@ -5358,7 +5372,7 @@ function battleFrame(dt){ raceTime+=dt;
   updateHpBars();
   if(cinePass) cinePass.uniforms.uSpeed.value=clamp(player.vel.length()/CONFIG.topSpeed-0.35,0,1)*0.5;
   if(camShake>0) camShake=Math.max(0,camShake-dt*1.6);
-  updateCamera(dt); updateBRHud(); updateBRArrows(); }
+  updateCamera(dt); updateBRHud(); updateBRArrows(); drawBRRadar(); }
 /* ---- BR CITY: a full-scale street-grid city built for battle (owner: no racetrack in BR — roads,
    sidewalks, parks, properly-scaled buildings, parked cars, and exact building collision) ---- */
 let brCity=null, _brFacadeMats=null;
@@ -5457,6 +5471,33 @@ function buildBRCity(){
     treeTrunks.forEach((t,i)=>{ P.set(t.x,t.h/2+0.2,t.z); SC.set(1,t.h,1); M.compose(P,Q,SC); ti.setMatrixAt(i,M); });
     treeTops.forEach((t,i)=>{ P.set(t.x,t.h+t.r*0.7,t.z); SC.set(t.r,t.r,t.r); M.compose(P,Q,SC); bi.setMatrixAt(i,M); });
     ti.castShadow=bi.castShadow=!isTouch; g.add(ti); g.add(bi);
+  }
+  // STREET FURNITURE: hydrants + benches (instanced) along sidewalks, a few newsstands
+  { const hyd=[], ben=[];
+    for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
+      const bx=cx-half+ROAD+ix*CELL+BLOCK/2, bz=cz-half+ROAD+iz*CELL+BLOCK/2, edge=BLOCK/2+2.2;
+      if(rng()<0.7) hyd.push({x:bx+(rng()-0.5)*BLOCK*0.7, z:bz+(rng()<0.5?-edge:edge)});
+      if(rng()<0.6) ben.push({x:bx+(rng()<0.5?-edge:edge), z:bz+(rng()-0.5)*BLOCK*0.7, r:rng()<0.5?0:Math.PI/2});
+      if(rng()<0.18){                                            // NEWSSTAND: kiosk box + striped awning
+        const nx=bx+(rng()-0.5)*BLOCK*0.5, nz=bz+(rng()<0.5?-edge:edge);
+        const kiosk=new THREE.Mesh(new THREE.BoxGeometry(3.2,2.4,2.2), brStoreMats()[(rng()*6)|0]);
+        kiosk.position.set(nx,1.42,nz); kiosk.castShadow=!isTouch; g.add(kiosk);
+        const awn=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.12,1.1),
+          new THREE.MeshStandardMaterial({color:rng()<0.5?0x1e8449:0xc0392b, roughness:0.85}));
+        awn.position.set(nx,2.55,nz+1.35); awn.rotation.x=0.24; g.add(awn);
+        markSolid(nx-1.8,nz-1.3,nx+1.8,nz+1.5); } }
+    if(hyd.length){ const hg=new THREE.CylinderGeometry(0.22,0.26,0.9,8),
+        hm=new THREE.MeshStandardMaterial({color:0xc0392b, roughness:0.6, metalness:0.3});
+      const hi=new THREE.InstancedMesh(hg,hm,hyd.length);
+      const M=new THREE.Matrix4(), P=new THREE.Vector3(), Q=new THREE.Quaternion(), SC=new THREE.Vector3(1,1,1);
+      hyd.forEach((t,i)=>{ P.set(t.x,0.65,t.z); M.compose(P,Q,SC); hi.setMatrixAt(i,M); });
+      hi.castShadow=false; g.add(hi); }
+    if(ben.length){ const bg2=new THREE.BoxGeometry(2.3,0.5,0.7),
+        bm2=new THREE.MeshStandardMaterial({color:0x6b4a2c, roughness:0.9});
+      const bi2=new THREE.InstancedMesh(bg2,bm2,ben.length);
+      const M=new THREE.Matrix4(), P=new THREE.Vector3(), Q=new THREE.Quaternion(), E=new THREE.Euler(), SC=new THREE.Vector3(1,1,1);
+      ben.forEach((t,i)=>{ P.set(t.x,0.47,t.z); E.set(0,t.r,0); Q.setFromEuler(E); M.compose(P,Q,SC); bi2.setMatrixAt(i,M); });
+      bi2.castShadow=false; g.add(bi2); }
   }
   // PARKED CARS along the roads ("add other cars"): static clones from the NPC pool
   const pool=['hatch','pickup','taxi','suv','truck','police'].filter(k=>fleetRaw[k]);
@@ -5558,7 +5599,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   pickups.forEach(p=>{scene.remove(p.m); disposeGroup(p.m);}); pickups=[]; pickupTimer=0;
   cars.forEach((c,i)=>{ c.rig.group.visible=true;
     c.hpMax = c.isPlayer ? Math.round(BR.maxHP*(1+0.14*(warsenal.arm||0))) : BR.maxHP;   // ARMOR upgrade raises the player's max HP
-    c.hp=c.hpMax; c.alive=true; c._gunT=Math.random()*0.4; c._brTarget=null; c._rkT=0; c._dmgT=0;
+    c.hp=c.hpMax; c.alive=true; c._gunT=Math.random()*0.4; c._brTarget=null; c._rkT=0; c._dmgT=0; c._burnT=0;
     c.boost = c.isPlayer ? 0 : CONFIG.boostMax*0.6;                                       // AI carries nitro for intercept bursts
     c._hunter = !c.isPlayer && (i%2===1);                                                 // every other AI actively hunts the player
     c.rkAmmo = c.isPlayer ? (BR.rkAmmo + (warsenal.rkt||0)) : 0;                          // ROCKETS upgrade grants extra starting ammo
@@ -5610,6 +5651,37 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
   const rk=document.getElementById('brRockets'); if(rk){ rk.textContent='🚀 ×'+(player.rkAmmo||0); rk.classList.toggle('empty',(player.rkAmmo||0)<=0); }
   const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0;
   const zn=document.getElementById('brZone'); if(zn){ zn.textContent='ZONE '+Math.round(zoneR)+'m'; zn.classList.toggle('tight', zoneR<BR.zoneMin+40); } }
+// BR RADAR: rotating minimap — player centered/up, enemies as dots (red=hunter), zone edge arc
+let _radarCtx=null;
+function drawBRRadar(){ const cv=document.getElementById('brRadarCv'); if(!cv) return;
+  if(!_radarCtx) _radarCtx=cv.getContext('2d');
+  const x=_radarCtx, S=cv.width, C=S/2, RANGE=170, scale=C/RANGE;
+  x.clearRect(0,0,S,S);
+  const h=player.heading, ch=Math.cos(h), sh=Math.sin(h);
+  const toRadar=(wx,wz)=>{ const dx=wx-player.pos.x, dz=wz-player.pos.y;
+    const rx=dx*ch - dz*sh, rz=dx*sh + dz*ch;                     // rotate so the player's forward = UP
+    return [C+rx*scale, C-rz*scale]; };
+  // zone ring
+  const [zx,zy]=toRadar(zoneCX,zoneCZ);
+  x.strokeStyle='rgba(90,160,255,.55)'; x.lineWidth=2;
+  x.beginPath(); x.arc(zx,zy, zoneR*scale, 0, 7); x.stroke();
+  // buildings hint: faint blocks from the collision grid (sampled)
+  if(brGrid){ x.fillStyle='rgba(150,160,190,.16)';
+    for(let gz=0; gz<brGrid.h; gz+=2) for(let gx=0; gx<brGrid.w; gx+=2){
+      if(!brGrid.solid[gz*brGrid.w+gx]) continue;
+      const wx=brGrid.x0+(gx+0.5)*brGrid.cell, wz=brGrid.z0+(gz+0.5)*brGrid.cell;
+      const dx=wx-player.pos.x, dz=wz-player.pos.y; if(dx*dx+dz*dz>RANGE*RANGE) continue;
+      const [px2,py2]=toRadar(wx,wz); x.fillRect(px2-2,py2-2,4,4); } }
+  // combatants
+  for(const c of cars){ if(c.isPlayer||!c.alive) continue;
+    const dx=c.pos.x-player.pos.x, dz=c.pos.y-player.pos.y, dd=Math.hypot(dx,dz);
+    let [px2,py2]=toRadar(c.pos.x,c.pos.y);
+    if(dd>RANGE){ const k=RANGE/dd; [px2,py2]=toRadar(player.pos.x+dx*k, player.pos.y+dz*k); }   // clamp to rim
+    x.fillStyle = c._hunter ? '#ff5a4d' : '#ffc23b';
+    x.beginPath(); x.arc(px2,py2, dd>RANGE?2.4:3.4, 0, 7); x.fill(); }
+  // player: white arrow, always centered pointing up
+  x.fillStyle='#fff'; x.beginPath(); x.moveTo(C,C-6); x.lineTo(C-4.4,C+5); x.lineTo(C+4.4,C+5); x.closePath(); x.fill();
+}
 // off-screen ENEMY DIRECTION ARROWS at the screen edge (red = hunter locked on you) — combat awareness QoL
 const _brV=new THREE.Vector3();
 function updateBRArrows(){ const cont=document.getElementById('brArrows'); if(!cont) return;
