@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.07-->
+<!--BUILD:v10.08-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -477,8 +477,14 @@
   .gdLogo .l1{ font-size:min(12vw,50px); } .gdLogo .l2{ font-size:min(15vw,62px); margin-top:-.05em; }
   .gdLogo .sub{ display:block; white-space:nowrap; font-style:normal; font-weight:800; letter-spacing:3px; font-size:min(3.4vw,13px);
     color:#cfe9ff; -webkit-text-fill-color:#cfe9ff; margin-top:5px; filter:drop-shadow(0 0 8px rgba(120,220,255,.7)); }
-  #gdLogoGlobe{ position:absolute; top:calc(env(safe-area-inset-top,6px) + 6px); left:50%; transform:translateX(-50%); z-index:3;
-    animation:gdPulse 3.2s ease-in-out infinite; }
+  #gdLogoGlobe{ position:absolute; top:calc(env(safe-area-inset-top,6px) + 6px); left:50%; transform:translateX(-50%) scale(1); z-index:3;
+    animation:gdPulse 3.2s ease-in-out infinite;
+    transition:top .8s cubic-bezier(.5,0,.2,1), transform .8s cubic-bezier(.5,0,.2,1); }
+  #gdLogoGlobe.center{ top:44%; transform:translateX(-50%) translateY(-50%) scale(1.5); }   /* hero pose: dead-center in front of the globe */
+  #gdLogoGlobe.center::before{ content:''; position:absolute; left:50%; top:52%; width:340px; height:340px; transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(255,110,200,.30) 0%, rgba(120,200,255,.14) 42%, transparent 70%);
+    border-radius:50%; z-index:-1; animation:gdHalo 2.6s ease-in-out infinite; pointer-events:none; }
+  @keyframes gdHalo{ 0%,100%{ opacity:.7; transform:translate(-50%,-50%) scale(1); } 50%{ opacity:1; transform:translate(-50%,-50%) scale(1.14); } }
   @keyframes gdPulse{ 0%,100%{ filter:none; } 50%{ filter:brightness(1.12); } }
   @keyframes gdShine{ 0%,55%{ background-position:120% 0, 0 0; } 80%,100%{ background-position:-60% 0, 0 0; } }   /* chrome glint sweeping the letters */
   #gdLogoGlobe .l1,#gdLogoGlobe .l2{ animation:gdShine 4.6s ease-in-out infinite, gdFloat 5.4s ease-in-out infinite; }
@@ -966,6 +972,17 @@
         <div class="trackBtn" data-i="20"><div class="ic">⛰️</div><b>COPACABANA RUN</b><span>Rio Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
         <div class="trackBtn" data-i="21"><div class="ic">❄️</div><b>TVERSKAYA LOOP</b><span>Moscow Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
         <div class="trackBtn" data-i="22"><div class="ic">🕌</div><b>FORT DISTRICT</b><span>Mumbai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="23"><div class="ic">🏮</div><b>JONGNO SPRINT</b><span>Seoul Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="24"><div class="ic">🌃</div><b>BUND CIRCUIT</b><span>Shanghai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="25"><div class="ic">🏛️</div><b>ROMA CENTRO</b><span>Rome Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="26"><div class="ic">⛱️</div><b>EIXAMPLE GRID</b><span>Barcelona Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="27"><div class="ic">🌵</div><b>ZOCALO GP</b><span>Mexico City Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="28"><div class="ic">💃</div><b>MICROCENTRO GP</b><span>Buenos Aires Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="29"><div class="ic">🛥️</div><b>HARBOUR CIRCUIT</b><span>Sydney Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="30"><div class="ic">🐫</div><b>NILE DOWNTOWN</b><span>Cairo Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="31"><div class="ic">🎺</div><b>HABANA VIEJA</b><span>Havana Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="32"><div class="ic">🍁</div><b>BAY STREET GP</b><span>Toronto Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="33"><div class="ic">🦁</div><b>JOZI CBD</b><span>Johannesburg Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
       </div>
       <div id="passportRow"></div>
       <div id="nextCarBtn">NEXT · CHOOSE CAR &nbsp;▸</div>
@@ -1135,7 +1152,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.07';
+(function(){ const BUILD='v10.08';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6285,7 +6302,11 @@ function init(){
     document.getElementById('champ').classList.add('hidden');
     if(champ.active){ currentTrack=champ.order[champ.round]; selectTrack(currentTrack); startGame(); } else showMenu(); });
   document.querySelectorAll('.trackBtn').forEach(b=> b.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
-    const i=+b.dataset.i; if(trackLocked(i)){ popup('🔒 WIN THE TRACK BEFORE IT TO UNLOCK','#ffd24a'); return; } selectTrack(i); showTrackPreview(i); }));
+    const i=+b.dataset.i; if(trackLocked(i)){ popup('🔒 WIN THE TRACK BEFORE IT TO UNLOCK','#ffd24a'); return; } selectTrack(i); showTrackPreview(i);
+    clearTimeout(window._toCarT);                                   // picking a track flows you into car selection (owner UX: track -> car -> race)
+    window._toCarT=setTimeout(()=>{ if(state!=='menu') return;
+      const go=()=>{ const gt=document.querySelector('#tabStrip .tab[data-tab="garage"]'); if(gt) gt.click(); };
+      (typeof playTransition==='function')? playTransition(go) : go(); }, 1000); }));
   try{ markCityOfTheDay(); renderPassport(); }catch(e){}
   const togDiff=document.getElementById('togDiff'), DIFF_ORDER=['easy','normal','hard'];
   const applyDiff=()=>{ togDiff.innerHTML='<svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg> '+difficulty.toUpperCase(); togDiff.classList.toggle('on', difficulty!=='normal'); const D=DIFF[difficulty]||DIFF.normal; aiCap=D.cap; aiAggro=D.aggro||1; };
@@ -7185,7 +7206,8 @@ window.NETRACE=false;
   function close(){ document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
   window.openGlobe=function(){ if(window.audio){ audio.start&&audio.start(); audio.ui&&audio.ui(); } init(); picked=-1;
     const gc=document.getElementById('globeCard'); if(gc) gc.classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display='';
-    document.getElementById('globeModal').classList.add('show'); resize(); if(!raf) loop(); };
+    document.getElementById('globeModal').classList.add('show'); resize(); if(!raf) loop();
+    if(window.__logoHero) window.__logoHero(); };
   window.addEventListener('resize', ()=>{ if(document.getElementById('globeModal').classList.contains('show')) resize(); });
   document.getElementById('globeClose').addEventListener('click', e=>{ e.stopPropagation(); close(); });
   document.getElementById('globeRace').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return; const gd=GLOBE[picked];
@@ -7198,13 +7220,20 @@ window.NETRACE=false;
     if(typeof ownedCars!=='undefined' && ownedCars[selectedCar]){ const sb=document.getElementById('startBtn'); if(sb) sb.click(); }
     else { const gt=document.querySelector('.tab[data-tab="garage"]'); if(gt) gt.click(); } });
   const act=(id,fn)=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',ev=>{ ev.stopPropagation(); if(window.audio&&audio.ui) audio.ui(); fn(); }); };
-  act('gaRace',   ()=>{ close(); const b=document.getElementById('startBtn'); if(b) b.click(); });
+  act('gaRace',   ()=>{ const go=()=>{ close(); const t=document.querySelector('#tabStrip .tab[data-tab="race"]'); if(t) t.click(); };
+    (typeof playTransition==='function')? playTransition(go) : go(); });   // RACE = pick your track first (track -> car -> race)
   act('gaGarage', ()=>{ close(); const t=document.querySelector('.tab[data-tab="garage"]'); if(t) t.click(); });
   act('gaCup',    ()=>{ close(); const b=document.getElementById('champBtn'); if(b) b.click(); });
   act('gaBattle', ()=>{ close(); const b=document.getElementById('battleBtn'); if(b) b.click(); });
   act('gaOnline', ()=>{ close(); const b=document.getElementById('onlineBtn'); if(b) b.click(); });
   act('gaSettings',()=>{ close(); const t=document.querySelector('.tab[data-tab="settings"]'); if(t) t.click(); });
   const tw=document.getElementById('tabWorld'); if(tw) tw.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });
+  // LOGO HERO POSE: centered in front of the globe on entry, then docks up top on first touch (or 3.2s)
+  { const lg=document.getElementById('gdLogoGlobe'); let dockT=null;
+    const dock=()=>{ if(lg) lg.classList.remove('center'); clearTimeout(dockT); };
+    window.__logoHero=()=>{ if(!lg) return; lg.classList.add('center'); clearTimeout(dockT); dockT=setTimeout(dock,3200); };
+    const cv=document.getElementById('globeCanvas'); if(cv) cv.addEventListener('pointerdown', dock);
+    ['gaRace','gaGarage','gaCup','gaBattle','gaOnline','gaSettings'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', dock); }); }
   const gb=document.getElementById('globeBack'); if(gb) gb.addEventListener('click', e=>{ e.stopPropagation(); picked=-1; document.getElementById('globeCard').classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display=''; });
   // GLOBE IS THE MAIN MENU: auto-open on boot + every return to the menu (races/battles end -> back to the globe)
   let _prevInm=document.body.classList.contains('inmenu');
