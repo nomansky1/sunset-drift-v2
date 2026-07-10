@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.78-->
+<!--BUILD:v9.79-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.78';
+(function(){ const BUILD='v9.79';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1628,6 +1628,16 @@ const TRACKS=[
   { name:'BAYOU', sub:'SWAMP · MANGROVE MAZE', theme:'forest', label:'swamp', groundHex:'#37472b', fog:0x5f6f48,
     sky:{top:0x5a6a55,bot:0xa6b298,sun:0xe8dfbe}, sun:[-0.4,0.28,-0.7],
     ctrl:[[-175,-110],[-60,-150],[35,-105],[62,-30],[135,-60],[186,-6],[130,45],[170,105],[60,150],[-40,118],[-96,150],[-172,96],[-120,34],[-152,-30],[-186,-64]] },   // murky bayou — cypress + reeds
+
+  { name:'MANHATTAN GP', sub:'NEW YORK · REAL STREETS (3882m)', theme:'city', groundHex:'#33363d', fog:0xd8a06a,
+    sky:{top:0x33215e,bot:0xff9a5a,sun:0xfff2c0}, sun:[-0.5,0.12,-0.85], osm:'nyc',
+    ctrl:[[115.3,-153.3],[-10.1,71.6],[-80.6,32.7],[-91.9,53.0],[-162.7,14.1],[-175.4,36.0],[-186.0,55.3],[-177.5,62.8],[-45.8,135.9],[-33.4,114.3],[37.1,153.3],[186.0,-114.5],[118.5,-151.7]] },   // REAL Midtown Manhattan loop from the OSM road graph — (c) OpenStreetMap contributors, ODbL
+  { name:'OCEAN DRIVE GP', sub:'MIAMI · REAL STREETS (3018m)', theme:'beach', groundHex:'#e2cd9c', fog:0xbfe0e8, water:-6,
+    sky:{top:0x2a8fd8,bot:0xcfeeff,sun:0xfff4d0}, sun:[0.3,0.18,-0.9], osm:'miami',
+    ctrl:[[26.6,-186.0],[28.9,-102.0],[44.3,-103.0],[8.3,95.3],[41.0,102.0],[24.8,183.5],[-12.9,186.0],[-11.8,180.5],[-34.4,181.5],[-44.3,-183.9],[23.8,-185.9]] },   // REAL South Beach loop (OSM) — (c) OpenStreetMap contributors, ODbL
+  { name:'VIEJO SAN JUAN', sub:'PUERTO RICO · REAL STREETS (1814m)', theme:'coast', groundHex:'#c9a06a', fog:0xffc890, water:-4,
+    sky:{top:0x2a55a0,bot:0xffb878,sun:0xfff0c0}, sun:[0.45,0.10,-0.88], osm:'sanjuan',
+    ctrl:[[186.0,-86.6],[38.8,-83.2],[35.4,-58.0],[19.1,-60.3],[5.9,17.5],[-179.0,5.9],[-186.0,53.0],[-24.4,84.4],[156.8,86.6],[186.0,-84.4]] },   // REAL Old San Juan loop (OSM) — (c) OpenStreetMap contributors, ODbL
 ];
 let _trackDiffCache=null;
 function trackDifficulties(){ if(_trackDiffCache) return _trackDiffCache;
