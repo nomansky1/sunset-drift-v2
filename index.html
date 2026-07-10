@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.09-->
+<!--BUILD:v10.10-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1152,7 +1152,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.09';
+(function(){ const BUILD='v10.10';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3169,9 +3169,17 @@ function buildStreetFurniture(rng){
   const _m=new THREE.Matrix4();
   const poleGeo=new THREE.CylinderGeometry(0.18,0.22,7,6); poleGeo.translate(0,3.5,0);
   const pole=new THREE.InstancedMesh(poleGeo, new THREE.MeshStandardMaterial({color:0x2a2a30, roughness:0.7, metalness:0.4}), poles.length);
-  const lamp=new THREE.InstancedMesh(new THREE.SphereGeometry(0.45,8,6), new THREE.MeshStandardMaterial({color:0xfff2c0, emissive:0xffe08a, emissiveIntensity:2.0}), poles.length);
+  const lamp=new THREE.InstancedMesh(new THREE.SphereGeometry(0.45,8,6), new THREE.MeshStandardMaterial({color:0xfff2c0, emissive:0xffe08a, emissiveIntensity:nightMode?2.4:0.25}), poles.length);
   poles.forEach((q,k)=>{ _m.makeTranslation(q.x,0,q.z); pole.setMatrixAt(k,_m); _m.makeTranslation(q.x,7,q.z); lamp.setMatrixAt(k,_m); });
   pole.instanceMatrix.needsUpdate=lamp.instanceMatrix.needsUpdate=true; pole.castShadow=!isTouch; scene.add(pole); scene.add(lamp);
+  if(nightMode){                                              // REALISTIC NIGHT: warm light pools on the pavement under every streetlamp
+    if(!glowTex) addGlow(new THREE.Group(),0,0,0,0xffffff,1); // ensure the shared radial texture exists
+    const poolG=new THREE.PlaneGeometry(13,13); poolG.rotateX(-Math.PI/2);
+    const poolM=new THREE.MeshBasicMaterial({map:glowTex, color:0xffb75e, transparent:true, opacity:0.30,
+      blending:THREE.AdditiveBlending, depthWrite:false, fog:false});
+    const pool=new THREE.InstancedMesh(poolG, poolM, poles.length);
+    poles.forEach((q,k)=>{ _m.makeTranslation(q.x,0.12,q.z); pool.setMatrixAt(k,_m); });
+    pool.instanceMatrix.needsUpdate=true; scene.add(pool); }
   // ---- denser greenery: street trees lining the road + park clusters + bushes (all instanced for perf) ----
   const _t=new THREE.Matrix4(), _tp=new THREE.Vector3(), _tq=new THREE.Quaternion(), _ts=new THREE.Vector3();
   const treePos=[];
@@ -3996,13 +4004,13 @@ function captureEnv(){
 }
 function buildLights(sunDir){
   if(nightMode){
-    scene.add(new THREE.HemisphereLight(0x3a4a7a, 0x05060c, 0.5*Math.PI));
-    scene.add(new THREE.AmbientLight(0x2a3358, 0.16*Math.PI));
+    scene.add(new THREE.HemisphereLight(0x2c3a66, 0x04050a, 0.34*Math.PI));   // realistic night: darker base, light comes from LAMPS (pools/windows/headlights)
+    scene.add(new THREE.AmbientLight(0x232c4e, 0.09*Math.PI));
   } else {
     scene.add(new THREE.HemisphereLight(0xcdd9ec, 0x4a3a28, 0.74*Math.PI));   // cool sky + warm ground bounce; lowered fill = deeper form shadows (cinematic, not flat)
     scene.add(new THREE.AmbientLight(0xffffff, 0.07*Math.PI));                 // just a sliver of flat lift (was 0.18 — it was washing out the form shadows)
   }
-  const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, (nightMode?0.55:1.4)*Math.PI);   // golden-hour key (~3800K); 2.5PI clipped every sun-facing wall to white (owner: overexposed)
+  const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, (nightMode?0.42:1.4)*Math.PI);   // golden-hour key (~3800K); 2.5PI clipped every sun-facing wall to white (owner: overexposed)
   // raise the SHADOW-casting light to a healthy elevation (grounded shadows) while the visual sun disc stays low/dramatic
   const ld=new THREE.Vector3(sunDir.x, Math.max(sunDir.y, 0.62), sunDir.z).normalize();
   sun.position.set(trackCentroid.x+ld.x*160, ld.y*160, trackCentroid.y+ld.z*160);
@@ -4427,7 +4435,14 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     for(const sx of [-1,1]){
       const hz=surfZ(sx, ly, 1), tz=surfZ(sx, ly, -1);
       const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, hz+0.005); rig.group.add(hl);
-      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, tz-0.005); rig.group.add(tl); }
+      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, tz-0.005); rig.group.add(tl);
+      addGlow(rig.group, sx*lx, ly, hz+0.1, 0xfff0c0, nightMode?1.5:0.8);      // lamp halo (attached: rides the group incl. lean)
+      addGlow(rig.group, sx*lx, ly, tz-0.1, 0xff2822, nightMode?1.1:0.6);
+      if(nightMode){                                                            // headlight BEAM pooled on the road ahead (every model, incl. AI)
+        const bm=new THREE.Mesh(new THREE.PlaneGeometry(1.7,7.5),
+          new THREE.MeshBasicMaterial({map:glowTex, color:0xffedb8, transparent:true, opacity:0.20,
+            blending:THREE.AdditiveBlending, depthWrite:false, fog:false}));
+        bm.rotation.x=-Math.PI/2; bm.position.set(sx*lx*0.8, 0.09, Lz/2+3.9); rig.group.add(bm); } }
   }
 }
 // rounded (molded) box: a rounded-rect profile extruded + beveled -> no hard square edges
@@ -5898,7 +5913,7 @@ function update(dt){
     const cx=player.pos.x, cz=player.pos.y, ang=menuT*0.32, cy=player.visY||0;
     const aspEff=Math.min(Math.max(camera.aspect,0.3), 0.62);                                // landscape garage shows the car between the two SIDE PANELS -> fit the middle gap, not the full width
     const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*aspEff);                           // horizontal FOV of the visible middle
-    const dist=Math.max(8.2, 3.4/Math.tan(hf/2)+3.4);                                        // pull back so the WHOLE car + kit parts fit
+    const dist=Math.max(8.2, 3.4/Math.tan(hf/2)+3.4)*(window._garZoom||1);                   // pull back so the WHOLE car + kit parts fit; _garZoom = pinch/wheel zoom
     camera.position.set(cx + Math.sin(ang)*dist, 2.5+cy+(dist-8.2)*0.12, cz + Math.cos(ang)*dist);
     camera.lookAt(cx, 1.05+cy, cz);
   }
@@ -6280,6 +6295,21 @@ function init(){
     document.querySelectorAll('#tabStrip .tab').forEach(x=>x.classList.toggle('on', x===t));
     document.querySelectorAll('#mPanels .mPanel').forEach(p=>p.classList.toggle('on', p.id==='panel-'+id));
     if(id==='garage' && window.placeCarSlider) requestAnimationFrame(window.placeCarSlider); }));   // pin the car strip below the tabs
+  // GARAGE ZOOM (owner): pinch on the car to zoom in/out on touch; mouse wheel on desktop. Only in the
+  // menu showcase, only when the gesture starts on the 3D canvas (panels/sliders keep their own gestures).
+  { window._garZoom=1; const Z=v=>{ window._garZoom=Math.min(2.2, Math.max(0.45, v)); };
+    const cvs=document.querySelector('canvas');
+    let pd={}, pinch0=0, zoom0=1;
+    const onCanvas=e=> e.target===cvs || (e.target&&e.target.tagName==='CANVAS');
+    window.addEventListener('pointerdown', e=>{ if(state!=='menu'||!onCanvas(e)) return; pd[e.pointerId]=[e.clientX,e.clientY];
+      const ids=Object.keys(pd); if(ids.length===2){ const a2=pd[ids[0]], b2=pd[ids[1]]; pinch0=Math.hypot(a2[0]-b2[0],a2[1]-b2[1])||1; zoom0=window._garZoom; } }, {passive:true});
+    window.addEventListener('pointermove', e=>{ if(!pd[e.pointerId]) return; pd[e.pointerId]=[e.clientX,e.clientY];
+      const ids=Object.keys(pd); if(ids.length===2){ const a2=pd[ids[0]], b2=pd[ids[1]];
+        const d2=Math.hypot(a2[0]-b2[0],a2[1]-b2[1])||1; Z(zoom0*pinch0/d2); } }, {passive:true});
+    const drop=e=>{ delete pd[e.pointerId]; };
+    window.addEventListener('pointerup', drop, {passive:true}); window.addEventListener('pointercancel', drop, {passive:true});
+    window.addEventListener('wheel', e=>{ if(state!=='menu'||!onCanvas(e)) return; Z((window._garZoom||1)*(e.deltaY>0?1.09:0.92)); }, {passive:true});
+  }
   const ncb=document.getElementById('nextCarBtn');   // track picked -> NEXT steps you into car selection (garage), where RACE launches
   if(ncb) ncb.addEventListener('click', e=>{ e.stopPropagation(); const gt=document.querySelector('#tabStrip .tab[data-tab="garage"]'); if(gt) gt.click(); });
   window.playTransition=function(cb){ const t=document.getElementById('transition'); if(!t||!t.animate){ cb(); return; }
