@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.11-->
+<!--BUILD:v10.12-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -502,11 +502,29 @@
   #globeClose{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 8px); right:14px; z-index:3; width:40px; height:40px; border-radius:50%;
     background:rgba(20,16,34,.72); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:19px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; pointer-events:auto; }
-  #globeCard{ position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,10px) + 14px); transform:translateX(-50%);
-    width:min(94vw,420px); background:linear-gradient(160deg,rgba(30,24,48,.95),rgba(14,10,26,.96));
-    border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; z-index:5;
-    box-shadow:0 16px 48px rgba(0,0,0,.65); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  #globeCard{ position:absolute; left:50%; top:50%; transform:translate(-50%,-47%);
+    width:min(92vw,400px); background:transparent;                            /* sections carry their own glass — the holo window stays SEE-THROUGH to the 3D track */
+    border:1px solid rgba(110,180,255,.35); border-radius:18px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; z-index:5;
+    box-shadow:0 0 0 1px rgba(80,120,255,.12), 0 18px 60px rgba(0,0,0,.6), 0 0 34px rgba(90,160,255,.18), inset 0 0 22px rgba(90,160,255,.06);
+    animation:holoIn .5s cubic-bezier(.2,1.2,.35,1); }
+  @keyframes holoIn{ 0%{ opacity:0; transform:translate(-50%,-47%) scale(.86) perspective(700px) rotateX(14deg); filter:brightness(2.2) saturate(0); }
+    60%{ filter:brightness(1.35); } 100%{ opacity:1; transform:translate(-50%,-47%) scale(1) perspective(700px) rotateX(0); filter:none; } }
+  #globeCard::before,#globeCard::after{ content:''; position:absolute; width:22px; height:22px; pointer-events:none;   /* corner brackets */
+    border:2px solid rgba(140,200,255,.85); }
+  #globeCard::before{ top:-2px; left:-2px; border-right:none; border-bottom:none; border-radius:14px 0 0 0; }
+  #globeCard::after{ bottom:-2px; right:-2px; border-left:none; border-top:none; border-radius:0 0 14px 0; }
+  #gcTop,#gcMid,#gcBtns{ background:linear-gradient(160deg,rgba(22,20,44,.88),rgba(10,9,24,.9)); border:1px solid rgba(255,255,255,.12);
+    border-radius:11px; padding:8px 10px; -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px); }
+  #gcHolo{ position:relative; height:158px; border-radius:11px; border:1px dashed rgba(120,190,255,.35); overflow:hidden; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 82%, rgba(70,130,255,.10) 0%, transparent 62%); }
+  #gcHolo .hScan{ position:absolute; inset:0; background:repeating-linear-gradient(0deg, rgba(140,200,255,.05) 0 2px, transparent 2px 5px); }
+  #gcBtns{ display:flex; gap:8px; padding:8px; }
+  #gcTrack{ display:none !important; }   /* the holo window IS the track map now — the little SVG thumb doubled it */
   #gcTop{ display:flex; align-items:center; gap:12px; }
+  #globeRace{ flex:1.4; } #globeBattle{ flex:1; pointer-events:auto; cursor:pointer; text-align:center; font-weight:900; letter-spacing:1px;
+    padding:12px 8px; border-radius:9px; font-size:14px; color:#ffd9d4; background:linear-gradient(95deg,rgba(120,26,30,.9),rgba(70,14,20,.9));
+    border:1px solid rgba(255,120,110,.35); }
+  #globeBattle:active{ transform:scale(.96); }
   #gcMid{ display:flex; align-items:center; gap:14px; }
   #gcTrack{ width:120px; height:88px; flex:0 0 auto; background:rgba(0,0,0,.32); border:1px solid rgba(255,255,255,.12); border-radius:10px;
     display:flex; align-items:center; justify-content:center; overflow:hidden; }
@@ -1152,7 +1170,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.11';
+(function(){ const BUILD='v10.12';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -7126,11 +7144,12 @@ window.NETRACE=false;
       <div id="globeInfo"><div id="globeCountry">—</div><div id="globeMeta">—</div></div>
       <div id="globeBack">✕</div>
     </div>
+    <div id="gcHolo"><i class="hScan"></i></div>
     <div id="gcMid">
       <div id="gcTrack"></div>
       <div id="gcInfo2"><div id="gcDiff"></div><div id="gcCar"></div></div>
     </div>
-    <div id="globeRace">RACE ▶</div>
+    <div id="gcBtns"><div id="globeRace">RACE ▶</div><div id="globeBattle">⚔ BATTLE</div></div>
   </div>
 </div>
 <script>
@@ -7205,18 +7224,30 @@ window.NETRACE=false;
   function loop(){ raf=requestAnimationFrame(loop);
     if(spinT!=null){ const d=Math.atan2(Math.sin(spinT-rot),Math.cos(spinT-rot)); rot+=d*0.12; tilt+=(tiltT-tilt)*0.12;
       if(Math.abs(d)<0.01){ spinT=null; } }
-    else if(drag===null) rot+=0.0024;
+    else if(drag===null && picked<0) rot+=0.0024;                        // globe HOLDS STILL while the track card is open
     rot+=vel; vel*=0.9; tilt=Math.max(-1.15,Math.min(1.15,tilt+velT)); velT*=0.9; grp.rotation.y=rot; grp.rotation.x=tilt;
     const t=performance.now()*0.004;
     markers.forEach(m=>{ const pulse=0.9+0.4*Math.sin(t+m.i*1.3); const ping=(m.i===picked)?(2.0+0.9*Math.abs(Math.sin(t*2.2))):pulse; m.ring.scale.setScalar(ping); m.ring.material.opacity=(m.i===picked)?(0.5-0.3*Math.abs(Math.sin(t*2.2))):0.35; m.pin.scale.setScalar(m.i===picked?2.2:1); });
-    cam.position.z += (camZT-cam.position.z)*0.07;                                   // camera dolly (pick = zoom in, back = zoom out)
-    if(trackDio){ const g2=trackDio, tgt=g2.userData.tgt||1; if(g2.scale.x<tgt) g2.scale.setScalar(Math.min(tgt, g2.scale.x+0.06));
-      if(dioSpin) dioSpin.rotation.y += 0.006;                                          // hologram-table spin
-      const s2=1+0.03*Math.sin(t*0.9); g2.position.y=g2.userData.y0||(g2.userData.y0=g2.position.y), g2.position.y=g2.userData.y0+0.05*Math.sin(t*0.7); g2.scale.y=g2.scale.x*s2; }
+    camZT=(picked>=0? uZoom*0.9 : uZoom);
+    cam.position.z += (camZT-cam.position.z)*0.07;                                   // camera dolly (pick/pinch = zoom)
+    if(trackDio){ placeDioramaInCard(); const g2=trackDio, tgt=g2.userData.tgt||1;
+      g2.scale.x=g2.scale.z=Math.min(tgt, g2.scale.x+Math.max(0.04,tgt*0.08));
+      if(dioSpin){ dioSpin.rotation.y += 0.007; }                                     // hologram-table spin
+      g2.scale.y=g2.scale.x*(1+0.03*Math.sin(t*0.9)); }
     ren.render(sc,cam); }
   function bind(cv){
-    cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; moved=0; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
-    cv.addEventListener('pointermove',e=>{ if(drag===null) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    let gp={}, gp0=0, gz0=6.1;                                             // GLOBE PINCH ZOOM (owner): two fingers dolly the camera
+    const setZ=v=>{ uZoom=Math.min(8.6, Math.max(3.6, v)); };
+    cv.addEventListener('wheel', e=>{ e.preventDefault(); setZ(uZoom*(e.deltaY>0?1.07:0.93)); }, {passive:false});
+    cv.addEventListener('pointerdown',e=>{ gp[e.pointerId]=[e.clientX,e.clientY];
+      const ids=Object.keys(gp); if(ids.length===2){ const A=gp[ids[0]],B=gp[ids[1]]; gp0=Math.hypot(A[0]-B[0],A[1]-B[1])||1; gz0=uZoom; drag=null; } });
+    cv.addEventListener('pointermove',e=>{ if(gp[e.pointerId]) gp[e.pointerId]=[e.clientX,e.clientY];
+      const ids=Object.keys(gp); if(ids.length===2){ const A=gp[ids[0]],B=gp[ids[1]];
+        setZ(gz0*gp0/(Math.hypot(A[0]-B[0],A[1]-B[1])||1)); } });
+    const gdrop=e=>{ delete gp[e.pointerId]; };
+    cv.addEventListener('pointerup',gdrop); cv.addEventListener('pointercancel',gdrop);
+    cv.addEventListener('pointerdown',e=>{ if(Object.keys(gp).length>1) return; drag={x:e.clientX,y:e.clientY}; moved=0; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
+    cv.addEventListener('pointermove',e=>{ if(Object.keys(gp).length>1){ drag=null; return; } if(drag===null) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
       moved+=Math.abs(dx)+Math.abs(dy); vel=dx*0.0004; velT=dy*0.0003;
       rot+=dx*0.006; tilt=Math.max(-1.15,Math.min(1.15, tilt+dy*0.005)); drag={x:e.clientX,y:e.clientY}; });
     cv.addEventListener('pointerup',e=>{ const wasDrag=moved>6; drag=null; if(wasDrag) return;
@@ -7227,9 +7258,11 @@ window.NETRACE=false;
         if(toM.dot(camDir) < 0.12) return;                                  // skip the far hemisphere
         const q=wp.clone().project(cam); if(q.z>1) return;
         const d=Math.hypot(q.x-tx, q.y-ty); if(d<bd){ bd=d; best=m.i; } });
-      if(best>=0) select(best); });
+      if(best>=0) select(best);
+      else if(picked>=0){ picked=-1; clearDiorama(); document.getElementById('globeCard').classList.add('hidden');
+        const ga2=document.getElementById('globeActions'); if(ga2) ga2.style.display=''; } });
   }
-  let spinT=null, tiltT=null, trackDio=null, dioSpin=null, camZT=6.1;
+  let spinT=null, tiltT=null, trackDio=null, dioSpin=null, camZT=6.1, uZoom=6.1;   // uZoom = user pinch/wheel dolly
   function clearDiorama(){ if(trackDio){ sc.remove(trackDio); trackDio.traverse(o=>{ if(o.isMesh){ o.geometry.dispose(); o.material.dispose(); } }); trackDio=null; dioSpin=null; } camZT=6.1; }
   function showTrackDiorama(ti){ clearDiorama(); const trk=TRACKS[ti]; if(!trk||!trk.ctrl||typeof THREE==='undefined') return;
     const acc=new THREE.Color((typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b');
@@ -7246,10 +7279,20 @@ window.NETRACE=false;
     plate.rotation.x=-Math.PI/2; plate.position.y=-0.03; inner.add(plate);
     const rim=new THREE.Mesh(new THREE.RingGeometry(1.25,1.30,42), new THREE.MeshBasicMaterial({color:acc, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
     rim.rotation.x=-Math.PI/2; rim.position.y=-0.02; inner.add(rim);
-    const asp=cam?cam.aspect:1, ph=asp<0.9;                                                              // phones: float the hologram above the globe, not off-screen right
-    g.position.set(ph?0.02:1.72, ph?1.74:1.28, ph?1.1:0.2); g.rotation.x=0.62; g.scale.setScalar(0.001);
-    g.userData.tgt=ph?0.5:0.62;
-    sc.add(g); trackDio=g; dioSpin=inner; camZT=ph?5.6:5.35;                                              // dolly the camera in — the pick feels like a zoom
+    g.rotation.x=0.56; g.scale.setScalar(0.001); g.userData.tgt=1;                                      // placed INSIDE the card's holo window every frame (see loop)
+    sc.add(g); trackDio=g; dioSpin=inner; camZT=uZoom*0.9;                                               // slight dolly — the pick feels like a zoom
+  }
+  const _hv=new THREE.Vector3();
+  function placeDioramaInCard(){                                          // project the 3D hologram into #gcHolo (the card's transparent window)
+    if(!trackDio||!cam) return; const hw=document.getElementById('gcHolo'), cv=document.getElementById('globeCanvas');
+    if(!hw||hw.offsetParent===null) return;
+    const hr=hw.getBoundingClientRect(), cr=cv.getBoundingClientRect();
+    const nx=((hr.left+hr.width/2-cr.left)/cr.width)*2-1, ny=-(((hr.top+hr.height*0.6-cr.top))/cr.height)*2+1;
+    const D=2.65;                                                          // hologram distance in front of the camera (in front of the globe surface)
+    _hv.set(nx,ny,0.5).unproject(cam).sub(cam.position).normalize();
+    trackDio.position.copy(cam.position).addScaledVector(_hv, D);
+    const worldH=2*D*Math.tan(cam.fov*Math.PI/360)*(hr.height/cr.height);  // fit the ~2.6-unit-wide diorama into the window height
+    trackDio.userData.tgt=Math.max(0.2, worldH/2.05);
   }
   function trackForCountry(i,theme){                          // country's REAL circuit first, theme fallback
     const d=((typeof NATION!=='undefined')&&NATION[(COUNTRIES[i]||{}).key]||{}).district;
@@ -7279,15 +7322,20 @@ window.NETRACE=false;
     if(window.__logoHero) window.__logoHero(); };
   window.addEventListener('resize', ()=>{ if(document.getElementById('globeModal').classList.contains('show')) resize(); });
   document.getElementById('globeClose').addEventListener('click', e=>{ e.stopPropagation(); close(); });
+  document.getElementById('globeBattle').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return;
+    const gd2=GLOBE[picked], ti2=trackForCountry(picked,gd2.theme); currentTrack=ti2;
+    try{ if(typeof selectTrack==='function') selectTrack(ti2); }catch(_){}
+    const go2=()=>{ close(); const gt2=document.querySelector('.tab[data-tab="garage"]'); if(gt2) gt2.click();
+      if(typeof isOwned==='function' && isOwned(selectedCar)){ const b2=document.getElementById('battleBtn'); if(b2) b2.click(); } };   // owned car -> straight into battle; else pick a car first (BATTLE cta is right there)
+    (typeof playTransition==='function')? playTransition(go2) : go2(); });
   document.getElementById('globeRace').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return; const gd=GLOBE[picked];
     selectedCar=picked%CARS.length; try{ if(typeof saveSelCar==='function') saveSelCar(); else localStorage.setItem('sd_car',selectedCar); }catch(_){}
     if(typeof renderShop==='function') renderShop(); if(typeof upgradeCars==='function') upgradeCars();
     window.__globeCountry=picked;   // race in the picked COUNTRY -> city name, flags, signage, music genre
-    const ti=trackForCountry(i,gd.theme); currentTrack=ti;
+    const ti=trackForCountry(picked,gd.theme); currentTrack=ti;
     try{ if(typeof selectTrack==='function') selectTrack(currentTrack); }catch(_){}
-    close();
-    if(typeof ownedCars!=='undefined' && ownedCars[selectedCar]){ const sb=document.getElementById('startBtn'); if(sb) sb.click(); }
-    else { const gt=document.querySelector('.tab[data-tab="garage"]'); if(gt) gt.click(); } });
+    const go=()=>{ close(); const gt=document.querySelector('.tab[data-tab="garage"]'); if(gt) gt.click(); };   // RACE -> car selection first (owner UX); garage's RACE/UNLOCK launches
+    (typeof playTransition==='function')? playTransition(go) : go(); });
   const act=(id,fn)=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',ev=>{ ev.stopPropagation(); if(window.audio&&audio.ui) audio.ui(); fn(); }); };
   act('gaRace',   ()=>{ const go=()=>{ close(); const t=document.querySelector('#tabStrip .tab[data-tab="race"]'); if(t) t.click(); };
     (typeof playTransition==='function')? playTransition(go) : go(); });   // RACE = pick your track first (track -> car -> race)
