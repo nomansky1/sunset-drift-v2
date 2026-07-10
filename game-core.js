@@ -124,8 +124,8 @@ function updateCar(c, inp, dt){
   c.pos.addScaledVector(c.vel, dt);
 
   // curb barrier: SLIDE along it — cancel only the into-wall velocity, keep your speed
-  // (races only — Battle Royale is an OPEN arena: no track barriers, cars roam the whole district)
-  if(typeof brActive==='undefined' || !brActive){ const p=samplePts[c.trackIdx]; _v.set(c.pos.x-p.x, c.pos.y-p.y); const dd=_v.length();
+  // (races only — Battle Royale AND free roam are OPEN: no track barriers, cars roam the whole district)
+  if((typeof brActive==='undefined' || !brActive) && !(typeof freeRoam!=='undefined' && freeRoam)){ const p=samplePts[c.trackIdx]; _v.set(c.pos.x-p.x, c.pos.y-p.y); const dd=_v.length();
     const limit=(sampleHW[c.trackIdx]||CONFIG.roadHalfWidth)-1.0;   // per-sample road edge (narrows at tight corners)
     if(dd>limit){ _v.multiplyScalar(1/dd);                 // outward normal
       const vOut=c.vel.dot(_v);                            // >0 = driving into the wall
@@ -147,7 +147,7 @@ function updateCar(c, inp, dt){
   }
 
   // OFF-ROAD RESCUE (race modes): if a car somehow ends up stranded off the road (any bug, any track), snap it back after 2.5s — nobody is EVER stuck in the void
-  if(!brActive){
+  if(!brActive && !(typeof freeRoam!=='undefined' && freeRoam)){   // free roam: no off-road snap-back either
     if(c.trackDist > (sampleHW[c.trackIdx]||CONFIG.roadHalfWidth)+9){ c._lostT=(c._lostT||0)+dt;
       if(c._lostT>2.5){ const p=samplePts[c.trackIdx], t=sampleTan[c.trackIdx];
         c.pos.set(p.x,p.y); c.heading=Math.atan2(t.x,t.y); c.vel.set(t.x*9,t.y*9); c.air=0; c._airV=0; c._lostT=0;
@@ -261,6 +261,7 @@ function updateProgress(c, prev){
 }
 function onLapComplete(c){
   c.lap++;
+  if(typeof freeRoam!=='undefined' && freeRoam) return;               // FREE ROAM: laps tick silently, nothing ever finishes
   if(c.isPlayer){
     const lt=raceTime-c.lapStart; c.lapStart=raceTime; lapTimes.push(lt);
     if(bestLap===null || lt<bestLap){ bestLap=lt; if(c.lap>0) showBest(); }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.83-->
+<!--BUILD:v9.84-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -356,6 +356,7 @@
   /* ---------- COCKPIT / INTERIOR POV (full cabin) ---------- */
   #cockpit{ position:fixed; inset:0; z-index:7; pointer-events:none; }
   #cockpit.hidden{ display:none; }
+  body.roam #lapBox, body.roam #posBox{ display:none !important; }   /* FREE ROAM: no laps, no positions — just the city */
   /* ANIMATED LOCATION PREVIEW — circuit outline traces itself when you pick a track */
   #trackPreview{ position:fixed; left:50%; bottom:16vh; transform:translateX(-50%); z-index:40; pointer-events:none;
     display:flex; align-items:center; gap:12px; padding:10px 16px; border-radius:14px;
@@ -955,6 +956,7 @@
         <div id="togRow">
           <div class="tog" id="togDiff">⚙ NORMAL</div>
           <div class="tog on" id="togAuto">🚗 AUTO</div>
+          <div class="tog" id="togRoam">🧭 FREE ROAM</div>
           <div class="tog on" id="togGhost">👻 GHOST</div>
           <div class="tog" id="togNight">🌙 NIGHT</div>
           <div class="tog" id="togRain">🌧 RAIN</div>
@@ -1092,7 +1094,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.83';
+(function(){ const BUILD='v9.84';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4484,7 +4486,7 @@ function carShadowAssets(){
     polygonOffset:true, polygonOffsetFactor:-7, polygonOffsetUnits:-7});  // soft AO contact shadow, beats road + skids
 }
 function syncCarMesh(c){
-  c.visY = brActive ? Math.max(terrainHeight(c.pos.x, c.pos.y), (beachSea!=null?beachSea+0.3:-45)) : roadElevExact(c.pos.x, c.pos.y, c.trackIdx);   // BR roams off-road -> follow terrain (but float on water, never sink under the sea)
+  c.visY = (brActive||window.freeRoam) ? Math.max(terrainHeight(c.pos.x, c.pos.y), (beachSea!=null?beachSea+0.3:-45)) : roadElevExact(c.pos.x, c.pos.y, c.trackIdx);   // BR roams off-road -> follow terrain (but float on water, never sink under the sea)
   c.rig.group.position.set(c.pos.x, 0.06+c.visY+(c.air||0)+(c.rig.lift||0), c.pos.y);   // +air = crest launch; +lift = upgraded tires raise ride height so wheels stay GROUNDED (never sunk into the road)
   // PITCH the car to follow the road grade so it never clips its nose/tail into a hill (and reads natural on slopes)
   let pitch=0;
@@ -4739,7 +4741,7 @@ const elFlash=document.getElementById('flash'), elBest=document.getElementById('
 function flash(txt, cls){ elFlash.textContent=txt; elFlash.className=''; void elFlash.offsetWidth; elFlash.className=(cls?cls+' ':'')+'show'; }
 function showBest(){ elBest.classList.remove('show'); void elBest.offsetWidth; elBest.classList.add('show'); }
 
-function startGame(){
+function startGame(){ document.body.classList.toggle('roam', !!window.freeRoam);
   if(!isOwned(selectedCar)){ renderShop(); return; }     // must own the selected car
   if(brActive) endBattle();                              // leaving Battle Royale for a normal race
   audio.start(); if(audio.setCar) audio.setCar((CARS[selectedCar]||{}).raw||'');   // per-car engine tone
@@ -4829,6 +4831,7 @@ function updateDebris(dt){ for(let i=debris.length-1;i>=0;i--){ const d=debris[i
    ========================================================================= */
 const BR={ cars:6, maxHP:160, dmg:2.3, range:54, gunCd:0.24, zoneDps:9, shrink:1.5, zoneMin:46, orbit:28,
   rkDmg:52, rkSplash:10, rkSpeed:56, rkTurn:2.0, rkLife:3.4, rkCd:2.4, rkAmmo:3 };   // GATLING: fast/low-dmg hitscan. ROCKETS: slow homing (rkTurn=dodge knob) + splash + knockback, limited ammo
+window.freeRoam=false;
 let brActive=false, brAlive=0, brWon=false, zoneR=300, zoneCX=0, zoneCZ=0, zoneMesh=null, brTracers=[];
 let rockets=[], explosions=[], pickups=[], hpBars=[], mflashes=[], pickupTimer=0, brSupplyT=9;   // brSupplyT = supply-drop countdown
 // GLOBAL weapon upgrades (persist; apply to the player in battle) — the "gun upgrades" arsenal
@@ -5389,7 +5392,7 @@ function update(dt){
       steer: clamp((keys.left?1:0)-(keys.right?1:0) + joyX, -1, 1), drift: keys.space, boost: keys.shift };
     updateCar(player, inp, dt);
     for(let i=1;i<cars.length;i++){ const c=cars[i];
-      if(window.NETRACE || timeTrial) break;       // ONLINE / TIME TRIAL: no AI cars — solo run vs your ghost
+      if(window.NETRACE || timeTrial || window.freeRoam) break;   // ONLINE / TIME TRIAL / FREE ROAM: no AI opponents
       const gap=(prog(player)-prog(c))/SAMPLES;   // + = player ahead of this AI
       // NO holding back: leaders keep full pace (the old -0.04 band eased off when ahead of the player)
       const band = gap>0 ? clamp(gap*4.6, 0, 0.75) : 0;
@@ -5807,6 +5810,10 @@ function init(){
   applyDiff();
   togDiff.addEventListener('click', e=>{ e.stopPropagation(); difficulty=DIFF_ORDER[(DIFF_ORDER.indexOf(difficulty)+1)%3]; try{ localStorage.setItem('sd_diff',difficulty); }catch(_){} applyDiff(); });
   const togAuto=document.getElementById('togAuto');
+  const togRoam=document.getElementById('togRoam');
+  if(togRoam) togRoam.addEventListener('click', e=>{ e.stopPropagation(); window.freeRoam=!window.freeRoam;
+    togRoam.classList.toggle('on', window.freeRoam);
+    popup(window.freeRoam?'🧭 FREE ROAM: cruise anywhere, no barriers, no opponents':'🏁 RACE MODE','#7ce0ff'); });
   togAuto.addEventListener('click', e=>{ e.stopPropagation(); autoDrive=!autoDrive; togAuto.classList.toggle('on',autoDrive);
     document.body.classList.toggle('autodrive', autoDrive); try{ localStorage.setItem('sd_auto', autoDrive?1:0); }catch(_){} });
   const togGhost=document.getElementById('togGhost');
