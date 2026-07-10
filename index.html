@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.00-->
+<!--BUILD:v10.02-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1121,7 +1121,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.00';
+(function(){ const BUILD='v10.02';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5808,7 +5808,10 @@ function buildComposer(){
     try{ if(cinePass&&cinePass.material&&cinePass.material.dispose) cinePass.material.dispose(); }catch(e){}
     composer=new THREE.EffectComposer(renderer);
     ssaoPass=null;
-    if(aoPref && !lowQuality && typeof THREE.SSAOPass!=='undefined'){                 // AMBIENT OCCLUSION — soft contact shadowing (renders the scene itself)
+    const SSAO_BROKEN_R165=true;   // ROOT CAUSE of the production black screen: the r165 bundle's SSAOPass outputs
+                                   // BLACK frames (r137-era config doesn't survive the upgrade). AO stays OFF until
+                                   // a reworked AO ships; the v9.99 self-heal remains as armor.
+    if(!SSAO_BROKEN_R165 && aoPref && !lowQuality && typeof THREE.SSAOPass!=='undefined'){                 // AMBIENT OCCLUSION — soft contact shadowing (renders the scene itself)
       ssaoPass=new THREE.SSAOPass(scene, camera, innerWidth, innerHeight);
       ssaoPass.kernelRadius=isTouch?6:9; ssaoPass.minDistance=0.0018; ssaoPass.maxDistance=0.10;
       if(THREE.SSAOPass.OUTPUT) ssaoPass.output=THREE.SSAOPass.OUTPUT.Default;
@@ -5828,7 +5831,7 @@ function buildComposer(){
       fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr), 1/(innerHeight*pr));
       composer.addPass(fxaaPass);
     }
-    composer.setSize(innerWidth, innerHeight);
+    syncComposerSize();
   }catch(e){ composer=null; }
 }
 // ---- DYNAMIC POINT LIGHTS (rocket flight + explosion flash) — capped + skipped on LITE to protect the FPS moat ----
@@ -5845,8 +5848,15 @@ function updateFxLights(dt){ for(let i=fxLights.length-1;i>=0;i--){ const f=fxLi
 let renderScale=1, _fpsAcc=0, _fpsN=0, _scaleCd=0;
 function baseP(){ if(typeof state!=='undefined' && state==='menu') return Math.min(devicePixelRatio,2);   // garage showcase = crisp (light scene, not gameplay)
   return lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2); }
+function syncComposerSize(){ if(!composer) return; const pr=renderer.getPixelRatio();
+  // ROOT CAUSE of the production black screen: composer.setSize(cssW,cssH) multiplies by the FRACTIONAL
+  // dynamic-res pixelRatio internally -> 1033.5x600.75 render targets -> invalid buffers -> black output.
+  // Feed the composer INTEGER effective sizes (pixelRatio 1) that match the floored drawing buffer.
+  composer.setPixelRatio(1);
+  composer.setSize(Math.floor(innerWidth*pr), Math.floor(innerHeight*pr)); }
 function applyRenderScale(){ renderer.setPixelRatio(baseP()*renderScale); renderer.setSize(innerWidth,innerHeight);
-  if(composer){ composer.setSize(innerWidth,innerHeight); if(fxaaPass){ const pr=renderer.getPixelRatio(); fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr),1/(innerHeight*pr)); } } }
+  syncComposerSize();
+  if(composer && fxaaPass){ const pr=renderer.getPixelRatio(); fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr),1/(innerHeight*pr)); } }
 function dynRes(dt){ if(typeof state!=='undefined' && state==='menu'){ if(renderScale!==1){ renderScale=1; applyRenderScale(); } _fpsAcc=0; _fpsN=0; return; }   // menu preview stays crisp, never shed
   _fpsAcc+=dt; _fpsN++; _scaleCd-=dt;
   if(_fpsN<48 || _scaleCd>0) return;
@@ -6329,7 +6339,7 @@ function init(){
 }
 function onResize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setPixelRatio(lowQuality ? Math.min(devicePixelRatio,1) : Math.min(devicePixelRatio, isTouch?1.5:2)); renderer.setSize(innerWidth, innerHeight);
-  if(composer){ composer.setSize(innerWidth, innerHeight);
+  if(composer){ syncComposerSize();
     if(fxaaPass){ const pr=renderer.getPixelRatio(); fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr), 1/(innerHeight*pr)); }
     // REBUILD the composer on a big aspect change (portrait<->landscape): UnrealBloomPass keeps a stale-aspect blur target through setSize, which corrupts the landscape frame into BLACK BANDS
     if(onResize._a==null || Math.abs(onResize._a - camera.aspect) > 0.2){ try{ if(composer.dispose) composer.dispose(); }catch(e){} buildComposer(); } }
