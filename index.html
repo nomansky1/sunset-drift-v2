@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.10-->
+<!--BUILD:v10.11-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1152,7 +1152,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.10';
+(function(){ const BUILD='v10.11';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4045,6 +4045,7 @@ function buildCar(color){
   const glassMat=new THREE.MeshStandardMaterial({color:0x10161e, roughness:.05, metalness:.1}); // reflective dark glass
   const headMat=new THREE.MeshStandardMaterial({color:0xfff6d8, emissive:0xfff0c0, emissiveIntensity:1.5, roughness:.3});
   const tailMat=new THREE.MeshStandardMaterial({color:0x4d1014, emissive:0xff2018, emissiveIntensity:1.6, roughness:.4});
+  buildCar._lampMats=[headMat,tailMat];   // picked up into the rig below (brake lights react to the brake input)
 
   const body=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.55,4.0), bodyMat); body.position.y=0.92; chassis.add(body);
   const skirt=new THREE.Mesh(new THREE.BoxGeometry(2.05,0.42,3.9), lowerMat); skirt.position.y=0.6; chassis.add(skirt);
@@ -4081,7 +4082,7 @@ function buildCar(color){
   const flames=[makeExhaustFlame(), makeExhaustFlame()];
   flames[0].position.set(-0.42,0.55,-2.05); flames[1].position.set(0.42,0.55,-2.05);
   flames.forEach(f=>g.add(f));
-  return { group:g, chassis, wheels, front, spinAcc:0, flames,
+  return { group:g, chassis, wheels, front, spinAcc:0, flames, lampMats:buildCar._lampMats,
     exhaustPts:[new THREE.Vector3(-0.4,0.56,-2.14), new THREE.Vector3(0.4,0.56,-2.14)] };   // doge's real pipes
 }
 function makeExhaustFlame(){
@@ -4422,7 +4423,7 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     const ly=clamp(H*0.30, 0.35, 0.75), lx=W*0.30;
     const headM=new THREE.MeshStandardMaterial({color:0xfff6d8, emissive:0xfff0c0, emissiveIntensity:nightMode?2.2:0.7, roughness:0.3});
     const tailM=new THREE.MeshStandardMaterial({color:0x4d1014, emissive:0xff2018, emissiveIntensity:nightMode?2.0:0.8, roughness:0.4});
-    rig.lampMats=[headM,tailM];
+    rig.lampMats=[headM,tailM]; tailM.userData._restEI=tailM.emissiveIntensity;
     // MOLD the lamps onto each car's real nose/tail contour (wedge noses sit far inside the bbox
     // plane — a fixed Lz/2 lamp floats in the air there). Raycast body surface, embed 1cm.
     const _lr=new THREE.Raycaster(), _lo=new THREE.Vector3(), _ld=new THREE.Vector3();
@@ -5394,10 +5395,18 @@ function damageCar(c, amt, by){ if(!c.alive) return;
     if(c.rig&&c.rig.panels) for(const k in c.rig.panels){ const m=c.rig.panels[k]; if(m.material&&m.material.color) m.material.color.multiplyScalar(0.25); }   // charred shell
     if(c.isPlayer && !brWon){ brWon=true; brFinish(brAlive+1); }
     else if(brAlive<=1 && !brWon){ brWon=true; brFinish(1); } } }
+function brInWater(x,z){ return beachSea!=null && typeof terrainHeight==='function' && terrainHeight(x,z) < beachSea+0.25; }
 function brInput(c){                                                     // free-roam combat AI: HUNTERS chase the player with strafing lines; others orbit their nearest target
   const dC=Math.hypot(c.pos.x-zoneCX, c.pos.y-zoneCZ); let tx,tz,boost=false;
   const hunting = !c.isPlayer && player.alive && (c._hunter || brAlive<=3);   // designated hunters; EVERYONE hunts the player once 3 remain
-  const t = hunting ? player : c._brTarget;
+  let t = hunting ? player : c._brTarget;
+  // WATER LOGIC (owner): a car floating in the sea is not worth following in — break off, take dry targets
+  if(t && brInWater(t.pos.x, t.pos.y)){
+    const dry=cars.find(o=>o!==c && o.alive && !brInWater(o.pos.x, o.pos.y));
+    t = dry || null; }
+  if(brInWater(c.pos.x, c.pos.y)){ tx=zoneCX; tz=zoneCZ;                 // in the drink ourselves: head straight back to dry land (zone center is always ashore)
+    const diffW=angleDiff(Math.atan2(tx-c.pos.x, tz-c.pos.y), c.heading);
+    return { throttle:true, brake:false, steer:clamp(diffW*2.2,-1,1), drift:false, boost:false }; }
   if(dC>zoneR-16){ tx=zoneCX; tz=zoneCZ; }
   else if(t){
     const dd=Math.hypot(t.pos.x-c.pos.x, t.pos.y-c.pos.y);
@@ -7200,6 +7209,10 @@ window.NETRACE=false;
     rot+=vel; vel*=0.9; tilt=Math.max(-1.15,Math.min(1.15,tilt+velT)); velT*=0.9; grp.rotation.y=rot; grp.rotation.x=tilt;
     const t=performance.now()*0.004;
     markers.forEach(m=>{ const pulse=0.9+0.4*Math.sin(t+m.i*1.3); const ping=(m.i===picked)?(2.0+0.9*Math.abs(Math.sin(t*2.2))):pulse; m.ring.scale.setScalar(ping); m.ring.material.opacity=(m.i===picked)?(0.5-0.3*Math.abs(Math.sin(t*2.2))):0.35; m.pin.scale.setScalar(m.i===picked?2.2:1); });
+    cam.position.z += (camZT-cam.position.z)*0.07;                                   // camera dolly (pick = zoom in, back = zoom out)
+    if(trackDio){ const g2=trackDio, tgt=g2.userData.tgt||1; if(g2.scale.x<tgt) g2.scale.setScalar(Math.min(tgt, g2.scale.x+0.06));
+      if(dioSpin) dioSpin.rotation.y += 0.006;                                          // hologram-table spin
+      const s2=1+0.03*Math.sin(t*0.9); g2.position.y=g2.userData.y0||(g2.userData.y0=g2.position.y), g2.position.y=g2.userData.y0+0.05*Math.sin(t*0.7); g2.scale.y=g2.scale.x*s2; }
     ren.render(sc,cam); }
   function bind(cv){
     cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; moved=0; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
@@ -7216,7 +7229,28 @@ window.NETRACE=false;
         const d=Math.hypot(q.x-tx, q.y-ty); if(d<bd){ bd=d; best=m.i; } });
       if(best>=0) select(best); });
   }
-  let spinT=null, tiltT=null;
+  let spinT=null, tiltT=null, trackDio=null, dioSpin=null, camZT=6.1;
+  function clearDiorama(){ if(trackDio){ sc.remove(trackDio); trackDio.traverse(o=>{ if(o.isMesh){ o.geometry.dispose(); o.material.dispose(); } }); trackDio=null; dioSpin=null; } camZT=6.1; }
+  function showTrackDiorama(ti){ clearDiorama(); const trk=TRACKS[ti]; if(!trk||!trk.ctrl||typeof THREE==='undefined') return;
+    const acc=new THREE.Color((typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b');
+    // fit the ctrl polygon into a unit disc
+    let mx=0; trk.ctrl.forEach(p=>{ mx=Math.max(mx,Math.abs(p[0]),Math.abs(p[1])); }); const k=1.0/(mx||1);
+    const pts=trk.ctrl.map(p=>new THREE.Vector3(p[0]*k, 0, p[1]*k));
+    const curve=new THREE.CatmullRomCurve3(pts, true, 'centripetal', 0.6);
+    const g=new THREE.Group(), inner=new THREE.Group(); g.add(inner);
+    inner.add(new THREE.Mesh(new THREE.TubeGeometry(curve,160,0.028,6,true), new THREE.MeshBasicMaterial({color:acc})));
+    inner.add(new THREE.Mesh(new THREE.TubeGeometry(curve,120,0.075,6,true),                              // soft glow shell
+      new THREE.MeshBasicMaterial({color:acc, transparent:true, opacity:0.22, blending:THREE.AdditiveBlending, depthWrite:false})));
+    const sf=new THREE.Mesh(new THREE.SphereGeometry(0.055,10,10), new THREE.MeshBasicMaterial({color:0xffffff})); sf.position.copy(pts[0]); inner.add(sf);   // start/finish
+    const plate=new THREE.Mesh(new THREE.CircleGeometry(1.25,42), new THREE.MeshBasicMaterial({color:0x0c1226, transparent:true, opacity:0.55}));
+    plate.rotation.x=-Math.PI/2; plate.position.y=-0.03; inner.add(plate);
+    const rim=new THREE.Mesh(new THREE.RingGeometry(1.25,1.30,42), new THREE.MeshBasicMaterial({color:acc, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
+    rim.rotation.x=-Math.PI/2; rim.position.y=-0.02; inner.add(rim);
+    const asp=cam?cam.aspect:1, ph=asp<0.9;                                                              // phones: float the hologram above the globe, not off-screen right
+    g.position.set(ph?0.02:1.72, ph?1.74:1.28, ph?1.1:0.2); g.rotation.x=0.62; g.scale.setScalar(0.001);
+    g.userData.tgt=ph?0.5:0.62;
+    sc.add(g); trackDio=g; dioSpin=inner; camZT=ph?5.6:5.35;                                              // dolly the camera in — the pick feels like a zoom
+  }
   function trackForCountry(i,theme){                          // country's REAL circuit first, theme fallback
     const d=((typeof NATION!=='undefined')&&NATION[(COUNTRIES[i]||{}).key]||{}).district;
     const dk=(typeof d==='string')?d:(d&&(d[theme]||d.city));
@@ -7231,13 +7265,14 @@ window.NETRACE=false;
     const ti=trackForCountry(i,gd.theme), trk=TRACKS[ti]||{};
     document.getElementById('globeMeta').textContent=(trk.osm?(trk.sub||'').split('·')[0].trim():((typeof nationCityFor==='function')?nationCityFor(i,gd.theme):''))+' · '+(trk.name||gd.theme.toUpperCase());
     const gt=document.getElementById('gcTrack'); if(gt && typeof trackThumb==='function' && trk.ctrl){ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b'; gt.innerHTML=trackThumb(trk.ctrl, acc); }
+    try{ showTrackDiorama(ti); }catch(_){}
     const dd=document.getElementById('gcDiff'); if(dd){ let d=3; try{ d=trackDifficulties()[ti]||3; }catch(e){} dd.innerHTML='DIFFICULTY  <span class="on">'+'\u2605'.repeat(d)+'</span><span class="off">'+'\u2605'.repeat(5-d)+'</span>'; }
     const cc=document.getElementById('gcCar'); if(cc){ const GNAME={latin:'REGGAETON',funk:'BAILE FUNK',usa:'HIP-HOP',europe:'ELECTRO',phonk:'DRIFT PHONK',india:'BHANGRA',arabic:'ARABIC TRAP',afro:'AFRO HOUSE'};
       const nn=(typeof NATION!=='undefined'&&NATION[co.key])||{}; const gname=GNAME[nn.grp||'latin']||'';
       cc.textContent='🏎 '+car+'  ·  '+gd.theme.toUpperCase()+(nn.district?'  ·  📍 REAL CITY':'')+(gname?('  ·  🎵 '+gname):''); }
     document.getElementById('globeCard').classList.remove('hidden');
     const ga=document.getElementById('globeActions'); if(ga) ga.style.display='none'; }
-  function close(){ document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
+  function close(){ clearDiorama(); document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
   window.openGlobe=function(){ if(window.audio){ audio.start&&audio.start(); audio.ui&&audio.ui(); } init(); picked=-1;
     const gc=document.getElementById('globeCard'); if(gc) gc.classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display='';
     document.getElementById('globeModal').classList.add('show'); resize(); if(!raf) loop();
@@ -7268,7 +7303,7 @@ window.NETRACE=false;
     window.__logoHero=()=>{ if(!lg) return; lg.classList.add('center'); clearTimeout(dockT); dockT=setTimeout(dock,3200); };
     const cv=document.getElementById('globeCanvas'); if(cv) cv.addEventListener('pointerdown', dock);
     ['gaRace','gaGarage','gaCup','gaBattle','gaOnline','gaSettings'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', dock); }); }
-  const gb=document.getElementById('globeBack'); if(gb) gb.addEventListener('click', e=>{ e.stopPropagation(); picked=-1; document.getElementById('globeCard').classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display=''; });
+  const gb=document.getElementById('globeBack'); if(gb) gb.addEventListener('click', e=>{ e.stopPropagation(); picked=-1; clearDiorama(); document.getElementById('globeCard').classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display=''; });
   // GLOBE IS THE MAIN MENU: auto-open on boot + every return to the menu (races/battles end -> back to the globe)
   let _prevInm=document.body.classList.contains('inmenu');
   try{ new MutationObserver(()=>{ const inm=document.body.classList.contains('inmenu');

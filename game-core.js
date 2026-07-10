@@ -179,6 +179,11 @@ function updateCar(c, inp, dt){
   (c.rig.roadWheels||c.rig.wheels).forEach(w=> w.rotation.x=c.rig.spinAcc);   // spares on the tailgate don't tumble
   const vSteer=clamp(inp.steer,-1,1)*0.5;
   c.rig.front.forEach(w=> w.rotation.y=vSteer);
+  // BRAKE LIGHTS: the tail lamps FIRE while braking — bright enough to read in full daylight too
+  if(c.rig.lampMats && c.rig.lampMats[1]){ const tm=c.rig.lampMats[1];
+    if(tm.userData._restEI==null) tm.userData._restEI=tm.emissiveIntensity;
+    const want = inp.brake ? Math.max(3.6, tm.userData._restEI*1.8) : tm.userData._restEI;
+    if(tm.emissiveIntensity!==want) tm.emissiveIntensity=want; }
   // WHOLE-CAR lean: rotate the top-level GROUP so body, wheels, kit, exhausts, lights and flag all
   // tilt together as ONE rigid car. (Leaning the chassis split the body from sibling wheels on the
   // DRIFTER and from the group-mounted wing/exhausts/lights on every GLB car.)
