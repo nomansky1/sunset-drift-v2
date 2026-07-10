@@ -31,9 +31,12 @@ function updatePanelDamage(c){
         for(let i=0;i<8;i++) sparks.emit(c.pos.x,0.7+ey,c.pos.y,(Math.random()-.5)*8,2+Math.random()*3,(Math.random()-.5)*8,0.4,8);
         if(typeof tireSmoke!=='undefined') tireSmoke.emit(c.pos.x,0.8+ey,c.pos.y,0,1.2,0,0.7,7);
         if(typeof obSpawnDebris==='function') try{ obSpawnDebris(c.pos.x,0.8+ey,c.pos.y); }catch(e){} } continue; }
-    if(v>=0.95 && m.userData._rp){ const rp=m.userData._rp;            // loose panel WOBBLES while driving
-      m.rotation.x=rp.r.x+Math.sin(performance.now()*0.008+v*7)*0.013*v;   // small + slow: panel pivots sit at the car origin, and fast jitter read as "shattered" on phones
+    if(v>=0.95 && m.userData._rp && (typeof brActive!=='undefined' && brActive)){   // loose panel WOBBLE is BR-ONLY:
+      const rp=m.userData._rp;                                         // in races the body stays a RIGID unit (owner: parts were
+      m.rotation.x=rp.r.x+Math.sin(performance.now()*0.008+v*7)*0.013*v;   // oscillating on every model once wall grazes crossed 0.95)
       m.rotation.z=rp.r.z+Math.cos(performance.now()*0.006+v*5)*0.010*v; }
+    else if(m.userData._rp && !(typeof brActive!=='undefined' && brActive)){ const rp=m.userData._rp;
+      m.rotation.copy(rp.r); m.position.copy(rp.p); }                  // race mode: pin every panel to its rest transform
     if(v>=0.35 && m.material && !m.userData._dented){ m.userData._dented=true;   // DENT: scuffed paint
       if(m.material.color) m.material.color.multiplyScalar(0.8);
       if('roughness' in m.material) m.material.roughness=Math.min(1,(m.material.roughness||0.4)+0.28); }

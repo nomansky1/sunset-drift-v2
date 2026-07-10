@@ -34,7 +34,20 @@ window.DEVTRACK = {
     const spun=rig.wheels.filter((w,i)=>Math.abs(w.rotation.x-rot0[i])>0.3).length;
     rig.front.forEach(w=> w.rotation.y=0.4);
     const steered=rig.front.filter(w=>Math.abs(w.rotation.y-0.4)<1e-4).length;
-    return {wheels:ws, spun, steered, frontCount:rig.front.length};
+    // BODY RIGIDITY (race mode): even with heavy accumulated damage, panels must stay pinned to
+    // the body — wobble/tear are BR-only. Regression here = "car pieces oscillate while driving".
+    let rigidity=0;
+    if(rig.panels && typeof applyDamage==='function' && typeof updatePanelDamage==='function' && player && player.rig===rig){
+      const saved=player.dmgP; player.dmgP={};
+      for(let i=0;i<4;i++) applyDamage(player, Math.sin(i*1.7), Math.cos(i*1.7), 40);   // slam every side
+      const base={}; for(const k in rig.panels){ base[k]={p:rig.panels[k].position.clone(), r:rig.panels[k].rotation.clone()}; }
+      for(let f=0;f<30;f++) updatePanelDamage(player);
+      for(const k in rig.panels){ const m=rig.panels[k];
+        rigidity=Math.max(rigidity, m.position.distanceTo(base[k].p),
+          Math.abs(m.rotation.x-base[k].r.x)+Math.abs(m.rotation.y-base[k].r.y)+Math.abs(m.rotation.z-base[k].r.z)); }
+      player.dmgP={}; if(typeof repairPanels==='function') repairPanels(player); player.dmgP=saved||{};
+    }
+    return {wheels:ws, spun, steered, frontCount:rig.front.length, rigidity:+rigidity.toFixed(5)};
   },
   check(m, dims){ const f=[], W=(dims&&dims.W)||2;
     if(m.wheels.length!==4) f.push('wheel count '+m.wheels.length);
@@ -52,6 +65,7 @@ window.DEVTRACK = {
     }
     if(m.spun!==m.wheels.length) f.push('spin '+m.spun+'/'+m.wheels.length);
     if(m.frontCount!==2) f.push('front pivots '+m.frontCount);
+    if((m.rigidity||0)>0.001) f.push('body NOT RIGID in race mode: panel moved '+m.rigidity);
     return f;
   },
   async shoot(raw, opts){ opts=opts||{};
