@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.81-->
+<!--BUILD:v9.82-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1078,7 +1078,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.81';
+(function(){ const BUILD='v9.82';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3951,8 +3951,36 @@ function loadCarModels(){
       districtRaw[k]=root; districtBox[k]=new THREE.Box3().setFromObject(root);
       if(cars&&cars.length && state==='menu' && currentTheme && nationDistrictKey()===k) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
   });
+  // per-city HERO LANDMARKS for the real-street circuits (procedural PBR: Empire State / art-deco hotel / El Morro)
+  [['nyc','empirestate',1.1],['miami','artdeco',1.6],['sanjuan','elmorro',1.6]].forEach(([k,f,sc])=>{
+    try{ L.load('models/landmarks/'+f+'.glb', g=>{ g.scene.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material) SHARED.add(o.material); o.castShadow=!isTouch; o.receiveShadow=false; } });
+      landmarkRaw[k]={scene:g.scene, sc};
+      if(cars&&cars.length && state==='menu' && currentTheme && currentTheme.osm===k) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
+  });
 }
-let districtRaw={}, districtBox={};
+// place the circuit's hero landmark on the clearest ground off the road, facing the loop
+function placeLandmark(){
+  const k=currentTheme&&currentTheme.osm, lm=k&&landmarkRaw[k]; if(!lm) return;
+  // runs AFTER the world builds: score candidate spots by clearance from the ROAD **and** existing big
+  // meshes (buildings) — road-only scoring buried the Miami hotel inside the placed district
+  const bigs=[], _bb=new THREE.Box3(), _sz=new THREE.Vector3(), _ct=new THREE.Vector3();
+  WORLD.children.forEach(ch=>{ try{ _bb.setFromObject(ch); _bb.getSize(_sz);
+    if(Math.max(_sz.x,_sz.z)>12 && _sz.y>6){ _bb.getCenter(_ct); bigs.push({x:_ct.x, z:_ct.z, r:Math.max(_sz.x,_sz.z)/2}); } }catch(e){} });
+  let best=null;
+  for(const rm of [1.05,1.18,1.32]) for(let a=0;a<24;a++){ const ang=a/24*6.283;
+    const x=trackCentroid.x+Math.cos(ang)*trackRadius*rm, z=trackCentroid.y+Math.sin(ang)*trackRadius*rm;
+    let road=1e9; for(let i=0;i<SAMPLES;i+=4){ const d=Math.hypot(samplePts[i].x-x, samplePts[i].y-z); if(d<road)road=d; }
+    if(road<22) continue;                                   // never on/next to the racing line
+    let bld=1e9; for(const o of bigs){ const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bld)bld=d; }
+    const score=Math.min(bld,60)+Math.min(road,40)*0.4 - Math.abs(rm-1.18)*10;
+    if(!best || score>best.s) best={x,z,s:score}; }
+  if(!best) return;
+  const g=lm.scene.clone(); g.scale.setScalar(lm.sc);
+  g.position.set(best.x, Math.max(0, (typeof terrainHeight==='function'?terrainHeight(best.x,best.z):0)), best.z);
+  g.rotation.y=Math.atan2(trackCentroid.x-best.x, trackCentroid.y-best.z);
+  scene.add(g); window._lmSpot={x:best.x, z:best.z};
+}
+let districtRaw={}, districtBox={}, landmarkRaw={};
 // place a few copies of the low-poly city as a distant skyline ring (city/docks themes)
 let lowCityPlacedR=0;   // world footprint radius of the PLACED downtown (0 = skipped) — procedural buildings fill the REST of the infield
 function placeLowCityBackdrop(rng){
@@ -5595,7 +5623,7 @@ function buildWorld(idx){
     computeRoadElev();                                            // road climbs the terrain (must precede terrain/mesh)
     buildLights(buildSky());                                      // buildSky sets sunDirV + returns sunDir
     buildTerrain(); if(beachSea!==null) buildWater(beachSea); buildTrackMeshes(); scatterProps();
-    buildBoostPads(); buildPickups();                            // arcade boost pads + collectible coins
+    buildBoostPads(); buildPickups(); placeLandmark();                            // arcade boost pads + collectible coins
   } finally { delete scene.add; }                                // restore the real Object3D.add
   ensureRain();                                                  // rain persists outside WORLD (real scene.add)
   captureEnv();                                                  // per-track reflections of the real environment
