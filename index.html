@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.12-->
+<!--BUILD:v10.13-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1170,7 +1170,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.12';
+(function(){ const BUILD='v10.13';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4636,11 +4636,14 @@ function attachUpgrades(rig, carIdx, forceU){
         mesh.position.copy(p); mesh.quaternion.copy(q); if(cx<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
       // tire = black tread ring that WRAPS the wheel (outer ~= wheel radius); rim = chrome disc filling the hub.
       // /S bakes the wheel's world-scale compensation into the geometry so sizes are exact in WORLD units.
-      const tOuter=wr*1.12, tTube=wr*0.32, tRing=tOuter-tTube;                        // fat tread that WRAPS the wheel (even the SUV whose box measures a touch large)
-      const tire=new THREE.Mesh(new THREE.TorusGeometry(tRing/S, tTube/S, 14, 26), tireMat); tire.geometry.rotateY(Math.PI/2);
-      mount(tire, cx);                                                                // centered ON the wheel -> the visible fat tire
-      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((tOuter*1.24)/(rsz.y||1)/S);   // rim diameter ~0.62x the tire diameter (fills the hub inside the tread)
-        mount(rm, Math.sign(cx)*(outX+0.02)); }
+      const tOuter=wr*1.17;                                                           // owner: stock tread layers showed THROUGH the old torus ring —
+      const wWidth=Math.max(_bs.x*1.14, tOuter*0.52);                                  // a full closed DRUM encloses the original wheel completely
+      const drum=new THREE.CylinderGeometry(tOuter/S, tOuter/S, wWidth/S, 24);
+      drum.rotateZ(Math.PI/2);                                                         // axle along X
+      const tire=new THREE.Mesh(drum, tireMat);
+      mount(tire, cx);                                                                 // centered ON the wheel -> the visible fat tire
+      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((tOuter*1.24)/(rsz.y||1)/S);   // rim disc on the drum's outboard face
+        mount(rm, Math.sign(cx)*Math.max(outX+0.02, Math.abs(cx)+wWidth/2+0.015)); }
     });
     wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
       arch.rotation.y=Math.PI/2; arch.position.set(Math.sign(w.x)*(w.outerX-0.06), w.y, w.z); });
@@ -5519,8 +5522,9 @@ function brSolidAt(grid,x,z){ const gx=((x-grid.x0)/grid.cell)|0, gz=((z-grid.z0
 function buildBRCity(){
   clearBRCity();
   const g=new THREE.Group(); brCity=g;
-  const rng=mulberry32(20260710);
-  const BLOCK=46, ROAD=16, CELL=BLOCK+ROAD, N=isTouch?5:7, half=(N*CELL)/2;
+  const rng=mulberry32(20260710 + (currentTrack|0)*7919);           // per-TRACK arena: every city on the globe fights in its own street layout
+  const BLOCK=42+((rng()*12)|0), ROAD=14+((rng()*5)|0), CELL=BLOCK+ROAD, N=isTouch?5:(6+((rng()*3)|0)), half=(N*CELL)/2;
+  const _parkRatio=0.10+rng()*0.16;
   const cx=zoneCX, cz=zoneCZ;
   // ONE ground plane with the whole street grid BAKED into a canvas (asphalt, dashes, sidewalk aprons)
   { const S=2048, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
@@ -5551,7 +5555,7 @@ function buildBRCity(){
     const bx=cx-half+ROAD+ix*CELL+BLOCK/2, bz=cz-half+ROAD+iz*CELL+BLOCK/2;
     const walk=new THREE.Mesh(new THREE.BoxGeometry(BLOCK+7,0.22,BLOCK+7), walkM);
     walk.position.set(bx,0.11,bz); walk.receiveShadow=!isTouch; g.add(walk);
-    if(rng()<0.16){                                              // PARK block: lawn + trees
+    if(rng()<_parkRatio){                                        // PARK block: lawn + trees (ratio rolls per arena)
       const lawn=new THREE.Mesh(new THREE.BoxGeometry(BLOCK-2,0.26,BLOCK-2), parkM);
       lawn.position.set(bx,0.16,bz); g.add(lawn);
       const nT=5+((rng()*5)|0);
@@ -6180,6 +6184,7 @@ function disposeGroup(g){ g.traverse(o=>{
 function buildWorld(idx){
   currentTrack=idx; currentTheme=(idx===CUSTOM_IDX && customTrack)?customTrack:TRACKS[idx]; if(!currentTheme) return;
   const tp=TERRAIN[currentTheme.theme]; terrainAmp=tp?tp.amp:0; terrainBiome=tp?tp.biome:'flat'; terrainNoise=makeNoise(idx*131+7);
+  if(brActive) terrainAmp=0;                                        // BATTLE ROYALE is a CITY fight on level ground — hills through the street grid buried cars under meshes (owner)
   beachSea = (currentTheme.water!==undefined) ? currentTheme.water : null; waterMat=null;   // seaside ocean (set before terrain build)
   const t=currentTheme.theme;                                       // tone per lighting mood
   const bright = t==='desert' || t==='forest' || t==='beach' || t==='snow';   // open full-daylight (snow is very bright)
