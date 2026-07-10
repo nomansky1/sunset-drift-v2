@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.76-->
+<!--BUILD:v9.77-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1047,7 +1047,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.76';
+(function(){ const BUILD='v9.77';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4842,8 +4842,28 @@ function buildZone(){ if(zoneMesh){ scene.remove(zoneMesh); zoneMesh.geometry.di
   const geo=new THREE.CylinderGeometry(1,1,80,64,1,true);
   zoneMesh=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x3aa0ff, transparent:true, opacity:0.13, side:THREE.DoubleSide, depthWrite:false}));
   zoneMesh.position.set(zoneCX,26,zoneCZ); zoneMesh.scale.set(zoneR,1,zoneR); scene.add(zoneMesh); }
-function addTracer(a,b){ const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]), new THREE.LineBasicMaterial({color:0xffcf5a, transparent:true, opacity:0.9}));
-  scene.add(ln); brTracers.push({ln,t:0.06}); }
+let _trGeo=null, _trMat=null, _trMatHot=null;
+function addTracer(a,b){                                                  // GLOWING BEAM tracer (the old 1px Line barely read at speed)
+  if(!_trGeo){ _trGeo=new THREE.BoxGeometry(1,1,1); SHARED.add(_trGeo);
+    _trMat=new THREE.MeshBasicMaterial({color:0xffb544, transparent:true, opacity:0.55, blending:THREE.AdditiveBlending, depthWrite:false}); SHARED.add(_trMat);
+    _trMatHot=new THREE.MeshBasicMaterial({color:0xfff2c4, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}); SHARED.add(_trMatHot); }
+  const len=a.distanceTo(b); if(len<0.5) return;
+  const mid=a.clone().lerp(b,0.5);
+  const halo=new THREE.Mesh(_trGeo,_trMat); halo.scale.set(0.14,0.14,len); halo.position.copy(mid); halo.lookAt(b); scene.add(halo);
+  const core=new THREE.Mesh(_trGeo,_trMatHot); core.scale.set(0.04,0.04,len); core.position.copy(mid); core.lookAt(b); scene.add(core);
+  brTracers.push({ln:halo,t:0.06,pooled:true}); brTracers.push({ln:core,t:0.06,pooled:true}); }
+// brass shell ejects: flicked sideways off the gun, tumble + gravity (skipped on phones for the particle budget)
+let brShells=[], _shGeo=null, _shMat=null;
+function ejectShell(mz, heading){ if(brShells.length>36) return;
+  if(!_shGeo){ _shGeo=new THREE.BoxGeometry(0.05,0.03,0.09); SHARED.add(_shGeo);
+    _shMat=new THREE.MeshStandardMaterial({color:0xc9a54a, metalness:0.8, roughness:0.35}); SHARED.add(_shMat); }
+  const m=new THREE.Mesh(_shGeo,_shMat); m.position.copy(mz); scene.add(m);
+  const side=heading+Math.PI/2, sp=1.4+Math.random()*1.2;
+  brShells.push({m, vx:Math.sin(side)*sp, vy:2.2+Math.random()*1.4, vz:Math.cos(side)*sp, rx:(Math.random()-0.5)*20, life:0.7}); }
+function updateShells(dt){ for(let i=brShells.length-1;i>=0;i--){ const s=brShells[i]; s.life-=dt; s.vy-=22*dt;
+  s.m.position.x+=s.vx*dt; s.m.position.y+=s.vy*dt; s.m.position.z+=s.vz*dt;
+  s.m.rotation.x+=s.rx*dt; s.m.rotation.z+=s.rx*0.6*dt;
+  if(s.life<=0){ scene.remove(s.m); brShells.splice(i,1); } } }
 /* ---- ROCKETS: homing missile with a turn-rate dodge knob + splash + knockback ---- */
 function buildRocketMesh(){ const M=gunMats(); const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.62,8), M.steel); body.rotation.x=Math.PI/2; g.add(body);
@@ -5019,6 +5039,8 @@ function battleFrame(dt){ raceTime+=dt;
     if(c._brTarget && c._gunT<=0){ c._gunT=BR.gunCd; c._spin=46; c._trTog=!c._trTog;
       const mz=new THREE.Vector3(); (c.rig.muzzle||c.rig.group).getWorldPosition(mz);
       muzzleFlash(mz.x,mz.y,mz.z);                                                                              // crisp muzzle flash (better shooting fx)
+      if(!isTouch || c.isPlayer) ejectShell(mz, c.heading);                                                     // brass kicks out the side (player-only on phones)
+      if(!lowQuality && c._trTog && c.isPlayer) addFlash(mz.x, mz.y, mz.z, 0xffc76a, 2.0, 10, 0.05);            // muzzle light licks the hood
       if(audio&&audio.gat && c._trTog && (c.isPlayer || Math.hypot(c.pos.x-player.pos.x,c.pos.y-player.pos.y)<45)) audio.gat();   // mechanical fire tick
       if(c._trTog) addTracer(mz.clone(), new THREE.Vector3(c._brTarget.pos.x,(c._brTarget.visY||0)+1,c._brTarget.pos.y));   // tracer every other round (rapid gatling fire)
       sparks.emit(c._brTarget.pos.x,(c._brTarget.visY||0)+1,c._brTarget.pos.y,(Math.random()-.5)*3,1.5,(Math.random()-.5)*3,0.16,4);   // impact sparks
@@ -5032,9 +5054,11 @@ function battleFrame(dt){ raceTime+=dt;
     if(hf<0.42){ c._dmgT=(c._dmgT||0)-dt; if(c._dmgT<=0){ c._dmgT=0.13; const x=c.pos.x,y=(c.visY||0)+0.75,z=c.pos.y;
       tireSmoke.emit(x,y,z,0,1.3,0, hf<0.2?0.6:0.45, hf<0.2?9:6);
       if(hf<0.2) sparks.emit(x,y,z,(Math.random()-.5)*1.2,2.2,(Math.random()-.5)*1.2,0.32,4); } } }
-  updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt); updateBRProps(dt); obUpdateDebris(dt);
+  updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt); updateBRProps(dt); obUpdateDebris(dt); updateShells(dt);
   for(const c of cars){ if(!c.alive) continue; const dC=Math.hypot(c.pos.x-zoneCX,c.pos.y-zoneCZ); if(dC>zoneR) damageCar(c, BR.zoneDps*dt); }
-  for(let i=brTracers.length-1;i>=0;i--){ const t=brTracers[i]; t.t-=dt; if(t.t<=0){ scene.remove(t.ln); t.ln.geometry.dispose(); t.ln.material.dispose(); brTracers.splice(i,1); } else t.ln.material.opacity=(t.t/0.06)*0.9; }
+  for(let i=brTracers.length-1;i>=0;i--){ const t=brTracers[i]; t.t-=dt; if(t.t<=0){ scene.remove(t.ln);
+      if(!t.pooled){ t.ln.geometry.dispose(); t.ln.material.dispose(); }   // beam tracers share SHARED geo/mat — never dispose those
+      brTracers.splice(i,1); } }
   cars.forEach(c=>{ if(c.alive) syncCarMesh(c); });
   updateHpBars();
   if(cinePass) cinePass.uniforms.uSpeed.value=clamp(player.vel.length()/CONFIG.topSpeed-0.35,0,1)*0.5;
@@ -5128,6 +5152,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   camera.position.set(player.pos.x-_f.x*CONFIG.camDist, CONFIG.camHeight, player.pos.y-_f.y*CONFIG.camDist); }
 function endBattle(){ brActive=false; document.body.classList.remove('inbattle');
   clearBRProps();
+  brShells.forEach(s=>scene.remove(s.m)); brShells=[];
   debris.forEach(d=>scene.remove(d.m)); debris=[];
   rockets.forEach(r=>{scene.remove(r.mesh); disposeGroup(r.mesh);}); rockets=[];
   explosions.forEach(e=>{scene.remove(e.m); e.m.geometry.dispose(); e.m.material.dispose();}); explosions=[];
