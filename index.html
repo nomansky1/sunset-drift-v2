@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.90-->
+<!--BUILD:v9.91-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1108,7 +1108,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.90';
+(function(){ const BUILD='v9.91';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2756,30 +2756,70 @@ function makeCityGroundTexture(baseHex){
 }
 // a natural building facade (upper floors) by material — returns {map, emis}; only the WINDOWS glow (walls are lit by the scene, not self-emitting)
 function makeFacadeTexture(rng, type){
-  const S=256, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
+  // REALISTIC facades (owner: buildings looked flat/ugly): 512px, per-window depth (AO inset + sill),
+  // true brick coursing, concrete panel joints + rust streaks, glass curtain walls with a sky-sheen
+  // gradient, parapet cap, AC units. Seeded rng -> deterministic per track build.
+  const S=isTouch?256:512, K=S/256, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
   const e=document.createElement('canvas'); e.width=e.height=S; const xe=e.getContext('2d');
-  xe.fillStyle='#000'; xe.fillRect(0,0,S,S);                                            // emissive black except lit windows
-  const PAL={brick:'#8a4a38', glass:'#465a6a', concrete:'#8f887c', limestone:'#c3b396', dark:'#2c2f38', terracotta:'#a5683f', sandstone:'#b49572', steel:'#6f7a86'};
+  xe.fillStyle='#000'; xe.fillRect(0,0,S,S);
+  const PAL={brick:'#8a4a38', glass:'#3e525f', concrete:'#8f887c', limestone:'#c3b396', dark:'#2c2f38', terracotta:'#a5683f', sandstone:'#b49572', steel:'#6f7a86'};
   const base=PAL[type]||'#8a8478'; x.fillStyle=base; x.fillRect(0,0,S,S);
-  // natural weathering: faint vertical grime streaks + gentle top-to-bottom shade
-  for(let i=0;i<44;i++){ x.fillStyle='rgba(20,14,10,'+(0.015+rng()*0.05)+')'; x.fillRect(rng()*S, 0, 1+rng()*2, S); }
-  const vg=x.createLinearGradient(0,0,0,S); vg.addColorStop(0,'rgba(255,255,255,.05)'); vg.addColorStop(1,'rgba(0,0,0,.10)'); x.fillStyle=vg; x.fillRect(0,0,S,S);
-  if(type==='brick'||type==='terracotta'){ x.strokeStyle='rgba(30,15,10,.20)'; x.lineWidth=1;   // mortar courses
-    for(let yy=0;yy<S;yy+=7){ x.beginPath(); x.moveTo(0,yy); x.lineTo(S,yy); x.stroke(); } }
-  const glassy=(type==='glass');
-  const cols=glassy?7:5, rows=11, pad=12, gap=glassy?3:9;
+  const glassy=(type==='glass'), masonry=(type==='brick'||type==='terracotta'||type==='sandstone');
+  // material ground layer
+  if(masonry){ // true running-bond brick with per-brick tint jitter
+    const bh=5*K, bw=13*K;
+    for(let yy=0, row=0; yy<S; yy+=bh, row++){
+      for(let xx=-(row%2)*bw/2; xx<S; xx+=bw){
+        const j=(rng()-0.5)*0.16;
+        x.fillStyle='rgba('+(j>0?255:0)+','+(j>0?235:8)+','+(j>0?210:4)+','+Math.abs(j)+')';
+        x.fillRect(xx+0.5,yy+0.5,bw-1,bh-1); } }
+    x.strokeStyle='rgba(36,20,14,.30)'; x.lineWidth=1;
+    for(let yy=0;yy<S;yy+=bh){ x.beginPath(); x.moveTo(0,yy); x.lineTo(S,yy); x.stroke(); }
+  } else if(type==='concrete'||type==='limestone'||type==='steel'){ // panel joints w/ AO grooves
+    const pw=S/4, ph=S/5.5;
+    x.strokeStyle='rgba(0,0,0,.22)'; x.lineWidth=2*K;
+    for(let xx=pw;xx<S;xx+=pw){ x.beginPath(); x.moveTo(xx,0); x.lineTo(xx,S); x.stroke(); }
+    for(let yy=ph;yy<S;yy+=ph){ x.beginPath(); x.moveTo(0,yy); x.lineTo(S,yy); x.stroke(); }
+    x.strokeStyle='rgba(255,255,255,.07)'; x.lineWidth=1;
+    for(let xx=pw;xx<S;xx+=pw){ x.beginPath(); x.moveTo(xx+1.5,0); x.lineTo(xx+1.5,S); x.stroke(); }
+    for(let i=0;i<8;i++){ const sx=rng()*S; const g2=x.createLinearGradient(0,0,0,S*0.5);   // rust weep stains
+      g2.addColorStop(0,'rgba(96,52,26,'+(0.05+rng()*0.1)+')'); g2.addColorStop(1,'rgba(96,52,26,0)');
+      x.fillStyle=g2; x.fillRect(sx, rng()*S*0.4, (1+rng()*2)*K, S*0.5); }
+  }
+  // weathering: grime streaks + vertical light falloff
+  for(let i=0;i<44;i++){ x.fillStyle='rgba(20,14,10,'+(0.015+rng()*0.05)+')'; x.fillRect(rng()*S, 0, (1+rng()*2)*K, S); }
+  const vg=x.createLinearGradient(0,0,0,S); vg.addColorStop(0,'rgba(255,255,255,.06)'); vg.addColorStop(1,'rgba(0,0,0,.12)'); x.fillStyle=vg; x.fillRect(0,0,S,S);
+  // parapet cap band at the top of every tile
+  x.fillStyle='rgba(0,0,0,.18)'; x.fillRect(0,0,S,7*K);
+  x.fillStyle='rgba(255,255,255,.08)'; x.fillRect(0,7*K,S,2*K);
+  // windows
+  const cols=glassy?7:5, rows=11, pad=12*K, gap=(glassy?3:9)*K;
   const ww=(S-pad*2-gap*(cols-1))/cols, wh=(S-pad*2-gap*(rows-1))/rows;
-  x.fillStyle='rgba(0,0,0,.10)'; for(let r=0;r<rows;r++) x.fillRect(0, pad+r*(wh+gap)-gap*0.6, S, gap*0.6);   // floor/spandrel bands
+  x.fillStyle='rgba(0,0,0,.12)'; for(let r=0;r<rows;r++) x.fillRect(0, pad+r*(wh+gap)-gap*0.6, S, gap*0.6);   // spandrel bands
   for(let r=0;r<rows;r++) for(let cc=0;cc<cols;cc++){
     const bx=pad+cc*(ww+gap), by=pad+r*(wh+gap), lit=rng()>(type==='dark'?0.52:0.68);
-    x.fillStyle = glassy ? (lit?'#3c4c5c':'#28323e') : (lit?'#584f3c':'#20242c');       // real glass reads dark; a lit pane is only slightly brighter
+    // glass: sky-sheen — pane brightness follows a diagonal gradient across the whole facade
+    if(glassy){ const sheen=0.55+0.45*((cc/cols + (rows-r)/rows)/2);
+      const pg=x.createLinearGradient(bx,by,bx,by+wh);
+      pg.addColorStop(0,'rgba('+Math.round(90*sheen)+','+Math.round(115*sheen)+','+Math.round(140*sheen)+',1)');
+      pg.addColorStop(1,'rgba('+Math.round(34*sheen)+','+Math.round(46*sheen)+','+Math.round(58*sheen)+',1)');
+      x.fillStyle=pg; }
+    else x.fillStyle = lit?'#4e4636':'#1d2129';
     x.fillRect(bx,by,ww,wh);
-    x.strokeStyle='rgba(0,0,0,.34)'; x.lineWidth=1; x.strokeRect(bx,by,ww,wh);           // window frame
-    if(glassy){ x.fillStyle='rgba(0,0,0,.22)'; x.fillRect(bx+ww*0.5, by, 1, wh); }        // vertical mullion
-    if(lit){ const rr=rng(); xe.fillStyle = rr>0.965?'#8fe6d6' : rr>0.90?'#b8d8ff' : rr>0.855?'#ffb59a' : '#ffce88'; xe.fillRect(bx+1,by+1,ww-2,wh-2); }   // lit windows: mostly warm, a few cool/teal/amber accents -> livelier dusk skyline
-    if(lit && glassy && rng()>0.6){ xe.fillStyle='rgba(0,0,0,.35)'; xe.fillRect(bx+ww*0.5,by,1,wh); }   // keep the mullion dark through the glow (no solid neon slab)
+    // DEPTH: dark inset top+left (sun AO), lit sill below
+    x.fillStyle='rgba(0,0,0,.42)'; x.fillRect(bx,by,ww,1.6*K); x.fillRect(bx,by,1.6*K,wh);
+    x.fillStyle='rgba(255,255,255,.14)'; x.fillRect(bx,by+wh,ww,1.4*K);
+    x.strokeStyle='rgba(0,0,0,.32)'; x.lineWidth=1; x.strokeRect(bx,by,ww,wh);
+    if(glassy){ x.fillStyle='rgba(10,14,18,.5)'; x.fillRect(bx+ww*0.5, by, 1.2*K, wh); }   // mullion
+    else if(rng()>0.86){ x.fillStyle='rgba(210,214,218,.85)'; x.fillRect(bx+ww*0.18, by+wh-4.5*K, ww*0.3, 3.5*K);   // window AC unit
+      x.fillStyle='rgba(0,0,0,.3)'; x.fillRect(bx+ww*0.18, by+wh-1.6*K, ww*0.3, 1.2*K); }
+    if(!glassy && lit && rng()>0.5){ x.fillStyle='rgba(226,214,190,.25)'; x.fillRect(bx+1.6*K, by+1.6*K, ww-3.2*K, wh*0.45); }   // blinds/curtains
+    if(lit){ const rr=rng(); xe.fillStyle = rr>0.965?'#8fe6d6' : rr>0.90?'#b8d8ff' : rr>0.855?'#ffb59a' : '#ffce88';
+      xe.fillRect(bx+1.6*K, by+1.6*K, ww-3.2*K, wh-3.2*K);
+      if(rng()>0.5){ xe.fillStyle='rgba(0,0,0,.4)'; xe.fillRect(bx+1.6*K, by+1.6*K, ww-3.2*K, wh*0.4); } }   // partially-lit rooms
+    if(lit && glassy && rng()>0.6){ xe.fillStyle='rgba(0,0,0,.35)'; xe.fillRect(bx+ww*0.5,by,1.2*K,wh); }
   }
-  const mk=cv=>{ const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; return t; };
+  const mk=cv=>{ const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=isTouch?2:8; return t; };
   return {map:mk(c), emis:mk(e)};
 }
 // a ground-floor storefront: signage + awning + lit display windows
