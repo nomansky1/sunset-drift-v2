@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.89-->
+<!--BUILD:v9.90-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1108,7 +1108,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.89';
+(function(){ const BUILD='v9.90';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2628,6 +2628,7 @@ function updateArcadeVisuals(dt){ if(typeof updateWrenches==='function') updateW
     coinMesh.instanceMatrix.needsUpdate=true; if(coinRim) coinRim.instanceMatrix.needsUpdate=true; if(coinGlow) coinGlow.instanceMatrix.needsUpdate=true; }
   if(padMat) padMat.opacity=0.72+0.24*Math.sin(raceTime*4.2);  // pulse pads (stays clearly visible)
   if(obDebris && obDebris.length) obUpdateDebris(dt);
+  if(typeof updateFlung==='function' && flungProps.length) updateFlung(dt);
 }
 function arcadePickups(c, dt){       // player only, during a race
   for(let i=0;i<boostPads.length;i++){ const pd=boostPads[i]; if(pd.hit>0){ pd.hit-=dt; continue; }
@@ -2688,9 +2689,9 @@ function buildObstacles(){
     const x=p.x+n.x*lat, z=p.y+n.y*lat;
     let mesh = type==='dumpster'?_mkDumpster(M) : type==='bike'?_mkBike(M) : type==='trash'?_mkTrash(M,rng) : type==='ramp'?_mkRamp(M) : _mkPothole(M);
     mesh.position.set(x, el+0.02, z); if(type!=='bike') mesh.rotation.y=Math.atan2(t.x,t.y);
-    obGroup.add(mesh); obstacles.push({x,z,idx,type,mesh,alive:true,hitT:-9}); }
+    obGroup.add(mesh); obstacles.push({x,z,idx,type,mesh,alive:true,hitT:-9, bp:mesh.position.clone(), br:mesh.rotation.clone()}); }
 }
-function resetObstacles(){ for(const o of obstacles){ o.alive=true; o.hitT=-9; if(o.mesh) o.mesh.visible=true; } }
+function resetObstacles(){ for(const o of obstacles){ o.alive=true; o.hitT=-9; if(o.mesh){ o.mesh.visible=true; if(o.bp){ o.mesh.position.copy(o.bp); o.mesh.rotation.copy(o.br); } } } }
 function obSpawnDebris(x,y,z){ for(let k=0;k<7;k++){ const d=obDebris[_obDebI]; _obDebI=(_obDebI+1)%(obDebris.length||1); if(!d) return;
   d.m.visible=true; d.m.position.set(x,y,z); d.m.scale.setScalar(0.55+Math.random()*0.8);
   d.vx=(Math.random()-0.5)*7; d.vy=3+Math.random()*4.5; d.vz=(Math.random()-0.5)*7; d.spin=(Math.random()-0.5)*11; d.life=0.85+Math.random()*0.5; } }
@@ -2705,7 +2706,9 @@ function updateObstacles(c, dt){ if(!obstacles.length) return;
         audio&&audio.boost&&audio.boost(); popup('⇗ RAMP','#7ce0ff'); } continue; }
     if(o.type==='pothole'){ if(d2<5.4 && (c.air||0)<=0.2 && raceTime-o.hitT>0.8){ o.hitT=raceTime;
         c.vel.multiplyScalar(0.8); camShake=Math.min(camShake+0.26,1); audio&&audio.thud&&audio.thud(0.4); popup('POTHOLE','#ff9a5a'); } continue; }
-    if(o.alive && d2<7.2){ o.alive=false; if(o.mesh) o.mesh.visible=false;
+    if(o.alive && d2<7.2){ o.alive=false;
+      if(o.mesh && typeof flingProp==='function'){ const sp=c.vel.length()||1;      // knock the ACTUAL object flying
+        flingProp(o.mesh, c.vel.x/sp, c.vel.y/sp, 4+Math.min(sp*0.35,7)); }
       const slow=o.type==='dumpster'?0.42:o.type==='bike'?0.6:0.74; c.vel.multiplyScalar(slow);
       camShake=Math.min(camShake+(o.type==='dumpster'?0.5:0.34),1);
       obSpawnDebris(o.x,(sampleElev[o.idx]||0)+0.6,o.z);
@@ -4090,7 +4093,7 @@ function placeLowCityBackdrop(rng){
   let freeR=1e9; for(let i=0;i<samplePts.length;i++){ const d=Math.hypot(samplePts[i].x-trackCentroid.x, samplePts[i].y-trackCentroid.y); if(d<freeR)freeR=d; }
   freeR -= (CONFIG.roadHalfWidth + 7);                             // clear the road + sidewalk + margin
   const halfDiag=Math.hypot(sz.x,sz.z)/2;                          // safe for any rotation
-  const s = brActive ? (trackRadius*1.35)/span : Math.min((trackRadius*1.45)/span, freeR/Math.max(halfDiag,1));   // BR: no racing line to protect -> full-size downtown battleground
+  const s = (brActive||window.freeRoam) ? (trackRadius*1.35)/span : Math.min((trackRadius*1.45)/span, freeR/Math.max(halfDiag,1));   // BR/free roam: no racing line to protect -> full-size downtown
   if(span*s < 55) return;                                          // too small to read as a downtown -> skip (procedural city fills the scene anyway)
   const c=srcRaw.clone(true); c.position.set(trackCentroid.x, -srcBox.min.y*s, trackCentroid.y);
   c.scale.setScalar(s); c.rotation.y=dk?0:0.4; scene.add(c);      // -> WORLD (disposed on rebuild; geo/mat SHARED); real districts keep their true street grid orientation
@@ -4098,7 +4101,7 @@ function placeLowCityBackdrop(rng){
   // BATTLE ROYALE building collision: the district GLBs are MERGED meshes (one "Cube082" holds every
   // tower), so per-mesh boxes are useless. Instead: one pass over the geometry VERTICES marks 4.2-unit
   // occupancy cells wherever wall/roof verts sit above street level -> real street-grid collision.
-  if(brActive){ c.updateWorldMatrix(true,true);
+  if(brActive || window.freeRoam){ c.updateWorldMatrix(true,true);
     const bb=new THREE.Box3().setFromObject(c);
     const cell=4.2, x0=bb.min.x, z0=bb.min.z;
     const w=Math.min(200, Math.ceil((bb.max.x-x0)/cell)), h=Math.min(200, Math.ceil((bb.max.z-z0)/cell));
@@ -4130,7 +4133,7 @@ function brSolid(x,z){ if(!brGrid) return false;
 function resolveBRBuildings(){
   if(!brGrid) return;
   const R=1.2, cell=brGrid.cell;
-  for(const c of cars){ if(!c.alive) continue;
+  for(const c of cars){ if(c.alive===false) continue;   // race/roam cars have no 'alive' field — only skip the BR-eliminated
     if(c.vel.x && brSolid(c.pos.x+Math.sign(c.vel.x)*R, c.pos.y)){
       const gx=((c.pos.x+Math.sign(c.vel.x)*R-brGrid.x0)/cell)|0;
       const edge=brGrid.x0 + (c.vel.x>0? gx*cell - R : (gx+1)*cell + R);
@@ -5267,7 +5270,7 @@ function battleFrame(dt){ raceTime+=dt;
     if(hf<0.42){ c._dmgT=(c._dmgT||0)-dt; if(c._dmgT<=0){ c._dmgT=0.13; const x=c.pos.x,y=(c.visY||0)+0.75,z=c.pos.y;
       tireSmoke.emit(x,y,z,0,1.3,0, hf<0.2?0.6:0.45, hf<0.2?9:6);
       if(hf<0.2) sparks.emit(x,y,z,(Math.random()-.5)*1.2,2.2,(Math.random()-.5)*1.2,0.32,4); } } }
-  updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt); updateBRProps(dt); obUpdateDebris(dt); updateShells(dt);
+  updateRockets(dt); updateExplosions(dt); updateMuzzle(dt); updatePickups(dt); updateBRProps(dt); obUpdateDebris(dt); updateShells(dt); updateFlung(dt);
   for(const c of cars){ if(!c.alive) continue; const dC=Math.hypot(c.pos.x-zoneCX,c.pos.y-zoneCZ); if(dC>zoneR) damageCar(c, BR.zoneDps*dt); }
   for(let i=brTracers.length-1;i>=0;i--){ const t=brTracers[i]; t.t-=dt; if(t.t<=0){ scene.remove(t.ln);
       if(!t.pooled){ t.ln.geometry.dispose(); t.ln.material.dispose(); }   // beam tracers share SHARED geo/mat — never dispose those
@@ -5293,12 +5296,23 @@ function buildBRProps(){ clearBRProps();
     brProps.push({x,z,y,type,mesh,hp:BRPROP_HP[type],alive:true}); } }
 function clearBRProps(){ brProps.forEach(o=>{ scene.remove(o.mesh); disposeGroup(o.mesh); }); brProps=[];
   brScorch.forEach(s=>{ scene.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); }); brScorch=[]; brSmokes=[]; }
+let flungProps=[];
+function flingProp(mesh, dx, dz, pw){ if(!mesh) return;                       // the SMASHED OBJECT tumbles away (owner: "the bench, rather than pieces")
+  flungProps.push({m:mesh, vx:dx*pw, vy:2.6+pw*0.3, vz:dz*pw, rx:(Math.random()-0.5)*7, rz:(Math.random()-0.5)*7, t:1.5, y0:mesh.position.y}); }
+function updateFlung(dt){ for(let i=flungProps.length-1;i>=0;i--){ const f=flungProps[i]; f.t-=dt;
+  f.vy-=20*dt; f.m.position.x+=f.vx*dt; f.m.position.y+=f.vy*dt; f.m.position.z+=f.vz*dt;
+  if(f.m.position.y<f.y0){ f.m.position.y=f.y0; f.vy*=-0.3; f.vx*=0.6; f.vz*=0.6; }
+  f.m.rotation.x+=f.rx*dt; f.m.rotation.z+=f.rz*dt; f.rx*=0.985; f.rz*=0.985;
+  if(f.t<=0){ f.m.visible=false; flungProps.splice(i,1); } } }
 function damageProp(o, amt, by){ if(!o.alive) return; o.hp-=amt;
   sparks.emit(o.x, o.y+0.7, o.z, (Math.random()-.5)*4, 2.2, (Math.random()-.5)*4, 0.3, 5);
   if(o.hp<=0) destroyProp(o, by); }
-function destroyProp(o, by){ o.alive=false; o.mesh.visible=false;
+function destroyProp(o, by){ o.alive=false;
   const y=o.y+0.6;
-  obSpawnDebris(o.x, y, o.z); obSpawnDebris(o.x, y+0.3, o.z);                       // two bursts -> chunks really fly
+  { const bd=by&&by.vel?by.vel:null; const sp=bd?bd.length():0;                     // the object ITSELF tumbles in the hit direction
+    const nx=bd&&sp>1?bd.x/sp:(Math.random()-0.5)*2, nz=bd&&sp>1?bd.y/sp:(Math.random()-0.5)*2;
+    flingProp(o.mesh, nx, nz, 5+Math.min(sp*0.4,8)); }
+  obSpawnDebris(o.x, y, o.z);                                                       // light splinters ride along
   addExplosion(new THREE.Vector3(o.x, y+0.4, o.z));
   addFlash(o.x, y+1.0, o.z, 0xffa64d, 5.0, 30, 0.24);
   brSmokes.push({x:o.x, y, z:o.z, t:1.4});                                          // rising smoke column
@@ -5497,7 +5511,7 @@ function update(dt){
       c.maxScale=clamp((c.aiBase||1)+band, 0.95, c.isRival?(aiCap+0.06):aiCap);
       if(aiAccel>1.01) c.boost=Math.max(c.boost, CONFIG.boostMax*0.5);   // normal/hard: nitrous stays fed whether leading or chasing
       updateCar(c, aiInput(c), dt); }
-    resolveCollisions();
+    resolveCollisions(); if(window.freeRoam) resolveBRBuildings();   // roam: real building collision on the district streets
     recordGhost(dt); updateGhost();                                  // sample this run + replay your best
     if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=1; }   // combo decays when you stop earning
     updateArcadeVisuals(dt);
@@ -5743,7 +5757,7 @@ function buildWorld(idx){
     if(bloomPass){ bloomPass.strength = isTouch?0.65:0.8; bloomPass.threshold = 0.7; }   // neon + lights pop (not car paint)
   } else {
     const mTrim = isTouch ? (bright?0.85:warm?0.90:0.96) : 1;            // PHONES clip the bright themes (owner: overexposed on mobile) -> trim exposure per tier
-    renderer.toneMappingExposure = (bright ? 0.74 : warm ? 0.80 : 0.98) * mTrim;
+    renderer.toneMappingExposure = (bright ? 0.68 : warm ? 0.78 : 0.90) * mTrim;   // owner: daytime sun/glare too bright
     if(bloomPass){
       bloomPass.strength  = bright ? 0.2 : warm ? 0.26 : (isTouch?0.32:0.4);
       bloomPass.threshold = bright ? 0.99 : warm ? 0.96 : 0.93;   // dusk: only the brightest lit windows bloom (not a neon smear)
@@ -6720,6 +6734,7 @@ window.NETRACE=false;
     const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
   function init(){ if(sc) return; const cv=document.getElementById('globeCanvas');
     ren=new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true}); ren.setPixelRatio(Math.min(devicePixelRatio,2));
+    ren.toneMapping=THREE.ACESFilmicToneMapping; ren.toneMappingExposure=1.05;   // owner: globe colors looked off — raw 3PI light bleached the blue marble
     sc=new THREE.Scene(); cam=new THREE.PerspectiveCamera(45,1,0.1,120); cam.position.set(0,0.18,6.1);
     grp=new THREE.Group(); grp.rotation.x=-0.32; sc.add(grp);
     const em=new THREE.MeshStandardMaterial({map:earthTex(), roughness:1, metalness:0, emissive:0x0b1526, emissiveIntensity:0.5});
@@ -6732,7 +6747,7 @@ window.NETRACE=false;
     for(let i=0;i<650;i++){ const v=new THREE.Vector3(sr(),sr(),sr()); if(v.length()<0.05) continue; v.normalize().multiplyScalar(34+sr()*24); sp.push(v.x,v.y,v.z); }
     const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
     sc.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xdfe8ff,size:0.16,sizeAttenuation:true})));
-    sc.add(new THREE.AmbientLight(0xaebbe0,1.35*Math.PI)); const dl=new THREE.DirectionalLight(0xffffff,1.7*Math.PI); dl.position.set(5,3,6); sc.add(dl);
+    sc.add(new THREE.AmbientLight(0xbcc8e6,0.55*Math.PI)); const dl=new THREE.DirectionalLight(0xfff4e2,1.05*Math.PI); dl.position.set(5,3,6); sc.add(dl);   // natural earth tones (was 3PI total = washed out)
     const mg=new THREE.SphereGeometry(0.05,10,10);
     GLOBE.forEach((gd,i)=>{ const co=(typeof COUNTRIES!=='undefined'&&COUNTRIES[i])||{col:0xffffff}; const pos=llToVec(gd.lat,gd.lon,1.73);
       const pin=new THREE.Mesh(mg,new THREE.MeshBasicMaterial({color:co.col})); pin.position.copy(pos); pin.userData.i=i; grp.add(pin);
