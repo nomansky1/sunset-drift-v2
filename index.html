@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.92-->
+<!--BUILD:v9.93-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -363,6 +363,10 @@
     background:rgba(12,8,20,.86); border:1px solid rgba(150,170,255,.35);
     box-shadow:0 8px 30px rgba(0,0,0,.5), 0 0 24px rgba(110,150,255,.18); }
   #trackPreview.hidden{ display:none; }
+  #passportRow{ margin:6px auto 2px; text-align:center; font-size:11px; color:#b8b0d0; letter-spacing:1px; }
+  #passportRow .ppStamp{ display:inline-block; margin:0 2px; color:#5a5470; }
+  #passportRow .ppStamp.got{ color:#7ce0ff; text-shadow:0 0 8px rgba(110,200,255,.8); }
+  #passportRow b{ color:#fff; margin-left:6px; }
   .cotd{ position:absolute; top:4px; left:6px; font-size:10px; font-weight:900; letter-spacing:.4px; color:#ffd24a;
     text-shadow:0 0 8px rgba(255,180,40,.8), 0 1px 3px #000; animation:cotdPulse 2s ease-in-out infinite; }
   @keyframes cotdPulse{ 0%,100%{opacity:.85} 50%{opacity:1; transform:scale(1.08)} }
@@ -941,6 +945,7 @@
         <div class="trackBtn" data-i="21"><div class="ic">❄️</div><b>TVERSKAYA LOOP</b><span>Moscow Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
         <div class="trackBtn" data-i="22"><div class="ic">🕌</div><b>FORT DISTRICT</b><span>Mumbai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
       </div>
+      <div id="passportRow"></div>
       <div id="nextCarBtn">NEXT · CHOOSE CAR &nbsp;▸</div>
     </div>
     <div class="mPanel" id="panel-garage">
@@ -1108,7 +1113,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.92';
+(function(){ const BUILD='v9.93';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1718,6 +1723,18 @@ const TRACKS=[
     ctrl:[[184.8,-130.1],[183.9,-143.7],[154.4,-139.9],[79.5,-162.4],[27.4,-90.7],[-83.8,-101.7],[-186.0,36.9],[-167.9,55.9],[-168.3,89.2],[-112.0,121.6],[-41.7,132.6],[55.1,162.4],[88.0,152.3],[110.3,131.6],[136.4,33.8],[170.1,-17.2],[186.0,-110.1]] },   // REAL mumbai streets (OSM) — (c) OpenStreetMap contributors, ODbL
 ];
 let _trackDiffCache=null;
+// CITY PASSPORT — one stamp per real city WON; conquer all 11 (retention: collection goal on top of CotD)
+let passport={}; try{ passport=JSON.parse(localStorage.getItem('sd_passport')||'{}'); }catch(e){ passport={}; }
+function stampCity(){ const t=TRACKS[currentTrack]; if(!t||!t.osm||passport[t.osm]) return false;
+  passport[t.osm]=1; try{ localStorage.setItem('sd_passport', JSON.stringify(passport)); }catch(e){}
+  const total=TRACKS.filter(x=>x.osm).length, got=Object.keys(passport).length;
+  popup('🛂 PASSPORT STAMPED — '+t.name+' ('+got+'/'+total+' cities)', '#7ce0ff');
+  if(got>=total) popup('🌍 WORLD CONQUERED — every real city won!', '#ffd24a');
+  return true; }
+function renderPassport(){ const el=document.getElementById('passportRow'); if(!el) return;
+  const osm=TRACKS.map((t,i)=>({t,i})).filter(x=>x.t.osm);
+  el.innerHTML='🛂 '+osm.map(x=>'<span class="ppStamp'+(passport[x.t.osm]?' got':'')+'" title="'+x.t.name+'">'+(passport[x.t.osm]?'●':'○')+'</span>').join('')+
+    ' <b>'+Object.keys(passport).length+'/'+osm.length+'</b>'; }
 // CITY OF THE DAY — the featured real-city circuit rotates daily (UTC): star badge + DOUBLE COINS.
 // This is the retention loop on top of the OSM self-growth pipeline: new cities auto-join the rotation.
 function cityOfTheDay(){ const osm=[]; TRACKS.forEach((t,i)=>{ if(t.osm) osm.push(i); });
@@ -4055,7 +4072,8 @@ function loadCarModels(){
   });
   // per-city HERO LANDMARKS for the real-street circuits (procedural PBR: Empire State / art-deco hotel / El Morro)
   [['nyc','empirestate',1.1],['miami','artdeco',1.6],['sanjuan','elmorro',1.6],
-   ['london','bigben',1.2],['paris','eiffel',1.3],['berlin','brandenburg',1.4],['tokyo','shibuya',1.3]].forEach(([k,f,sc])=>{
+   ['london','bigben',1.2],['paris','eiffel',1.3],['berlin','brandenburg',1.4],['tokyo','shibuya',1.3],
+   ['dubai','burj',1.4],['rio','christ',1.5],['moscow','stbasil',1.5],['mumbai','gateway',1.4]].forEach(([k,f,sc])=>{
     try{ L.load('models/landmarks/'+f+'.glb?r2', g=>{ g.scene.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material) SHARED.add(o.material); o.castShadow=!isTouch; o.receiveShadow=false;
         if(o.material&&o.material.emissive&&(o.material.emissiveIntensity||0)>0.2){ o.material.userData._baseEI=o.material.emissiveIntensity; landmarkGlowMats.push(o.material); } } });   // Empire State windows + Miami neon glow harder at night
       landmarkRaw[k]={scene:g.scene, sc};
@@ -5476,6 +5494,7 @@ function finishRace(){
   const reward=Math.round((([240,140,90,50][r-1]||30) + Math.max(0, Math.round((22-(bestLap||raceTime))*8)) + styleCoins) * diffMul) * cotdMul;   // place + lap-speed + style, scaled by track difficulty
   coins+=reward; saveCoins(); renderCoins();
   if(cotdMul>1) popup('⭐ CITY OF THE DAY — 2X COINS!','#ffd24a');
+  if(won) try{ stampCity(); }catch(e){}
   try{ if(typeof LB!=='undefined' && !brActive) LB.submitTrack(trackKeyNow(), lbName(), Math.round(raceTime*1000)); }catch(e){}
   { const rb=document.getElementById('resBoard'); if(rb){ rb.innerHTML='';                     // WORLD BOARD, right on the results card
     if(typeof LB!=='undefined' && LB.remote && !brActive){ const bk=trackKeyNow(), me=lbName();
@@ -5957,7 +5976,7 @@ function init(){
     if(champ.active){ currentTrack=champ.order[champ.round]; selectTrack(currentTrack); startGame(); } else showMenu(); });
   document.querySelectorAll('.trackBtn').forEach(b=> b.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     const i=+b.dataset.i; if(trackLocked(i)){ popup('🔒 WIN THE TRACK BEFORE IT TO UNLOCK','#ffd24a'); return; } selectTrack(i); showTrackPreview(i); }));
-  try{ markCityOfTheDay(); }catch(e){}
+  try{ markCityOfTheDay(); renderPassport(); }catch(e){}
   const togDiff=document.getElementById('togDiff'), DIFF_ORDER=['easy','normal','hard'];
   const applyDiff=()=>{ togDiff.textContent='⚙ '+difficulty.toUpperCase(); togDiff.classList.toggle('on', difficulty!=='normal'); const D=DIFF[difficulty]||DIFF.normal; aiCap=D.cap; aiAggro=D.aggro||1; };
   try{ const d=localStorage.getItem('sd_diff'); if(d&&DIFF[d]) difficulty=d; }catch(_){}
