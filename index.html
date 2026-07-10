@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.13-->
+<!--BUILD:v10.14-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1170,7 +1170,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.13';
+(function(){ const BUILD='v10.14';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1600,8 +1600,16 @@ function paintCar(rig, hex, modelKey){ if(hex==null||!rig.chassis) return;
     const ck='w:'+modelKey+':'+hex; let tex=_paintTex[ck];
     if(!tex){ const c=document.createElement('canvas'); c.width=src.image.width; c.height=src.image.height;
       const x=c.getContext('2d'); x.drawImage(src.image,0,0);
+      const orig=x.getImageData(0,0,c.width,c.height);                            // snapshot BEFORE tinting
       x.globalCompositeOperation='color'; x.fillStyle='#'+hex.toString(16).padStart(6,'0'); x.fillRect(0,0,c.width,c.height);
       x.globalCompositeOperation='destination-in'; x.drawImage(src.image,0,0);   // restore the map's own alpha
+      x.globalCompositeOperation='source-over';
+      const now=x.getImageData(0,0,c.width,c.height), od=orig.data, nd=now.data; // GLASS GUARD (owner: wraps painted over the windows):
+      for(let i2=0;i2<od.length;i2+=4){                                          // only saturated mid-bright pixels are PAINT — dark/grey = glass, trim, tires
+        const r=od[i2],g2=od[i2+1],b2=od[i2+2], mx=Math.max(r,g2,b2), mn=Math.min(r,g2,b2);
+        const sat=mx>0?(mx-mn)/mx:0, lum=(r*0.299+g2*0.587+b2*0.114)/255;
+        if(sat<0.20 || lum<0.14){ nd[i2]=r; nd[i2+1]=g2; nd[i2+2]=b2; } }
+      x.putImageData(now,0,0);
       tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.flipY=src.flipY; tex.anisotropy=src.anisotropy; _paintTex[ck]=tex; }
     meshes.forEach(o=>{ if(!o.material||!o.material.map) return;                 // wrap EVERY body panel (v3 models: body + panel_* share the albedo)
       o.material=o.material.clone(); o.material.map=tex; if(o.material.color) o.material.color.set(0xffffff); o.material.needsUpdate=true;
@@ -4141,8 +4149,11 @@ function loadCarModels(){
    ['roadster','models/gen3/classiclemans3.glb?r3'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
    ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/timeattack3.glb'],
-   ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f])=>{   // CC0 Kenney Car Kit (modular, named wheels)
-    try{ L.load(f, g=>{ fleetRaw[k]=g.scene; if(cars&&cars.length) upgradeCars(); }, undefined, ()=>{}); }catch(e){}
+   ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
+    // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
+    const sel=(CARS[selectedCar]&&CARS[selectedCar].raw)===k, critical=sel||qi<4;
+    const go=()=>{ try{ L.load(f, g=>{ fleetRaw[k]=g.scene; if(cars&&cars.length) upgradeCars(); }, undefined, ()=>{}); }catch(e){} };
+    if(critical) go(); else setTimeout(go, 900+qi*(isTouch?420:120));
   });
   // sculpted upgrade parts (Blender, CC0) -> real spoiler/diffuser/lip/skirt instead of procedural boxes
   try{ L.load('models/cc0/parts.glb', g=>{ g.scene.traverse(o=>{ if(o.isMesh&&o.geometry) kitPartGeo[o.name]=o.geometry; });
@@ -4636,14 +4647,26 @@ function attachUpgrades(rig, carIdx, forceU){
         mesh.position.copy(p); mesh.quaternion.copy(q); if(cx<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
       // tire = black tread ring that WRAPS the wheel (outer ~= wheel radius); rim = chrome disc filling the hub.
       // /S bakes the wheel's world-scale compensation into the geometry so sizes are exact in WORLD units.
-      const tOuter=wr*1.17;                                                           // owner: stock tread layers showed THROUGH the old torus ring —
-      const wWidth=Math.max(_bs.x*1.14, tOuter*0.52);                                  // a full closed DRUM encloses the original wheel completely
-      const drum=new THREE.CylinderGeometry(tOuter/S, tOuter/S, wWidth/S, 24);
-      drum.rotateZ(Math.PI/2);                                                         // axle along X
-      const tire=new THREE.Mesh(drum, tireMat);
-      mount(tire, cx);                                                                 // centered ON the wheel -> the visible fat tire
-      if(rgeo){ const rm=new THREE.Mesh(rgeo, rimMat); rm.scale.setScalar((tOuter*1.24)/(rsz.y||1)/S);   // rim disc on the drum's outboard face
-        mount(rm, Math.sign(cx)*Math.max(outX+0.02, Math.abs(cx)+wWidth/2+0.015)); }
+      // owner v3: the covering drum read THICK and spun without visible rotation. REPLACE the wheel:
+      // hide every stock mesh, then build a proper wheel ON THE SPIN AXIS — treaded tire + spoked rim
+      // (spokes make the rotation readable) — perfectly concentric so it rolls circular.
+      wo.traverse(o2=>{ if(o2.isMesh) o2.visible=false; });
+      const tOuter=wr*1.06, wWidth=Math.max(_bs.x*0.96, tOuter*0.5);
+      const treadM=new THREE.MeshStandardMaterial({color:0x17181c, roughness:0.96, metalness:0,
+        bumpMap:treadTex(), bumpScale:0.05});
+      const wallM=new THREE.MeshStandardMaterial({color:0x101114, roughness:0.9, metalness:0.05});
+      const tgeo=new THREE.CylinderGeometry(tOuter/S, tOuter/S, wWidth/S, 24, 1, false);
+      tgeo.rotateZ(Math.PI/2);
+      const tire=new THREE.Mesh(tgeo, [treadM, wallM, wallM]);                         // [side=tread, caps=sidewalls]
+      const asm=new THREE.Group(); asm.add(tire);
+      const hubR=tOuter*0.58, hub=new THREE.Mesh(new THREE.CylinderGeometry(hubR/S, hubR/S, (wWidth*1.04)/S, 18).rotateZ(Math.PI/2), rimMat); asm.add(hub);
+      for(let sp=0; sp<5; sp++){                                                       // 5 chunky spokes — rotation READS at speed
+        const spk=new THREE.Mesh(new THREE.BoxGeometry((wWidth*1.06)/S, (tOuter*0.34)/S, (tOuter*0.86)/S), rimMat);
+        spk.rotation.x=sp*(Math.PI*2/5); asm.add(spk); }
+      const nut=new THREE.Mesh(new THREE.CylinderGeometry((hubR*0.28)/S,(hubR*0.28)/S,(wWidth*1.16)/S,8).rotateZ(Math.PI/2), carbon); asm.add(nut);
+      // CONCENTRIC mount: the pivot's local origin IS the spin axis — zero radial offset, keep only axle offset
+      { const p=new THREE.Vector3(cx, cy, cz); kit.localToWorld(p); wo.worldToLocal(p);
+        asm.position.set(p.x, 0, 0); asm.quaternion.copy(q); asm.traverse(o2=>{ o2.castShadow=sh; }); wo.add(asm); }
     });
     wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
       arch.rotation.y=Math.PI/2; arch.position.set(Math.sign(w.x)*(w.outerX-0.06), w.y, w.z); });
@@ -5904,7 +5927,19 @@ function update(dt){
       player._perfectArmed=false;
     }
     cars.forEach(c=> syncCarMesh(c));
-    updateCamera(dt);
+    // CUTSCENE: during the 3s countdown the camera flies the opening sector — aerial over the grid,
+    // sweeping down the racing line, landing exactly in chase position at GO (no extra state; tap-skip = it's just the countdown)
+    if(countdown>0 && samplePts.length && player && player.rig){
+      const T=1-Math.max(0,Math.min(1,countdown/3));                        // 0..1 across the countdown
+      const e=T*T*(3-2*T);                                                  // smoothstep ease
+      const iAhead=(player.trackIdx+Math.round((1-e)*(samplePts.length*0.10)))%samplePts.length;
+      const pA=samplePts[iAhead];
+      const h2=player.heading, fx2=Math.sin(h2), fz2=Math.cos(h2);
+      const gx=player.pos.x-fx2*7.2, gz=player.pos.y-fz2*7.2, gy=(player.visY||0)+3.1;   // chase-cam landing pose
+      const ax=pA.x, az=pA.y, ay=34-26*e;                                   // aerial start high over the opening corners
+      camera.position.set(ax+(gx-ax)*e, ay+(gy-ay)*e, az+(gz-az)*e);
+      camera.lookAt(player.pos.x+fx2*4*e, (player.visY||0)+0.8, player.pos.y+fz2*4*e);
+    } else updateCamera(dt);
   } else if(state==='paused'){
     updateCamera(dt);                                                          // keep the camera alive; world frozen
   } else if(state==='race'){
