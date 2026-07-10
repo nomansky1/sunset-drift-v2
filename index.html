@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v9.93-->
+<!--BUILD:v9.94-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1113,7 +1113,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v9.93';
+(function(){ const BUILD='v9.94';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4074,7 +4074,12 @@ function loadCarModels(){
   [['nyc','empirestate',1.1],['miami','artdeco',1.6],['sanjuan','elmorro',1.6],
    ['london','bigben',1.2],['paris','eiffel',1.3],['berlin','brandenburg',1.4],['tokyo','shibuya',1.3],
    ['dubai','burj',1.4],['rio','christ',1.5],['moscow','stbasil',1.5],['mumbai','gateway',1.4]].forEach(([k,f,sc])=>{
-    try{ L.load('models/landmarks/'+f+'.glb?r2', g=>{ g.scene.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material) SHARED.add(o.material); o.castShadow=!isTouch; o.receiveShadow=false;
+    try{ L.load('models/landmarks/'+f+'.glb?r2', g=>{ const _hsl={h:0,s:0,l:0};
+      g.scene.traverse(o=>{ if(o.isMesh){ if(o.geometry) SHARED.add(o.geometry); if(o.material) SHARED.add(o.material); o.castShadow=!isTouch; o.receiveShadow=false;
+        if(o.material&&o.material.color&&!o.material.userData._sat){ o.material.userData._sat=true;      // landmarks rendered PALER than authored (tone map + env wash):
+          o.material.color.getHSL(_hsl);                                                                 // re-saturate + slightly deepen every base colour once
+          o.material.color.setHSL(_hsl.h, Math.min(1,_hsl.s*1.55), _hsl.l*0.88);
+          o.material.envMapIntensity=0.7; }
         if(o.material&&o.material.emissive&&(o.material.emissiveIntensity||0)>0.2){ o.material.userData._baseEI=o.material.emissiveIntensity; landmarkGlowMats.push(o.material); } } });   // Empire State windows + Miami neon glow harder at night
       landmarkRaw[k]={scene:g.scene, sc};
       if(cars&&cars.length && state==='menu' && currentTheme && currentTheme.osm===k) selectTrack(currentTrack); }, undefined, ()=>{}); }catch(e){}
