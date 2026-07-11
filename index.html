@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.17-->
+<!--BUILD:v10.18-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1171,7 +1171,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.17';
+(function(){ const BUILD='v10.18';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4150,12 +4150,12 @@ function loadCarModels(){
       undefined, ()=>{ carReady=true; if(cars&&cars.length) upgradeCars(); });   // body-only if wheels fail
   }, undefined, ()=>{}); }catch(e){}
   // fleet sports cars
-  [['sport','models/gen3/gt33.glb?g4'],['super','models/gen3/electrichypercar3.glb?g4'],
+  [['sport','models/gen3/gt33.glb?r5'],['super','models/gen3/electrichypercar3.glb?r5'],
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
-   ['racer','models/gen3/drifttuner3.glb?g4'],['racecar','models/gen3/supergt3.glb?g4'],['muscle','models/gen3/v8supercar3.glb?g4'],
-   ['roadster','models/gen3/classiclemans3.glb?g4'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
+   ['racer','models/gen3/drifttuner3.glb?r5'],['racecar','models/gen3/supergt3.glb?r5'],['muscle','models/gen3/v8supercar3.glb?r5'],
+   ['roadster','models/gen3/vintagegp3.glb']   // Classic LeMans' clamshell front fought the panel cuts since day one (permanent waiver) — retired for the clean Vintage GP,['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
-   ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?g4'],
+   ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?r5'],
    ['skyline','models/gen4/skyline.glb'],['gt3p','models/gen4/gt3p.glb'],['mcl35m','models/gen4/mcl35m.glb'],   // gen4 = downloaded high-fidelity CC-BY cars (ATTRIBUTIONS in Downloads/3D_Racing_Assets)   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
    ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
     // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
@@ -4597,113 +4597,10 @@ function attachUpgrades(rig, carIdx, forceU){
       for(let f=0;f<4;f++){ const fin=add(rbox(0.03,0.11,0.3,0.012), carbon); fin.position.set((f-1.5)*W*0.16, floorY+H*0.06, rear+Lz*0.03); fin.rotation.x=-0.18; } }
   }
   // TIRES -> fat rubber tires w/ TREAD texture + matched rims, mounted INTO the spinning wheels; ride height lifts so wheels stay grounded
-  if(u.tire>0 && !rig.packCar){ const t=u.tire;   // pack cars already ship detailed rims/tyres -> the Kenney-tuned wheel swap oversizes them; grip bonus still applies via carMul
-    // 1) cluster the UNSCALED wheel-mesh verts (kit-local) -> TRUE wheel centers, before any growth
-    const wb={}, pv=new THREE.Vector3();
-    const eat=(o,ob)=>{ if(!o.isMesh||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position) return;
-      const pa=o.geometry.attributes.position; o.updateWorldMatrix(true,false);
-      for(let i=0;i<pa.count;i++){ pv.fromBufferAttribute(pa,i).applyMatrix4(o.matrixWorld); kit.worldToLocal(pv);
-        if(ob && Math.abs(pv.x) < x0*0.55) continue;                   // single-mesh fallback: only outboard verts (the wheels)
-        const key=(pv.x<0?'L':'R')+(pv.z<0?'B':'F'); let b=wb[key]; if(!b) b=wb[key]={x:0,y:0,z:0,n:0,minY:1e9,maxAX:0};
-        b.x+=pv.x; b.y+=pv.y; b.z+=pv.z; b.n++; if(pv.y<b.minY) b.minY=pv.y; if(Math.abs(pv.x)>b.maxAX) b.maxAX=Math.abs(pv.x); } };
-    rig.chassis.traverse(o=>{ if(o.isMesh && /wheel|tyre|tire|heel/i.test(o.name||'')) eat(o,false); });   // 9/12 cars have named wheel meshes
-    if(rig.wheels) rig.wheels.forEach(wg=> wg.traverse(o=>eat(o,false)));                                  // DRIFTER: real wheel groups
-    let exact=Object.keys(wb).length>=4;
-    if(!exact){ for(const k in wb) delete wb[k]; rig.chassis.traverse(o=>{ if(o.isMesh) eat(o,true); }); }   // COUPE/HATCH/SUV: cluster outboard body verts
-    const RADMAX=Math.min(H*0.5, Lz*0.13);                              // a wheel can never be taller than half the car
-    let wheels = Object.keys(wb).length>=4
-      ? Object.keys(wb).map(k=>{ const b=wb[k], cy=b.y/b.n; return exact
-          ? {x:b.x/b.n, y:cy, z:b.z/b.n, rad:clamp(Math.max(0.18, cy-b.minY), H*0.12, RADMAX), outerX:b.maxAX}
-          : {x:b.x/b.n, y:Lz*0.085, z:b.z/b.n, rad:clamp(Lz*0.085, H*0.12, RADMAX), outerX:b.maxAX}; })
-      : [[-1,-1],[-1,1],[1,-1],[1,1]].map(([sx,sz])=>({x:sx*x0*0.9, y:Lz*0.086, z:sz*Lz*0.32, rad:clamp(Lz*0.09, H*0.12, RADMAX), outerX:x0*0.98}));
-    // 2) TRUE min wheel-to-wheel gap from CLUSTERED centers (wheel-object pivots lie about their position on GLB cars)
-    let minGapT=9e9; for(let a=0;a<wheels.length;a++) for(let b=a+1;b<wheels.length;b++){
-      const d=Math.hypot(wheels[a].x-wheels[b].x, wheels[a].y-wheels[b].y, wheels[a].z-wheels[b].z); if(d<minGapT) minGapT=d; }
-    // 3) match wheel objects + measure STOCK radius, then cap the growth so scaled tires can never touch
-    const _wp=new THREE.Vector3(), _kq=new THREE.Quaternion(), _wq=new THREE.Quaternion(), _bb=new THREE.Box3(), _bs=new THREE.Vector3();
-    const matchWheel=(w)=>{ let wo=null, wd=9e9; (rig.wheels||[]).forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
-      const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} }); return (wo&&wd<1.6)?wo:null; };
-    // SPARE-WHEEL AWARE: a 5th wheel mounted on a tailgate rides much higher than the road wheels —
-    // it must stay attached exactly as authored (no scaling, no overlays, no spin-tumble)
-    { const invG=new THREE.Matrix4(); g.updateWorldMatrix(true,true); invG.copy(g.matrixWorld).invert();
-      const bots=(rig.wheels||[]).map(w=> new THREE.Box3().setFromObject(w).applyMatrix4(invG).min.y);
-      let mB=1e9; bots.forEach(b=>{ if(b<mB) mB=b; });
-      rig.roadWheels=(rig.wheels||[]).filter((w,i)=> bots[i] < mB+0.45);
-      rig.spares    =(rig.wheels||[]).filter((w,i)=> bots[i] >= mB+0.45); }
-    const roadW=rig.roadWheels||rig.wheels||[];
-    let stockR=0; roadW.forEach(wo=>{ _bb.setFromObject(wo); _bb.getSize(_bs); stockR=Math.max(stockR, Math.max(_bs.y,_bs.z)/2); });
-    const kartish=/^kart/.test((CARS[carIdx]&&CARS[carIdx].raw)||'');       // kart-class: wheels are already oversized cartoon items with a tiny wheelbase
-    let sR = kartish ? 1 : 1+0.08*t, sW = kartish ? 1 : 1+0.05*t;           // ROUND growth (radius grows equally in y+z — the old y<z scale made ovals), modest size (+24% max)
-    if(!kartish && stockR>1e-4){ const pg=(function(){ const cs=roadW.map(w=>{ const p=new THREE.Vector3(); w.getWorldPosition(p); return p; });
-        let m=9e9; for(let a2=0;a2<cs.length;a2++)for(let b2=a2+1;b2<cs.length;b2++){ const d=cs[a2].distanceTo(cs[b2]); if(d<m)m=d; } return m; })();
-      const gap=Math.max(pg, minGapT);                                      // pivots and clusters both lie on some models — trust the larger (stock wheels can't physically overlap)
-      if(gap<9e8) sR=clamp(Math.min(sR, (gap-0.08)/(2*stockR)), 1, sR); }
-    sW=Math.min(sW,sR); const sXZ=sR;                                        // (sXZ kept for the fender-arch sizing below)
-    // MULTIPLY the authored scale — .set() overwrote the GLB wheels' native local scale (~0.47)
-    // and snapped every wheel to 1.0 = the 2-3x OVERSIZED tires on small cars AND trucks
-    roadW.forEach(w=>{ if(!w.userData._s0) w.userData._s0=w.scale.clone();
-      w.scale.set(w.userData._s0.x*sW, w.userData._s0.y*sR, w.userData._s0.z*sR); });
-    // 4) tire ring + rim per wheel — sized from the POST-scale wheel, and NEVER larger than the tire itself (added parts cannot create clash)
-    const rimMat=new THREE.MeshPhysicalMaterial({color:0xc8cdd6, metalness:0.95, roughness:0.2, envMapIntensity:1.5, clearcoat:0.5});
-    const tireMat=new THREE.MeshStandardMaterial({color:0x131519, roughness:0.97, metalness:0.0, bumpMap:treadTex(), bumpScale:0.025});   // BLACK rubber w/ tread relief
-    const rgeo=kitPartGeo.rim||null; let rsz=null; if(rgeo){ if(!rgeo.boundingBox) rgeo.computeBoundingBox(); rsz=new THREE.Vector3(); rgeo.boundingBox.getSize(rsz); }
-    const matchRoad=(w)=>{ let wo=null, wd=9e9; roadW.forEach(obj=>{ obj.getWorldPosition(_wp); kit.worldToLocal(_wp);
-      const d=Math.hypot(_wp.x-w.x,_wp.y-w.y,_wp.z-w.z); if(d<wd){wd=d;wo=obj;} }); return (wo&&wd<1.6)?wo:null; };
-    wheels.forEach(w=>{
-      if(kartish) return;                                               // kart wheels already read as fat tires — no overlay needed
-      const wo=matchRoad(w); if(!wo) return;                            // ROAD wheels only — spares stay exactly as authored
-      kit.updateWorldMatrix(true,false); wo.updateWorldMatrix(true,false);
-      _bb.setFromObject(wo); _bb.getSize(_bs);
-      // SPLIT-MESH measure: some wheel objects (SUV fronts) bundle fender geometry with the tire -
-      // the whole-object box read ~25% too big, so the rim rendered as a giant disc swallowing the wheel.
-      // The TIRE is the lowest child mesh (it touches the ground); measure THAT mesh alone.
-      { let tb=null, big=-1, ts=new THREE.Vector3(); wo.traverse(o=>{ if(o.isMesh){ const b=new THREE.Box3().setFromObject(o); b.getSize(ts); const v=ts.x*ts.y*ts.z;
-          if(v>big){ big=v; tb=b.clone(); } } });                          // LARGEST child mesh = the tyre (a hub/brake sub-mesh was under-measuring the SUV)
-        if(tb){ _bb.copy(tb); _bb.getSize(_bs); } }
-      // TRUE rendered wheel radius from the VERTICAL extent (a grounded round wheel's height IS its diameter;
-      // min(y,z) guards against fender/arch geometry inflating the depth on cluster-fallback cars like the SUV)
-      const wr=clamp(Math.min(_bs.y,_bs.z)/2, H*0.10, RADMAX);
-      kit.getWorldQuaternion(_kq); wo.getWorldQuaternion(_wq); const q=_wq.clone().invert().multiply(_kq);
-      // WORLD scale, not local: GLB wheels sit inside the ~3x normalization group — local scale (1)
-      // made every added tire/rim ~3x oversized (tires nearly as tall as the car on RACER/EXOTIC)
-      const _ws=new THREE.Vector3(); wo.getWorldScale(_ws); const S=Math.max(_ws.x,1e-4), inv=1/S;
-      // CLUSTER-FALLBACK cars (COUPE/HATCH/SUV: no named wheel meshes) measured the BODY, so w.x/outerX
-      // sat at the fender line - the rim rendered as a detached disc floating outside the tire.
-      // Trust the matched wheel OBJECT instead: its true center + outboard edge in kit space.
-      let cx=w.x, cy=w.y, cz=w.z, outX=w.outerX;
-      if(!exact){ const wcK=_bb.getCenter(new THREE.Vector3()); kit.worldToLocal(wcK);   // box CENTER, not pivot - SUV front-wheel pivots sit ~0.2 above the true hub
-        cx=wcK.x; cy=wcK.y; cz=wcK.z; outX=0; const vv=new THREE.Vector3();
-        for(const X of [_bb.min.x,_bb.max.x]) for(const Y of [_bb.min.y,_bb.max.y]) for(const Z of [_bb.min.z,_bb.max.z]){
-          vv.set(X,Y,Z); kit.worldToLocal(vv); outX=Math.max(outX,Math.abs(vv.x)); } }
-      const mount=(mesh,kx)=>{ const p=new THREE.Vector3(kx, cy, cz); kit.localToWorld(p); wo.worldToLocal(p);
-        mesh.position.copy(p); mesh.quaternion.copy(q); if(cx<0) mesh.rotateY(Math.PI); mesh.castShadow=sh; wo.add(mesh); return mesh; };
-      // tire = black tread ring that WRAPS the wheel (outer ~= wheel radius); rim = chrome disc filling the hub.
-      // /S bakes the wheel's world-scale compensation into the geometry so sizes are exact in WORLD units.
-      // owner v3: the covering drum read THICK and spun without visible rotation. REPLACE the wheel:
-      // hide every stock mesh, then build a proper wheel ON THE SPIN AXIS — treaded tire + spoked rim
-      // (spokes make the rotation readable) — perfectly concentric so it rolls circular.
-      wo.traverse(o2=>{ if(o2.isMesh) o2.visible=false; });
-      const tOuter=wr*1.06, wWidth=Math.max(_bs.x*0.96, tOuter*0.5);
-      const treadM=new THREE.MeshStandardMaterial({color:0x17181c, roughness:0.96, metalness:0,
-        bumpMap:treadTex(), bumpScale:0.05});
-      const wallM=new THREE.MeshStandardMaterial({color:0x101114, roughness:0.9, metalness:0.05});
-      const tgeo=new THREE.CylinderGeometry(tOuter/S, tOuter/S, wWidth/S, 24, 1, false);
-      tgeo.rotateZ(Math.PI/2);
-      const tire=new THREE.Mesh(tgeo, [treadM, wallM, wallM]);                         // [side=tread, caps=sidewalls]
-      const asm=new THREE.Group(); asm.add(tire);
-      const hubR=tOuter*0.58, hub=new THREE.Mesh(new THREE.CylinderGeometry(hubR/S, hubR/S, (wWidth*1.04)/S, 18).rotateZ(Math.PI/2), rimMat); asm.add(hub);
-      for(let sp=0; sp<5; sp++){                                                       // 5 chunky spokes — rotation READS at speed
-        const spk=new THREE.Mesh(new THREE.BoxGeometry((wWidth*1.06)/S, (tOuter*0.34)/S, (tOuter*0.86)/S), rimMat);
-        spk.rotation.x=sp*(Math.PI*2/5); asm.add(spk); }
-      const nut=new THREE.Mesh(new THREE.CylinderGeometry((hubR*0.28)/S,(hubR*0.28)/S,(wWidth*1.16)/S,8).rotateZ(Math.PI/2), carbon); asm.add(nut);
-      // CONCENTRIC mount: the pivot's local origin IS the spin axis — zero radial offset, keep only axle offset
-      { const p=new THREE.Vector3(cx, cy, cz); kit.localToWorld(p); wo.worldToLocal(p);
-        asm.position.set(p.x, 0, 0); asm.quaternion.copy(q); asm.traverse(o2=>{ o2.castShadow=sh; }); wo.add(asm); }
-    });
-    wheels.forEach(w=>{ const aR=Math.min(w.rad*sXZ, minGapT/2-0.02||w.rad); const arch=add(new THREE.TorusGeometry(aR*1.06, aR*0.16, 6, 12, Math.PI), bodyKit);   // molded fender arch curving over the wheel
-      arch.rotation.y=Math.PI/2; arch.position.set(Math.sign(w.x)*(w.outerX-0.06), w.y, w.z); });
-    if(t>=3) for(const sx of [-1,1]){ const can=add(rbox(0.3,0.03,0.16,0.012), carbon); can.position.set(sx*x0*0.74, floorY+H*0.18, front-Lz*0.05); can.rotation.x=0.2; }
-  }
+  // TIRE UPGRADE = STATS ONLY (owner, final): every model keeps ITS OWN Blender-authored wheels,
+  // rims and suspension untouched. Grown/overlaid/replacement wheel geometry clipped through the
+  // authored fenders on every body it was tried on — grip comes from carMul, not from cosmetics.
+
   // NITROUS -> rounded bottles with domed caps, half-sunk into the rear deck + a molded cradle
   if(u.nos>0){ const n=u.nos, bz=rear*0.62, blen=0.44+0.14*n, deckY=surfY(0, bz, top*0.45), by=deckY+0.1;   // on the real deck, not floating
     const bm=new THREE.MeshStandardMaterial({color:0x1a6cff, emissive:0x1f7cff, emissiveIntensity:n>=3?1.1:0.7, roughness:0.4, metalness:0.3});
@@ -5130,7 +5027,8 @@ function hidePauseUI(){ const pb=document.getElementById('pauseBtn'); if(pb) pb.
   const ck=document.getElementById('cockpit'); if(ck) ck.classList.add('hidden'); document.body.classList.remove('ck-view'); }
 function pauseGame(){ if(state!=='race') return; state='paused'; document.getElementById('pauseMenu').classList.remove('hidden'); if(audio&&audio.ok) audio.update(0,0,false); }
 function resumeGame(){ if(state!=='paused') return; document.getElementById('pauseMenu').classList.add('hidden'); state='race'; }
-function showMenu(){                                       // back to the garage/menu (shop)
+function showMenu(){
+  cars.forEach(c=>{ c.dmgP={}; if(typeof repairPanels==='function'&&c.rig) repairPanels(c); });   // owner bug: crash damage carried INTO the garage — every car shows up showroom-fresh                                       // back to the garage/menu (shop)
   state='menu'; menuT=0; champ.active=false; dailyActive=false; hidePauseUI(); document.body.classList.add('inmenu');
   if(window.audio&&audio.silence) audio.silence();   // no engine/skid bleed into the garage
   if(brActive) endBattle();                               // clear any Battle Royale state (guns, zone, HP)
@@ -6400,7 +6298,7 @@ function init(){
   // cars
   cars=[]; player=makeCar(CONFIG.colors.player, true); cars.push(player);
   for(let i=0;i<CONFIG.aiCount;i++) cars.push(makeCar(CONFIG.colors.ai[i%CONFIG.colors.ai.length], false));
-  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=6') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
+  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=8') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
   loadCarModels();   // upgrades the box placeholders to the realistic GLB when it loads
   loadPropModels();  // swaps procedural trees/rocks/palms for real CC0 GLBs when they load
 
