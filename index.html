@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.25-->
+<!--BUILD:v10.26-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -519,6 +519,22 @@
     background:radial-gradient(ellipse at 50% 82%, rgba(70,130,255,.10) 0%, transparent 62%); }
   #gcHolo .hScan{ position:absolute; inset:0; background:repeating-linear-gradient(0deg, rgba(140,200,255,.05) 0 2px, transparent 2px 5px); }
   #gcBtns{ display:flex; gap:8px; padding:8px; }
+  /* ---- BATTLE ROYALE ARENA PICKER ---- */
+  #brPick{ position:fixed; inset:0; z-index:72; display:none; flex-direction:column;
+    background:radial-gradient(circle at 50% 30%, #1a0f14 0%, #090407 70%); padding:calc(env(safe-area-inset-top,10px) + 10px) 12px 12px; }
+  #brPick.show{ display:flex; }
+  #brPickHead{ display:flex; align-items:center; justify-content:space-between; color:#ffd9d4; font-weight:900; letter-spacing:2px; font-size:15px;
+    text-shadow:0 0 12px rgba(255,80,60,.5); padding:4px 6px 10px; }
+  #brPickClose{ width:38px; height:38px; border-radius:50%; background:rgba(30,16,20,.8); border:1px solid rgba(255,255,255,.25);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:auto; color:#fff; }
+  #brPickGrid{ flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:10px; padding:4px 2px 10px; }
+  .brCard{ pointer-events:auto; cursor:pointer; background:linear-gradient(160deg,rgba(38,22,26,.92),rgba(16,8,12,.95));
+    border:1px solid rgba(255,120,100,.22); border-radius:12px; padding:8px 8px 7px; text-align:center; transition:transform .12s, border-color .12s; }
+  .brCard:hover{ transform:translateY(-3px); border-color:rgba(255,150,120,.65); }
+  .brCard canvas{ width:100%; border-radius:8px; display:block; margin-bottom:6px; background:#151318; }
+  .brCard b{ display:block; font-size:11px; letter-spacing:.6px; color:#ffe9e2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .brCard span{ font-size:9px; letter-spacing:.5px; color:rgba(255,205,190,.55); }
+  #brPickFoot{ display:flex; justify-content:center; padding-top:8px; }
   #gcTrack{ display:none !important; }   /* the holo window IS the track map now — the little SVG thumb doubled it */
   #gcTop{ display:flex; align-items:center; gap:12px; }
   #globeRace{ flex:1.4; } #globeBattle{ flex:1; pointer-events:auto; cursor:pointer; text-align:center; font-weight:900; letter-spacing:1px;
@@ -1175,7 +1191,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.25';
+(function(){ const BUILD='v10.26';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6537,7 +6553,52 @@ function init(){
     setTimeout(()=>{ t.style.visibility='hidden'; }, 950); };
   document.getElementById('startBtn').addEventListener('click', e=>{ e.stopPropagation(); champ.active=false; playTransition(()=>startGame()); });
   document.getElementById('champBtn').addEventListener('click', e=>{ e.stopPropagation(); startChampionship(); });
-  document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); playTransition(()=>startBattle()); });
+  // BATTLE -> ARENA PICKER (owner): pick which city you fight in; each card previews that arena's
+  // REAL street layout (same seed math as buildBRCity, drawn in 2D).
+  function brArenaThumb(ti){
+    const cv=document.createElement('canvas'); cv.width=cv.height=96; const x=cv.getContext('2d');
+    const rng=mulberry32(20260710 + (ti|0)*7919);
+    const BLOCK=42+((rng()*12)|0), ROAD=14+((rng()*5)|0), CELL=BLOCK+ROAD, N=6+((rng()*3)|0);
+    const parkR=0.10+rng()*0.16, u=96/(N*CELL);
+    x.fillStyle='#26262c'; x.fillRect(0,0,96,96);                       // roads
+    for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
+      const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u;
+      const park=rng()<parkR;
+      x.fillStyle=park?'#3c6b34':'#4b4a52'; x.fillRect(bx,bz,bw,bw);
+      if(!park){ const n2=1+((rng()*3)|0);                              // building pads
+        for(let b2=0;b2<n2;b2++){ x.fillStyle='rgba(210,205,220,'+(0.25+rng()*0.3)+')';
+          const w2=bw*(0.3+rng()*0.4), px=bx+rng()*(bw-w2), pz=bz+rng()*(bw-w2*0.8);
+          x.fillRect(px,pz,w2,w2*0.8); } } }
+    x.fillStyle='#ffd23b'; x.beginPath(); x.arc(48,48,3,0,7); x.fill();  // centre plaza
+    return {cv, meta:N+'×'+N+' BLOCKS'};
+  }
+  function brCityLabel(ti){ const t=TRACKS[ti]||{};
+    if(t.osm) return (t.sub||'').split('·')[0].trim() || t.name;
+    return t.name||('ARENA '+ti); }
+  let _brPickBuilt=false;
+  function openBRPick(){
+    const bp=document.getElementById('brPick'); if(!bp) return startBattle();
+    if(!_brPickBuilt){ _brPickBuilt=true;
+      const grid=document.getElementById('brPickGrid');
+      for(let ti=0;ti<TRACKS.length;ti++){ if(!TRACKS[ti]||!TRACKS[ti].ctrl) continue;
+        const th=brArenaThumb(ti);
+        const card=document.createElement('div'); card.className='brCard';
+        card.appendChild(th.cv);
+        const b3=document.createElement('b'); b3.textContent=brCityLabel(ti); card.appendChild(b3);
+        const sp=document.createElement('span'); sp.textContent=th.meta+(TRACKS[ti].osm?' · REAL CITY':''); card.appendChild(sp);
+        card.addEventListener('click', ev=>{ ev.stopPropagation(); if(window.audio&&audio.ui) audio.ui();
+          bp.classList.remove('show');
+          selectTrack(ti); playTransition(()=>startBattle()); });
+        grid.appendChild(card); }
+      document.getElementById('brPickClose').addEventListener('click', ev=>{ ev.stopPropagation(); bp.classList.remove('show'); });
+      document.getElementById('brPickRandom').addEventListener('click', ev=>{ ev.stopPropagation();
+        const ti=(Math.random()*TRACKS.length)|0; bp.classList.remove('show');
+        selectTrack(ti); playTransition(()=>startBattle()); });
+      window.addEventListener('keydown', ev=>{ if(ev.key==='Escape'&&bp.classList.contains('show')) bp.classList.remove('show'); });
+    }
+    bp.classList.add('show');
+  }
+  document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return; openBRPick(); });
   { const dc=document.getElementById('dailyCard'); if(dc) dc.addEventListener('click', e=>{ e.stopPropagation(); startDaily(); }); }
   document.getElementById('champNext').addEventListener('click', e=>{ e.stopPropagation();
     document.getElementById('champ').classList.add('hidden');
@@ -7345,6 +7406,11 @@ window.NETRACE=false;
     const m=document.getElementById('cmModal'); if(m) m.classList.remove('hidden'); };
 })();
 </script>
+<div id="brPick">
+  <div id="brPickHead"><span>⚔ CHOOSE YOUR ARENA</span><div id="brPickClose">✕</div></div>
+  <div id="brPickGrid"></div>
+  <div id="brPickFoot"><div class="gaBtn" id="brPickRandom">🎲 RANDOM CITY</div></div>
+</div>
 <div id="globeModal">
   <div id="globeClose">✕</div>
   <div id="gdLogoGlobe" class="gdLogo"><span class="l1">GLOBAL</span><span class="l2">DRIFT</span><span class="sub">LOW-POLY WORLD RACER</span></div>
