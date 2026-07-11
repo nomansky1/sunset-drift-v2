@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.23-->
+<!--BUILD:v10.24-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1175,7 +1175,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.23';
+(function(){ const BUILD='v10.24';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2169,6 +2169,9 @@ class AudioEngine {
       this._fetchBuf('audio/gd-screech.wav').then(b=>this.buffers.skid=b);
       this._fetchBuf('audio/gd-nitrous.wav').then(b=>this.buffers.boost=b);
       this._fetchBuf('audio/gd-crash.wav').then(b=>this.buffers.crash=b);
+      this.buffers.hits=[]; this.buffers.scrapes=[];                                  // Kenney CC0 metal impacts: collision VARIETY
+      for(let hi=0;hi<3;hi++){ this._fetchBuf('audio/hit'+hi+'.ogg').then(b=>this.buffers.hits.push(b));
+        this._fetchBuf('audio/scrape'+hi+'.ogg').then(b=>this.buffers.scrapes.push(b)); }
       this._fetchBuf('audio/gd-explosion.wav').then(b=>this.buffers.explosion=b);
       this._fetchBuf('audio/gd-rocket.wav').then(b=>this.buffers.rocket=b);
       this._fetchBuf('audio/gd-gatling.wav').then(b=>this.buffers.gat=b);
@@ -2236,7 +2239,10 @@ class AudioEngine {
       const lp=this.ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=4200;   // shave the harsh top end
       s.connect(lp); lp.connect(g); g.connect(this.comp); try{s.start();}catch(e){} }
   }
-  thud(v){ if(!this.ok) return; v=clamp(v||0.5,0.2,1); if(this.buffers.crash){ this._play(this.buffers.crash, 0.35+0.4*v); return; } try{ const t=this.ctx.currentTime, o=this.comp;
+  thud(v){ if(!this.ok) return; v=clamp(v||0.5,0.2,1);
+    const pool=(v>0.55?this.buffers.hits:this.buffers.scrapes);                       // hard hit = heavy metal bang, graze = light metal scrape
+    if(pool&&pool.length){ this._play(pool[(Math.random()*pool.length)|0], 0.3+0.45*v); return; }
+    if(this.buffers.crash){ this._play(this.buffers.crash, 0.35+0.4*v); return; } try{ const t=this.ctx.currentTime, o=this.comp;
     const so=this.ctx.createOscillator(); so.type='sine'; so.frequency.setValueAtTime(150,t); so.frequency.exponentialRampToValueAtTime(46,t+0.18);
     const sg=this.ctx.createGain(); sg.gain.setValueAtTime(0.55*v,t); sg.gain.exponentialRampToValueAtTime(0.001,t+0.26);
     so.connect(sg); sg.connect(o); so.start(); so.stop(t+0.3);

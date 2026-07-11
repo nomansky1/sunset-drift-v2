@@ -20,3 +20,4 @@
 ## Music
 - audio/menu.mp3 -- "Retroracing Menu" by Bogart VGM (CC-BY 4.0) -- https://opengameart.org/content/retroracing-menu-synthwave
 - audio/combat.mp3 -- "Drum and Bass" by bertsz (CC0) -- https://opengameart.org/content/drum-and-bass
+- audio/hit*.ogg, audio/scrape*.ogg -- Kenney "Impact Sounds" (CC0) -- https://kenney.nl/assets/impact-sounds
