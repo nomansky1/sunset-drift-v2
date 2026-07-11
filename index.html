@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.18-->
+<!--BUILD:v10.19-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1171,7 +1171,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.18';
+(function(){ const BUILD='v10.19';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4153,7 +4153,7 @@ function loadCarModels(){
   [['sport','models/gen3/gt33.glb?r5'],['super','models/gen3/electrichypercar3.glb?r5'],
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
    ['racer','models/gen3/drifttuner3.glb?r5'],['racecar','models/gen3/supergt3.glb?r5'],['muscle','models/gen3/v8supercar3.glb?r5'],
-   ['roadster','models/gen3/vintagegp3.glb']   // Classic LeMans' clamshell front fought the panel cuts since day one (permanent waiver) — retired for the clean Vintage GP,['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
+   ['roadster','models/gen3/vintagegp3.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],   // roadster = Vintage GP (Classic LeMans clamshell retired)
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
    ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?r5'],
    ['skyline','models/gen4/skyline.glb'],['gt3p','models/gen4/gt3p.glb'],['mcl35m','models/gen4/mcl35m.glb'],   // gen4 = downloaded high-fidelity CC-BY cars (ATTRIBUTIONS in Downloads/3D_Racing_Assets)   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
@@ -5471,7 +5471,17 @@ function brFacadeMats(){ if(_brFacadeMats) return _brFacadeMats;
     const m=new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff,
       emissiveIntensity:t==='glass'?0.32:0.03, roughness:t==='glass'?0.28:0.92, metalness:t==='glass'?0.35:0.0});
     SHARED.add(m); SHARED.add(tex.map); SHARED.add(tex.emis); return m; });
+  _brFacadeMats.forEach((m,i)=>{ m.userData._type=['glass','brick','concrete','limestone','dark','terracotta','sandstone','steel'][i]; });
   return _brFacadeMats; }
+const _brRepCache={};                                          // owner: BR buildings looked like smeared neon bands — ONE 256px tile
+function brFacadeFit(m, w, h){                                 // was stretched over a 40m face. Repeat the tile per ~9m so windows read.
+  const rw=Math.max(1,Math.min(6,Math.round(w/9))), rh=Math.max(1,Math.min(8,Math.round(h/9)));
+  if(rw===1&&rh===1) return m;
+  const key=(m.userData._type||'x')+':'+rw+'x'+rh; if(_brRepCache[key]) return _brRepCache[key];
+  const m2=m.clone();
+  m2.map=m.map.clone(); m2.map.repeat.set(rw,rh); m2.map.needsUpdate=true;
+  if(m.emissiveMap){ m2.emissiveMap=m.emissiveMap.clone(); m2.emissiveMap.repeat.set(rw,rh); m2.emissiveMap.needsUpdate=true; SHARED.add(m2.emissiveMap); }
+  SHARED.add(m2); SHARED.add(m2.map); _brRepCache[key]=m2; return m2; }
 let _brStoreMats=null;
 function brStoreMats(){ if(_brStoreMats) return _brStoreMats;
   const rng=mulberry32(777), BIZ2=[
@@ -5503,9 +5513,34 @@ function buildBRCity(){
     for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
       const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u;
       x.fillStyle='#5f5f59'; x.fillRect(bx-3.5*u, bz-3.5*u, bw+7*u, bw+7*u); }
+    // CURB LINES around every block (dark edge + light curb face)
+    for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
+      const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u, cw=Math.max(1,0.45*u);
+      x.strokeStyle='rgba(20,20,22,.55)'; x.lineWidth=cw; x.strokeRect(bx-3.5*u, bz-3.5*u, bw+7*u, bw+7*u);
+      x.strokeStyle='rgba(200,198,188,.35)'; x.lineWidth=cw*0.6; x.strokeRect(bx-3.5*u+cw, bz-3.5*u+cw, bw+7*u-cw*2, bw+7*u-cw*2); }
+    // sidewalk expansion-joint tiles
+    x.strokeStyle='rgba(0,0,0,.10)'; x.lineWidth=1;
+    for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
+      const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u;
+      for(let t2=0;t2<bw+7*u;t2+=3.2*u){ x.beginPath(); x.moveTo(bx-3.5*u+t2,bz-3.5*u); x.lineTo(bx-3.5*u+t2,bz-3.5*u+bw+7*u); x.stroke(); } }
+    // asphalt patches + oil stains on the roads
+    for(let i=0;i<80;i++){ const rx=rng()*S, rz2=rng()*S;
+      x.fillStyle='rgba(0,0,0,'+(0.05+rng()*0.09)+')';
+      x.beginPath(); x.ellipse(rx, rz2, (1+rng()*3)*u, (0.8+rng()*2)*u, rng()*3, 0, 7); x.fill(); }
+    // lane dashes
     x.fillStyle='#d8d8ce';
     for(let i=0;i<=N;i++){ const off=(i*CELL+ROAD/2)*u;
       for(let d=0;d<S;d+=8*u){ x.fillRect(off-0.18*u, d, 0.36*u, 3.6*u); x.fillRect(d, off-0.18*u, 3.6*u, 0.36*u); } }
+    // ZEBRA CROSSWALKS at every intersection + manholes on road centres
+    x.fillStyle='rgba(225,223,214,.85)';
+    for(let ix=0;ix<=N;ix++) for(let iz=0;iz<=N;iz++){
+      const ox=(ix*CELL+ROAD/2)*u, oz=(iz*CELL+ROAD/2)*u, hw=ROAD*0.5*u;
+      for(let sb=-hw*0.72; sb<hw*0.72; sb+=1.5*u){
+        x.fillRect(ox+sb, oz-hw-3.2*u, 0.9*u, 2.6*u); x.fillRect(ox+sb, oz+hw+0.6*u, 0.9*u, 2.6*u);
+        x.fillRect(ox-hw-3.2*u, oz+sb, 2.6*u, 0.9*u); x.fillRect(ox+hw+0.6*u, oz+sb, 2.6*u, 0.9*u); } }
+    x.fillStyle='rgba(10,10,12,.6)';
+    for(let i=0;i<26;i++){ const ix=(rng()*N)|0, iz2=(rng()*N)|0, off=(ix*CELL+ROAD/2)*u, t3=(ROAD/2+rng()*BLOCK)*u;
+      x.beginPath(); x.arc(rng()<0.5?off:(t3+iz2*CELL*u)%S, rng()<0.5?(t3+iz2*CELL*u)%S:off, 0.55*u, 0, 7); x.fill(); }
     const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=isTouch?2:8;
     const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL, N*CELL),
       new THREE.MeshStandardMaterial({map:tex, roughness:0.96, metalness:0}));
@@ -5514,7 +5549,7 @@ function buildBRCity(){
   const mats=brFacadeMats();
   const treeTrunks=[], treeTops=[];
   const parkM=new THREE.MeshStandardMaterial({color:0x4e7a3a, roughness:0.95});
-  const walkM=new THREE.MeshStandardMaterial({color:0x55554f, roughness:0.95});   // light concrete BLEW OUT white under the sunset key light
+  const walkM=new THREE.MeshStandardMaterial({color:0x3d3d38, roughness:1});   // mid-grey still blew out pale under the warm key — darker concrete reads right   // light concrete BLEW OUT white under the sunset key light
   const grid={x0:cx-half, z0:cz-half, cell:4.2, w:Math.ceil(N*CELL/4.2), h:Math.ceil(N*CELL/4.2)};
   grid.solid=new Uint8Array(grid.w*grid.h);
   function markSolid(x0,z0,x1,z1){ const g0x=Math.max(0,((x0-grid.x0)/grid.cell)|0), g1x=Math.min(grid.w-1,((x1-grid.x0)/grid.cell)|0);
@@ -5538,10 +5573,14 @@ function buildBRCity(){
       const w=14+rng()*(nB>1?16:30), d=14+rng()*(nB>1?16:30);
       const px=bx+(rng()-0.5)*Math.max(2,(BLOCK-w-4)), pz=bz+(rng()-0.5)*Math.max(2,(BLOCK-d-4));
       const h=8+Math.pow(rng(),1.6)*36*Math.max(0.4,centerBias);
-      const m=mats[(rng()*mats.length)|0];
+      const m=brFacadeFit(mats[(rng()*mats.length)|0], Math.max(w,d), h);
       const bld=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
       bld.position.set(px, h/2+0.2, pz); bld.castShadow=!isTouch; bld.receiveShadow=false;
       g.add(bld);
+      { if(!glowTex) addGlow(new THREE.Group(),0,0,0,0xffffff,1);          // BASE AO SKIRT: grounds the tower (they floated visually on a flat slab)
+        const sk=new THREE.Mesh(new THREE.PlaneGeometry(w+3.6, d+3.6),
+          new THREE.MeshBasicMaterial({map:glowTex, color:0x000000, transparent:true, opacity:0.34, depthWrite:false}));
+        sk.rotation.x=-Math.PI/2; sk.position.set(px, 0.145, pz); g.add(sk); }
       if(!isTouch && h>7 && rng()<0.75){                          // GROUND-FLOOR STOREFRONT strip on the street face
         const sm=brStoreMats()[(rng()*6)|0], sw=Math.min(w,24)*0.92;
         const strip=new THREE.Mesh(new THREE.PlaneGeometry(sw,3.0), sm);
@@ -5605,6 +5644,29 @@ function buildBRCity(){
         g.add(npc); markSolid(rx-1.4, rz-2.4, rx+1.4, rz+2.4); placed++;
       } }
   }
+  // DISTANT SKYLINE RING: the arena no longer ends at bare horizon
+  { const skyM=new THREE.MeshBasicMaterial({color: nightMode?0x131a2c:0x8d97ad, fog:true});
+    const ring=[]; const R2=half+230;
+    for(let k2=0;k2<26;k2++){ const a2=k2/26*Math.PI*2 + rng()*0.1;
+      ring.push({x:cx+Math.cos(a2)*(R2+rng()*90), z:cz+Math.sin(a2)*(R2+rng()*90), w:26+rng()*34, h:34+rng()*66}); }
+    ring.forEach(b2=>{ const bx2=new THREE.Mesh(new THREE.BoxGeometry(b2.w, b2.h, b2.w*(0.7+rng()*0.6)), skyM);
+      bx2.position.set(b2.x, b2.h/2, b2.z); g.add(bx2); }); }
+  // STREETLAMPS along the arena roads (warm pools at night — same language as the race tracks)
+  { const poleG=new THREE.CylinderGeometry(0.16,0.2,7,6); poleG.translate(0,3.5,0);
+    const poleM=new THREE.MeshStandardMaterial({color:0x2a2a30, roughness:0.7, metalness:0.4});
+    const lampM=new THREE.MeshStandardMaterial({color:0xfff2c0, emissive:0xffe08a, emissiveIntensity:nightMode?2.4:0.25});
+    const pts2=[]; for(let ix=0;ix<=N;ix++) for(let iz=0;iz<=N;iz++){ if((ix+iz)%2) continue;
+      pts2.push({x:cx-half+ix*CELL+ROAD/2-2.1, z:cz-half+iz*CELL+ROAD/2-2.1}); }
+    const pl=new THREE.InstancedMesh(poleG, poleM, pts2.length), lp=new THREE.InstancedMesh(new THREE.SphereGeometry(0.4,8,6), lampM, pts2.length);
+    const M2=new THREE.Matrix4();
+    pts2.forEach((q,k3)=>{ M2.makeTranslation(q.x,0.1,q.z); pl.setMatrixAt(k3,M2); M2.makeTranslation(q.x,7,q.z); lp.setMatrixAt(k3,M2); });
+    pl.instanceMatrix.needsUpdate=lp.instanceMatrix.needsUpdate=true; g.add(pl); g.add(lp);
+    if(nightMode){ if(!glowTex) addGlow(new THREE.Group(),0,0,0,0xffffff,1);
+      const poolG2=new THREE.PlaneGeometry(12,12); poolG2.rotateX(-Math.PI/2);
+      const poolM2=new THREE.MeshBasicMaterial({map:glowTex, color:0xffb75e, transparent:true, opacity:0.3, blending:THREE.AdditiveBlending, depthWrite:false, fog:false});
+      const pool2=new THREE.InstancedMesh(poolG2, poolM2, pts2.length);
+      pts2.forEach((q,k3)=>{ M2.makeTranslation(q.x,0.13,q.z); pool2.setMatrixAt(k3,M2); });
+      pool2.instanceMatrix.needsUpdate=true; g.add(pool2); } }
   scene.add(g);
   brGrid=grid;                                                    // EXACT collision from the layout itself
   let solidN=0; for(let i=0;i<grid.solid.length;i++) solidN+=grid.solid[i];
