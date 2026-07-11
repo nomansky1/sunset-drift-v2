@@ -184,7 +184,12 @@ function updateCar(c, inp, dt){
   syncCarMesh(c);
   const lateral=_l.length()*Math.sign(c.vel.dot(_r.set(Math.cos(c.heading),-Math.sin(c.heading))));
   c.rig.spinAcc += fwdSpeed*dt/0.55;
-  (c.rig.roadWheels||c.rig.wheels).forEach(w=> w.rotation.x=c.rig.spinAcc);   // spares on the tailgate don't tumble
+  const _burn = c.drifting || (inp.throttle && Math.abs(c.vel.dot(_r.set(Math.cos(c.heading),-Math.sin(c.heading))))>2.2 && fwdSpeed<24);
+  c.rig._spinX = (c.rig._spinX||0) + (_burn ? 22*dt : 0);          // WHEELSPIN: rear tyres over-rotate when traction breaks
+  const _rw = c.rig.roadWheels||c.rig.wheels;
+  _rw.forEach(w=>{ const oz=(w.userData._oz!==undefined ? w.userData._oz : w.position.z);
+    const isRear = oz < 0;                                          // +Z = front (post-normalization); rear tyres slip-spin
+    w.rotation.x = c.rig.spinAcc + (isRear ? c.rig._spinX : 0); });   // fronts roll true
   const vSteer=clamp(inp.steer,-1,1)*0.5;
   c.rig.front.forEach(w=> w.rotation.y=vSteer);
   // BRAKE LIGHTS: the tail lamps FIRE while braking — bright enough to read in full daylight too
@@ -199,11 +204,24 @@ function updateCar(c, inp, dt){
   c._leanX = lerp(c._leanX||0, clamp((inp.brake?0.04:(inp.throttle?-0.028:0)),-0.06,0.06), 0.08);   // deeper brake dive / throttle squat, eased in
   c.rig.group.rotation.z = c._leanZ;
   c.rig.group.rotation.x = -(c._pitch||0) + c._leanX;                 // road grade + brake/throttle squat, one pivot
-  // KEEL COMPENSATION: the lean pivots at ground level, so the outboard wheels would swing BELOW the
-  // road (owner: "tires bleed into the ground"). Lift by the exact dip of the low corner. Road-grade
-  // pitch is NOT compensated — the road surface tilts with the car there.
-  { const d=c.rig.dims||{W:2.3,Lz:4.6};
-    c.rig.group.position.y += (d.W/2)*Math.abs(Math.sin(c._leanZ)) + (d.Lz/2)*Math.abs(Math.sin(c._leanX)); }
+  // SUSPENSION GROUND-STICK (owner: turns looked odd, front wheels lifted): the BODY rolls with
+  // lateral load but every WHEEL pivot counter-offsets vertically so its contact patch stays ON the
+  // road — outside suspension compresses, inside extends, exactly like real travel. Road-grade pitch
+  // is untouched (the road tilts with the car); only the lean/squat portions are cancelled at the tyre.
+  if(c.rig.wheels && c.rig.wheels.length){
+    const szr=Math.sin(c._leanZ||0), sxr=Math.sin(c._leanX||0);
+    for(let wi=0; wi<c.rig.wheels.length; wi++){ const w=c.rig.wheels[wi];
+      if(w.userData._py===undefined){ w.userData._py=w.position.y;
+        // TRUE pre-scale offset from the roll pivot: sum .position up the chain to just under the scale node
+        // (chassis centring + pivot). Local w.position.x alone misses chassis centring -> residual float.
+        let ox=0, oz=0, node=w;
+        while(node && node!==c.rig.group){ if(node.scale && (node.scale.x!==1)) break; ox+=node.position.x; oz+=node.position.z; node=node.parent; }
+        w.userData._ox=ox; w.userData._oz=oz; }
+      const target=w.userData._py - w.userData._ox*szr + w.userData._oz*sxr;   // ground-stick: cancel roll/squat at THIS contact patch
+      w.position.y += (target-w.position.y)*0.5;                            // smoothed = damped suspension travel
+      // CAMBER: the loaded (outboard) wheels lean into the corner a hair — plants the tyre, reads sporty
+      w.rotation.z = -w.userData._ox*szr*0.9; }
+  }
   if(c.rig.chassis){ c.rig.chassis.rotation.z=0; c.rig.chassis.rotation.x=0;
     if(c.rig._cx0!=null) c.rig.chassis.position.x=c.rig._cx0; }       // retire the old chassis-level lean on existing rigs
 
@@ -229,10 +247,18 @@ function updateCar(c, inp, dt){
     c.skidTimer-=dt;
     if(screech || offT){
       const intensity = offT?1 : clamp(slip/3 + (hardBrake?0.6:0) + (burnout?0.7:0), 0.4, 1.6);
-      for(let s=-1;s<=1;s+=2){ const wx=rx+Math.cos(c.heading)*0.85*s, wz=rz-Math.sin(c.heading)*0.85*s;
-        if(offT) dust.emit(wx,0.35+ey,wz,(Math.random()-.5)*2,1.3+Math.random(),(Math.random()-.5)*2, 0.55, 12+Math.random()*8);
-        else if(c.isPlayer ? true : Math.random()<0.35) tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.9, 0.8+Math.random()*0.7, (Math.random()-.5)*0.9, 0.7+intensity*0.25, 5+intensity*2.5+Math.random()*3);   // REALISTIC drift cloud: bigger, softer, rises + lingers (near-camera fade in the shader keeps the view clear)
-      }
+      // PER-AXLE TYRE SMOKE (expanded tire physics): a sliding car smokes from the REAR tyres (the ones
+      // breaking traction in a drift/burnout); a locked-brake car smokes from the FRONTS. Emit from the
+      // actual contact patches, not a generic centreline spot.
+      const dm=c.rig.dims||{W:2.3,Lz:4.6}, halfT=dm.W*0.42, fwx2=Math.sin(c.heading), fwz2=Math.cos(c.heading);
+      const emitAxle=(along, weight)=>{ const ax=c.pos.x+fwx2*along, az=c.pos.y+fwz2*along;
+        for(let s=-1;s<=1;s+=2){ const wx=ax+Math.cos(c.heading)*halfT*s, wz=az-Math.sin(c.heading)*halfT*s;
+          if(offT){ dust.emit(wx,0.35+ey,wz,(Math.random()-.5)*2,1.3+Math.random(),(Math.random()-.5)*2, 0.55, 12+Math.random()*8); }
+          else if(Math.random()<weight*(c.isPlayer?1:0.4))
+            tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.9, 0.8+Math.random()*0.7, (Math.random()-.5)*0.9, 0.7+intensity*0.25, 5+intensity*2.5+Math.random()*3); } };
+      const rearW = (burnout||c.drifting) ? 1 : 0.55, frontW = hardBrake ? 0.9 : (c.drifting?0.35:0.2);
+      emitAxle(-dm.Lz*0.32, rearW);                                 // rear tyres = the drift smokers
+      emitAxle( dm.Lz*0.30, frontW);                                // front tyres = brake-lock / scrub
       if(c.skidTimer<=0 && skidPool.length){ dropSkid(rx,rz,c.heading,ey); c.skidTimer=0.022; }
     }
     if(c.boosting && Math.random()<0.5){                          // a FEW tiny embers off the flame (not an orange cloud)

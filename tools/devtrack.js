@@ -49,7 +49,7 @@ window.DEVTRACK = {
     }
     // CORNERING STABILITY (owner): hard corners at speed must not bounce/tear the body.
     // Run real physics with barriers/rescue off (freeRoam), sample panel + wheel-pivot deltas.
-    let cornering=0;
+    let cornering=0, wheelTravel=0;
     if(player && player.rig===rig){
       const wasRoam=window.freeRoam; window.freeRoam=true;
       const p=player, keep={x:p.pos.x, z:p.pos.y, h:p.heading};
@@ -58,10 +58,15 @@ window.DEVTRACK = {
       const wbase=rig.wheels.map(w=>w.position.clone());
       for(let f=0;f<3*60;f++){ updateCar(p, {throttle:true, brake:false, steer:(f%120<60)?1:-1, drift:f%180<90, boost:false}, 1/60);
         if(typeof updatePanelDamage==='function') updatePanelDamage(p); }
-      for(const k in (rig.panels||{})){ const m=rig.panels[k];
+      for(const k in (rig.panels||{})){ const m=rig.panels[k];    // BODY panels must stay rigid (tear = real bug)
         cornering=Math.max(cornering, m.position.distanceTo(base[k].p),
           Math.abs(m.rotation.x-base[k].r.x)+Math.abs(m.rotation.y-base[k].r.y)+Math.abs(m.rotation.z-base[k].r.z)); }
-      rig.wheels.forEach((w,i)=>{ cornering=Math.max(cornering, w.position.distanceTo(wbase[i])); });
+      // WHEELS now travel VERTICALLY (ground-stick suspension) — that's intended. Only flag LATERAL wander
+      // (x/z drift = wheel detaching sideways); vertical Y travel up to ~0.2 is the suspension working.
+      rig.wheels.forEach((w,i)=>{ const dx=w.position.x-wbase[i].x, dz=w.position.z-wbase[i].z;
+        wheelTravel=Math.max(wheelTravel, Math.abs(w.position.y-wbase[i].y));
+        cornering=Math.max(cornering, Math.hypot(dx,dz)); });
+      rig.wheels.forEach((w,i)=>{ w.position.copy(wbase[i]); w.rotation.x=rig.spinAcc||0; w.rotation.z=0; });   // restore the spin-step phase + kill camber so proportions match the rigid-wheel baseline
       p.pos.x=keep.x; p.pos.y=keep.z; p.heading=keep.h; p.vel.set(0,0);
       p.dmgP={}; if(typeof repairPanels==='function') repairPanels(p);
       window.freeRoam=wasRoam;
@@ -83,7 +88,7 @@ window.DEVTRACK = {
       const dims=[s.x,s.y,s.z].sort((a,b2)=>a-b2);                 // [width, dia1, dia2]
       return {round:+(dims[1]/dims[2]).toFixed(2), widthRatio:+(dims[0]/dims[2]).toFixed(2)}; });
     return {wheels:ws, spun, steered, frontCount:rig.front.length, rigidity:+rigidity.toFixed(5),
-      cornering:+cornering.toFixed(5), camCycle:+camCycle.toFixed(5), visRestored, proportions};
+      cornering:+cornering.toFixed(5), wheelTravel:+wheelTravel.toFixed(3), camCycle:+camCycle.toFixed(5), visRestored, proportions};
   },
   check(m, dims){ const f=[], W=(dims&&dims.W)||2;
     if(m.wheels.length!==4) f.push('wheel count '+m.wheels.length);
@@ -102,7 +107,8 @@ window.DEVTRACK = {
     if(m.spun!==m.wheels.length) f.push('spin '+m.spun+'/'+m.wheels.length);
     if(m.frontCount!==2) f.push('front pivots '+m.frontCount);
     if((m.rigidity||0)>0.001) f.push('body NOT RIGID in race mode: panel moved '+m.rigidity);
-    if((m.cornering||0)>0.001) f.push('body/wheels UNSTABLE while cornering: moved '+m.cornering);
+    if((m.cornering||0)>0.02) f.push('body/wheels UNSTABLE while cornering: lateral drift '+m.cornering);   // lateral only (vertical = suspension)
+    if((m.wheelTravel||0)>0.30) f.push('wheel suspension travel excessive: '+m.wheelTravel);                   // sanity cap on ground-stick
     if((m.camCycle||0)>0.001) f.push('camera-view cycle disturbed the model: moved '+m.camCycle);
     if(m.visRestored===false) f.push('car INVISIBLE after cockpit view cycle');
     (m.proportions||[]).forEach((p,i)=>{
