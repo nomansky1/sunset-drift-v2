@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.21-->
+<!--BUILD:v10.22-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1041,6 +1041,10 @@
           <div class="tog" id="togAO">◑ AO</div>
           <div class="tog" id="togAnime">🎌 ANIME</div>
           <div class="tog" id="togLow">⚡ LITE</div>
+          <div class="tog" id="togQual">🖥 HIGH</div>
+          <div class="tog" id="togFS">⛶ FULLSCREEN</div>
+          <div class="tog" id="togSaveOut">💾 EXPORT SAVE</div>
+          <div class="tog" id="togSaveIn">📂 IMPORT SAVE</div>
         </div>
         <div id="profRow">
           <label id="avaWrap" title="Upload avatar">
@@ -1171,7 +1175,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.21';
+(function(){ const BUILD='v10.22';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6589,6 +6593,42 @@ function init(){
   togLow.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
     lowQuality=!lowQuality; togLow.classList.toggle('on',lowQuality);
     renderer.shadowMap.enabled=!lowQuality; buildComposer(); onResize(); selectTrack(currentTrack); });
+  // QUALITY PRESETS (PC): pixel-ratio + shadows; persists sd_qual. LITE stays the mobile kill-switch.
+  { const PRESETS=[['LOW',0.75,false],['MED',1.0,false],['HIGH',1.6,true],['ULTRA',2.0,true]];
+    let qi=2; try{ const v=parseInt(localStorage.getItem('sd_qual')); if(v>=0&&v<4) qi=v; }catch(e){}
+    const tq=document.getElementById('togQual');
+    const applyQ=()=>{ const [nm,pr,sh]=PRESETS[qi];
+      renderer.setPixelRatio(Math.min(devicePixelRatio, pr)); renderer.setSize(innerWidth,innerHeight);
+      renderer.shadowMap.enabled=sh; renderer.shadowMap.needsUpdate=true;
+      scene&&scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; });
+      if(typeof buildComposer==='function'){ buildComposer(); }
+      if(tq) tq.textContent='🖥 '+nm; };
+    if(tq){ tq.classList.add('on');
+      tq.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
+        qi=(qi+1)%PRESETS.length; try{ localStorage.setItem('sd_qual',qi); }catch(e2){} applyQ(); }); }
+    if(!isTouch) setTimeout(applyQ, 800);                        // desktop applies the saved preset after boot
+  }
+  // FULLSCREEN (Steam/PC)
+  { const tf=document.getElementById('togFS');
+    if(tf) tf.addEventListener('click', e=>{ e.stopPropagation();
+      if(document.fullscreenElement) document.exitFullscreen&&document.exitFullscreen();
+      else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); });
+    document.addEventListener('fullscreenchange', ()=>{ if(tf) tf.classList.toggle('on', !!document.fullscreenElement); }); }
+  // SAVE EXPORT / IMPORT (pre-Steam-cloud): all sd_* keys as one JSON blob
+  { const out=document.getElementById('togSaveOut'), inn=document.getElementById('togSaveIn');
+    if(out) out.addEventListener('click', e=>{ e.stopPropagation();
+      const blob={}; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^sd_/.test(k)) blob[k]=localStorage.getItem(k); }
+      const txt=JSON.stringify(blob);
+      try{ navigator.clipboard&&navigator.clipboard.writeText(txt); }catch(e2){}
+      const aEl=document.createElement('a'); aEl.href='data:application/json;charset=utf-8,'+encodeURIComponent(txt);
+      aEl.download='globaldrift-save.json'; aEl.click();
+      popup&&popup('SAVE EXPORTED (file + clipboard)','#5fe08a'); });
+    if(inn) inn.addEventListener('click', e=>{ e.stopPropagation();
+      const txt=prompt('Paste your Global Drift save JSON:'); if(!txt) return;
+      try{ const blob=JSON.parse(txt); let n=0;
+        for(const k in blob){ if(/^sd_/.test(k)){ localStorage.setItem(k, blob[k]); n++; } }
+        popup&&popup('IMPORTED '+n+' KEYS — RELOADING','#5fe08a'); setTimeout(()=>location.reload(), 900);
+      }catch(e2){ popup&&popup('INVALID SAVE JSON','#ff7a6a'); } }); }
   const togAnime=document.getElementById('togAnime'); if(togAnime){ togAnime.classList.toggle('on',animeMode);
     togAnime.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
       animeMode=!animeMode; saveAnime(); togAnime.classList.toggle('on',animeMode);
