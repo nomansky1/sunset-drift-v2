@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.29-->
+<!--BUILD:v10.30-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -154,6 +154,9 @@
   .paintSw.stock{ background:repeating-linear-gradient(45deg,#4a4d57,#4a4d57 3px,#8a8d97 3px,#8a8d97 6px); }
   #styleRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
   #wrapRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
+  #flagRow{ display:none; align-items:center; gap:5px; margin-top:7px; pointer-events:auto; overflow-x:auto; padding-bottom:3px; scrollbar-width:thin; }
+  #flagRow .flagSw{ flex:0 0 auto; width:26px; height:17px; border-radius:3px; cursor:pointer; border:2px solid transparent; background-size:cover; background-position:center; box-shadow:0 1px 3px rgba(0,0,0,.5); }
+  #flagRow .flagSw.sel{ border-color:#ffd23b; box-shadow:0 0 8px rgba(255,210,60,.7); }
   .styleSw{ font-size:10px; font-weight:800; letter-spacing:.4px; padding:4px 9px; border-radius:4px; cursor:pointer;
             background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.16); color:#d4d2de; transition:.12s; }
   .styleSw:hover{ border-color:rgba(255,255,255,.34); }
@@ -1033,6 +1036,7 @@
         <div id="paintRow"></div>
         <div id="styleRow"></div>
         <div id="wrapRow"></div>
+        <div id="flagRow"></div>
       </div>
       <div id="garR" class="garPanel">
         <div class="garHead">⚙ UPGRADES</div>
@@ -1191,7 +1195,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.29';
+(function(){ const BUILD='v10.30';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1470,6 +1474,7 @@ const _flagURL={}; function flagURL(key){ if(!_flagURL[key]) _flagURL[key]=flagC
 // ANTENNA FLAG: a small country flag on a thin whip antenna on the rear deck of every car (with sway + flutter physics) + the flag colour drives the upgrade kit
 function applyLivery(rig, carIdx){
   const co=COUNTRIES[carIdx%COUNTRIES.length]; if(!co) return; rig.bodyColor=co.col;
+  const flagKey=(typeof flagChoice!=='undefined' && flagChoice[carIdx]) || co.key;   // custom flag override
   if(!rig.chassis) return;
   const d=rig.dims||{W:2,H:1.5,Lz:4.6,yaw:0};
   const mount=new THREE.Group(); mount.rotation.y=d.yaw; rig.group.add(mount);                     // align to the car model (same as the upgrade kit)
@@ -1479,8 +1484,8 @@ function applyLivery(rig, carIdx){
     new THREE.MeshStandardMaterial({color:0x141519, roughness:0.5, metalness:0.55}));
   pole.position.y=poleH*0.5; pole.castShadow=!isTouch; ant.add(pole);
   const fw=clamp(d.Lz*0.16, 0.4, 0.64), fh=fw*0.6;                                                 // fw = flag LENGTH (streams back), fh = height
-  const fgeo=new THREE.PlaneGeometry(fw, fh, 12, 2); fgeo.translate(fw*0.5, 0, 0);                 // hoist edge at x=0 (right at the pole)
-  const flag=new THREE.Mesh(fgeo, new THREE.MeshBasicMaterial({map:flagTex(co.key), side:THREE.DoubleSide, toneMapped:false}));
+  const fgeo=new THREE.PlaneGeometry(fw, fh, 18, 5); fgeo.translate(fw*0.5, 0, 0);                 // denser cloth (18x5) for smooth ripple; hoist edge at x=0 (right at the pole)
+  const flag=new THREE.Mesh(fgeo, new THREE.MeshBasicMaterial({map:flagTex(flagKey), side:THREE.DoubleSide, toneMapped:false}));
   flag.rotation.y=Math.PI/2;                                                                       // length -> -Z: the flag STREAMS BACKWARD off the car (faces the side, so it ripples/flaps)
   flag.position.set(0, poleH-fh*0.5, 0); flag.frustumCulled=false;                                 // at the pole top (verts deform each frame -> don't cull)
   ant.add(flag);
@@ -1499,12 +1504,19 @@ function updateAntenna(c, dt){
   c._avx=((c._avx||0)+(tX-(c._alx||0))*46*dt)*k; c._alx=(c._alx||0)+c._avx*dt;
   c._avz=((c._avz||0)+(tZ-(c._alz||0))*46*dt)*k; c._alz=(c._alz||0)+c._avz*dt;
   ant.rotation.x=c._alx; ant.rotation.z=c._alz;
-  const fl=c.rig.antFlag, rest=c.rig.flagRest; if(fl&&rest){ const p=fl.geometry.attributes.position, L=c.rig.antFW||0.5;
-    const sf=clamp(spd/38,0,1), amp=0.03+sf*0.17; c._aft=(c._aft||0)+dt*(5+spd*0.5);   // apparent wind grows with speed
-    for(let i=0;i<p.count;i++){ const x=rest[i*3], y0=rest[i*3+1], tf=clamp(x/L,0,1);
-      p.setZ(i, Math.sin(c._aft + x*12)*amp*tf);            // side-to-side FLAP, biggest at the free (fly) end
-      p.setY(i, y0 - (1-sf)*0.55*L*tf*tf); }                // droops when slow, lifts to stream horizontally at speed
-    p.needsUpdate=true; }
+  const fl=c.rig.antFlag, rest=c.rig.flagRest; if(fl&&rest){ const p=fl.geometry.attributes.position, L=c.rig.antFW||0.5, Hh=c.rig.antFH||0.3;
+    const sf=clamp(spd/38,0,1);
+    c._aft=(c._aft||0)+dt*(4.5+spd*0.55);                                   // apparent wind speed (phase)
+    c._gust=(c._gust||0)+dt; const gust=0.72+0.28*Math.sin(c._gust*2.1)*Math.sin(c._gust*0.77);   // slow wind-gust envelope
+    const base=(0.028+sf*0.14)*gust;
+    for(let i=0;i<p.count;i++){ const x=rest[i*3], y0=rest[i*3+1], tf=clamp(x/L,0,1), vf=y0/Math.max(Hh,1e-3);
+      const ph=c._aft - x*11;                                              // wave TRAVELS from hoist -> fly end
+      // CLOTH: primary flap + higher-freq ripple + vertical shear so top/bottom trail differently
+      const flap=(Math.sin(ph) + 0.45*Math.sin(ph*2.3+1.1))*base*tf;
+      p.setZ(i, flap + vf*0.35*base*tf*Math.sin(ph*1.6));                  // corners whip more than the centre line
+      p.setX(i, x - Math.abs(flap)*0.28*tf);                              // foreshorten as it billows (cloth doesn't stretch)
+      p.setY(i, y0 - (1-sf)*0.55*L*tf*tf + Math.cos(ph*1.3)*base*0.5*tf); }// droops slow / lifts fast + a live vertical curl
+    p.needsUpdate=true; if(fl.geometry.computeVertexNormals) fl.geometry.computeVertexNormals(); }
 }
 // ---- PAINT JOB: recolour the body's colour-swatch inside the shared Kenney colormap, leaving glass/lights/wheels intact ----
 let _cmCanvas=null, _bodyCol={}, _paintTex={};
@@ -1516,6 +1528,8 @@ const PAINT_STYLES=[ {key:'gloss',name:'Gloss',rough:0.34,metal:0.42,cc:0.9}, {k
 let paintStyles={}; try{ paintStyles=JSON.parse(localStorage.getItem('sd_pstyle')||'{}'); }catch(e){ paintStyles={}; }
 function savePaintStyle(){ try{ localStorage.setItem('sd_pstyle', JSON.stringify(paintStyles)); }catch(e){} }
 let paintWraps={}; try{ paintWraps=JSON.parse(localStorage.getItem('sd_wrap')||'{}'); }catch(e){ paintWraps={}; }
+let flagChoice={}; try{ flagChoice=JSON.parse(localStorage.getItem('sd_flag')||'{}'); }catch(e){ flagChoice={}; }   // per-car custom flag override (country key)
+function saveFlagChoice(){ try{ localStorage.setItem('sd_flag', JSON.stringify(flagChoice)); }catch(e){} }
 function savePaintWrap(){ try{ localStorage.setItem('sd_wrap', JSON.stringify(paintWraps)); }catch(e){} }
 const WRAPS=[ {key:'stripe',name:'Stripes'}, {key:'rising',name:'Rising Sun'}, {key:'rally',name:'Rally #'} ];   // livery wraps (JDM rising-sun etc.)
 // the paintable body mesh(es): prefer a 'body'-named mesh, else any textured non-wheel/glass/driver mesh (karts name theirs '<model>_1')
@@ -1680,7 +1694,7 @@ function renderShop(){                                   // menu car panel: name
     st.textContent=(afford?'UNLOCK · ':'🔒 ')+c.price+' 🪙';
     st.onclick=(e)=>{ if(e) e.stopPropagation(); if(coins>=CARS[i].price){ coins-=CARS[i].price; saveCoins(); renderCoins(); ownedCars[i]=true; saveOwned(); renderShop(); } };
     btn.classList.add('locked'); btn.innerHTML='🔒 UNLOCK TO RACE'; }
-  renderKits(); renderArsenal(); renderPaints(); renderStyles(); renderWraps();
+  renderKits(); renderArsenal(); renderPaints(); renderStyles(); renderWraps(); renderFlags();
 }
 function renderArsenal(){                                 // GLOBAL battle-royale weapon upgrades (apply to whichever car you fight in)
   const host=document.getElementById('weaponRow'); if(!host) return; host.style.display='flex';
@@ -1712,6 +1726,18 @@ function renderWraps(){ const host=document.getElementById('wrapRow'); if(!host)
     WRAPS.map(w=>'<i class="styleSw'+(cur===w.key?' sel':'')+'" data-w="'+w.key+'">'+w.name+'</i>').join('');
   host.querySelectorAll('.styleSw').forEach(sw=>{ sw.onclick=(e)=>{ if(e) e.stopPropagation(); const w=sw.getAttribute('data-w');
     if(w==='') delete paintWraps[i]; else paintWraps[i]=w; savePaintWrap(); upgradeCars(); renderWraps(); }; }); }
+function renderFlags(){                                   // FLAG picker (owner ask): fly ANY nation's flag on this car
+  const host=document.getElementById('flagRow'); if(!host) return; const i=selectedCar;
+  if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
+  host.style.display='flex';
+  const def=(COUNTRIES[i%COUNTRIES.length]||{}).key, cur=flagChoice[i]||def;
+  const keys=COUNTRIES.map(c=>c.key);
+  host.innerHTML='<span class="paintLbl">FLAG</span>'+keys.map(k=>
+    '<i class="flagSw'+(cur===k?' sel':'')+'" data-k="'+k+'" title="'+k.toUpperCase()+'" style="background-image:url('+flagURL(k)+')"></i>').join('');
+  host.querySelectorAll('.flagSw').forEach(sw=>{ sw.onclick=(e)=>{ if(e) e.stopPropagation(); const k=sw.getAttribute('data-k');
+    if(k===def) delete flagChoice[i]; else flagChoice[i]=k; saveFlagChoice(); upgradeCars(); renderFlags(); }; });
+  const selEl=host.querySelector('.flagSw.sel'); if(selEl) selEl.scrollIntoView({inline:'center',block:'nearest'});
+}
 function renderPaints(){                                  // garage paint-job picker (owned Kenney cars; recolours body, keeps glass)
   const host=document.getElementById('paintRow'); if(!host) return; const i=selectedCar;
   if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
