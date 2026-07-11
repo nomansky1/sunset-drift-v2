@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.15-->
+<!--BUILD:v10.16-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1165,12 +1165,12 @@
   </div>
 </div>
 <div id="netStand" class="hidden"></div>
-<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.5</b> — built with Three.js</div>
+<div class="credit">Global Drift <b id="buildTag" style="color:#ffb45a">v9.5</b> — built with Three.js · car models CC-BY (see CREDITS-MODELS)</div>
 <div id="updateChip" style="display:none; position:fixed; top:calc(env(safe-area-inset-top,10px) + 8px); left:50%; transform:translateX(-50%); z-index:60; pointer-events:auto; cursor:pointer;
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.15';
+(function(){ const BUILD='v10.16';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1300,17 +1300,17 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'CANALERO',    kind:'glb', raw:'timeattack', yaw:0, spd:95, grip:70, price:1900},   // Panama's ride — Time Attack build (replaced the retired box truck; truck raw stays as a world NPC prop)
              {name:'FIRETRUCK',   kind:'glb', raw:'firetruck',yaw:0, spd:86, grip:66, price:2200},
              {name:'AMBULANCE',   kind:'glb', raw:'ambulance',yaw:0, spd:90, grip:64, price:2400},
-             {name:'PATRIOT',     kind:'glb', raw:'kartB',    yaw:0, spd:82, grip:93, price:2600},
+             {name:'PATRIOT',     kind:'glb', raw:'mcl35m',   yaw:0, spd:82, grip:93, price:2600},   // gen4: real F1 McLaren MCL35M (CC-BY, see credits)
              {name:'BOLT',        kind:'glb', raw:'kartC',    yaw:0, spd:84, grip:94, price:2800},
              {name:'VORTEX',      kind:'glb', raw:'kartD',    yaw:0, spd:86, grip:92, price:3000},
              {name:'PHANTOM',     kind:'glb', raw:'kartE',    yaw:0, spd:88, grip:90, price:3200},
              {name:'MOUNTIE',  kind:'glb', raw:'suv',     yaw:0, spd:82, grip:86, price:3400},
              {name:'SPITFIRE', kind:'glb', raw:'sport',   yaw:0, spd:92, grip:76, price:3700},
              {name:'BOLIDE',   kind:'glb', raw:'racer',   yaw:0, spd:94, grip:74, price:4000},
-             {name:'AUTOBAHN', kind:'glb', raw:'racecar', yaw:0, spd:100,grip:72, price:4400},
+             {name:'AUTOBAHN', kind:'glb', raw:'gt3p',    yaw:0, spd:100,grip:72, price:4400},   // gen4: real Porsche 911 GT3 (CC-BY)
              {name:'ROSSO',    kind:'glb', raw:'super',   yaw:0, spd:102,grip:66, price:4800},
              {name:'TORO',     kind:'glb', raw:'muscle',  yaw:0, spd:96, grip:68, price:5000},
-             {name:'SAMURAI',  kind:'glb', raw:'racecar', yaw:0, spd:99, grip:78, price:5200},
+             {name:'SAMURAI',  kind:'glb', raw:'skyline', yaw:0, spd:99, grip:78, price:5200},   // gen4: real Nissan Skyline R34 GT-R (CC-BY)
              {name:'TIGER',    kind:'glb', raw:'racer',   yaw:0, spd:93, grip:80, price:5400},
              {name:'DRAGON',   kind:'glb', raw:'super',   yaw:0, spd:104,grip:66, price:5600},
              {name:'MAHARAJA', kind:'glb', raw:'suv',     yaw:0, spd:86, grip:84, price:5700},
@@ -1587,6 +1587,9 @@ function paintCar(rig, hex, modelKey){ if(hex==null||!rig.chassis) return;
   const meshes=carBodyMeshes(rig.chassis); if(!meshes.length) return;
   const solids=meshes.filter(o=>{ const m=o.material; return m && m.color && !m.map; });   // solid-colour panels = the real paintable body (doge 'Body', Quaternius 'body'); textured detail (badges/grill) is NOT the body
   if(solids.length){   // SOLID-COLOUR body: set the material colour directly (glass/lights/wheels already excluded by carBodyMeshes)
+    const allMats=[]; solids.forEach(o=>{ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m) allMats.push(m); }); });
+    const paints=allMats.filter(m=>/carpaint|car_paint|paint|^body/i.test(m.name||''));
+    if(paints.length){ paints.forEach(m=>{ if(m.color) m.color.copy(col); }); return; }   // gen4 multi-mat bodies: tint the PAINT, never interior/rims/decals
     solids.forEach(o=>{ const set=m=>{ if(m&&m.color&&!m.map) m.color.copy(col); }; if(Array.isArray(o.material)) o.material.forEach(set); else set(o.material); });
     return; }
   // TEXTURED body: two paths.
@@ -4149,7 +4152,8 @@ function loadCarModels(){
    ['racer','models/gen3/drifttuner3.glb?g4'],['racecar','models/gen3/supergt3.glb?g4'],['muscle','models/gen3/v8supercar3.glb?g4'],
    ['roadster','models/gen3/classiclemans3.glb?g4'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
-   ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?g4'],   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
+   ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?g4'],
+   ['skyline','models/gen4/skyline.glb'],['gt3p','models/gen4/gt3p.glb'],['mcl35m','models/gen4/mcl35m.glb'],   // gen4 = downloaded high-fidelity CC-BY cars (ATTRIBUTIONS in Downloads/3D_Racing_Assets)   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
    ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
     // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
     const sel=(CARS[selectedCar]&&CARS[selectedCar].raw)===k, critical=sel||qi<4;
@@ -4439,9 +4443,11 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
   // writing rotation.x/y directly would WIPE it (wheel flips into the wrong plane and tumbles). The pivot
   // spins/steers; the mesh keeps whatever rotation it was authored with.
   const wheels=[], front=[], _wm=[], _tm=[];
-  body.traverse(o=>{ if(!o.isMesh) return; const n2=o.name||'';
-    if(/^tire_/.test(n2)) _tm.push(o);                                     // v4 SPLIT models: separated tread ring rides INSIDE its wheel pivot below
-    else if(/wheel|tyre|tire/i.test(n2)) _wm.push(o); });
+  body.traverse(o=>{ const n2=o.name||'';
+    if(o.isMesh){
+      if(/^tire_/.test(n2)) _tm.push(o);                                   // v4 SPLIT models: separated tread ring rides INSIDE its wheel pivot below
+      else if(/wheel|tyre|tire/i.test(n2)) _wm.push(o); }
+    else if(/^wheel_/.test(n2) && o.children.length) _wm.push(o); });      // gen4 multi-material wheels arrive as GROUPS named wheel_* (glTF splits primitives into child meshes)
   _wm.forEach(o=>{ const g=new THREE.Group(); g.position.copy(o.position); g.rotation.order='YXZ';
     o.parent.add(g); o.position.set(0,0,0); g.add(o);
     g.userData._wkey=(o.name||'').replace(/^wheel_/,'');
