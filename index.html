@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.20-->
+<!--BUILD:v10.21-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1171,7 +1171,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.20';
+(function(){ const BUILD='v10.21';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1988,6 +1988,29 @@ const showTouch = isTouch || window.innerWidth < 820;
 
 // input flags
 const keys = { up:false, down:false, left:false, right:false, space:false, shift:false };
+// ---- GAMEPAD (PC/Steam): left stick + triggers drive; A drift, B/RB boost, X fire; dpad/A navigate menus ----
+let padX=0, padGas=0, padBrake=0, padDrift=false, padBoost=false, _padPrev={};
+function pollGamepad(){
+  padX=0; padGas=0; padBrake=0;
+  const pads=(navigator.getGamepads&&navigator.getGamepads())||[];
+  const gp=[...pads].find(p=>p&&p.connected); if(!gp) return;
+  const dz=v=>Math.abs(v)>0.12?v:0;
+  padX=-dz(gp.axes[0]||0);                                          // stick right -> steer right (game: + = left)
+  padGas=gp.buttons[7]?gp.buttons[7].value:0;                        // RT
+  padBrake=gp.buttons[6]?gp.buttons[6].value:0;                      // LT
+  padDrift=!!(gp.buttons[0]&&gp.buttons[0].pressed);                 // A
+  padBoost=!!((gp.buttons[1]&&gp.buttons[1].pressed)||(gp.buttons[5]&&gp.buttons[5].pressed));   // B / RB
+  if(gp.buttons[2]&&gp.buttons[2].pressed&&typeof fireGun==='function'&&brActive){ try{ fireGun(); }catch(_){} }   // X = fire
+  const edge=i=>{ const now=!!(gp.buttons[i]&&gp.buttons[i].pressed), was=!!_padPrev[i]; _padPrev[i]=now; return now&&!was; };
+  const L=edge(14), R=edge(15), A2=edge(0), B2=edge(1), ST=edge(9);
+  if(state==='menu'){
+    if(L) window.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft'}));
+    if(R) window.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight'}));
+    if(A2) window.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+    if(B2) window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));
+    if(ST){ const sb=document.getElementById('startBtn'); if(sb) sb.click(); }
+  }
+}
 let joyX = 0;   // analog steering from the on-screen joystick (-1..1; + = left, matching the keys)
 let joyY = 0;   // analog throttle/brake from the joystick (+ = push up = accelerate, - = push down = brake)
 let autoDrive = true;   // Horizon-Chase style: auto-accelerate; joystick just steers + pull down to brake
@@ -5414,8 +5437,8 @@ function brInput(c){                                                     // free
   return { throttle:true, brake:Math.abs(diff)>1.5, steer:clamp(diff*2.2,-1,1),
     drift:Math.abs(diff)>0.9 && c.vel.length()>16, boost }; }             // hard direction changes become slides (reads aggressive + kicks smoke)
 function battleFrame(dt){ raceTime+=dt;
-  const braking=keys.down||joyY<-0.3;
-  const pin = window.__auto ? brInput(player) : { throttle: autoDrive?!braking:(keys.up||joyY>0.25), brake:braking, steer:clamp((keys.left?1:0)-(keys.right?1:0)+joyX,-1,1), drift:keys.space, boost:keys.shift };
+  const braking=keys.down||joyY<-0.3||padBrake>0.25;
+  const pin = window.__auto ? brInput(player) : { throttle: autoDrive?!braking:(keys.up||joyY>0.25||padGas>0.15), brake:braking||padBrake>0.25, steer:clamp((keys.left?1:0)-(keys.right?1:0)+joyX+padX,-1,1), drift:keys.space||padDrift, boost:keys.shift||padBoost };
   if(player.alive) updateCar(player, pin, dt);
   for(let i=1;i<cars.length;i++){ const c=cars[i]; if(!c.alive) continue; c._brTarget=brTarget(c);
     if((c._hunter||brAlive<=3) && player.alive && Math.hypot(player.pos.x-c.pos.x, player.pos.y-c.pos.y)<BR.range) c._brTarget=player;   // hunters lock their guns on the player when in range
@@ -5974,13 +5997,14 @@ function finishRace(){
    MAIN LOOP
    ========================================================================= */
 function update(dt){
+  pollGamepad();
   updateSunShadow();
   if(state==='countdown'){
     countdown-=dt;
     if(countdown>0){ const n=Math.ceil(countdown); if(n!==lastBeepN){ lastBeepN=n; audio&&audio.beep(false); } flashIf(n);
       if(countdown<0.42+0.05*(player.engLvl||0)){ const gas = window.__auto ? (player._autoLaunch) : (keys.up && !keys.down); if(gas) player._perfectArmed=true; }   // ENGINE widens the launch window
     } else {
-      state='race'; raceTime=0; goTimer=0.8; cars.forEach(c=>c.lapStart=0); audio&&audio.beep(true);
+      state='race'; raceTime=0; goTimer=0.8; window._finT=0; cars.forEach(c=>c.lapStart=0); audio&&audio.beep(true);
       if(player._perfectArmed && !keys.down){                                  // PERFECT START reward (ENGINE = longer launch)
         player.boost=CONFIG.boostMax*(player.nosMax||1); player._padBoost=0.85+0.18*(player.engLvl||0); camShake=Math.min(camShake+0.4,1.0);
         flash('PERFECT START!','cdgo'); popup('PERFECT START','#5fe08a'); if(cinePass) cinePass.uniforms.uSpeed.value=1.3;
@@ -6006,11 +6030,11 @@ function update(dt){
   } else if(state==='race'){
     if(brActive){ battleFrame(dt); } else {
     raceTime+=dt; if(goTimer>0) goTimer-=dt; else if(elFlash.textContent==='GO!') elFlash.classList.remove('show');
-    const braking = keys.down || joyY<-0.3;
+    const braking = keys.down || joyY<-0.3 || padBrake>0.25;
     const inp = window.__auto ? aiInput(player) : {
-      throttle: autoDrive ? !braking : (keys.up || joyY>0.25),   // auto-accelerate (unless braking) or manual gas
+      throttle: autoDrive ? !braking : (keys.up || joyY>0.25 || padGas>0.15),   // auto-accelerate (unless braking) or manual gas / RT
       brake: braking,
-      steer: clamp((keys.left?1:0)-(keys.right?1:0) + joyX, -1, 1), drift: keys.space, boost: keys.shift };
+      steer: clamp((keys.left?1:0)-(keys.right?1:0) + joyX + padX, -1, 1), drift: keys.space||padDrift, boost: keys.shift||padBoost };
     updateCar(player, inp, dt);
     for(let i=1;i<cars.length;i++){ const c=cars[i];
       if(window.NETRACE || timeTrial || window.freeRoam) break;   // ONLINE / TIME TRIAL / FREE ROAM: no AI opponents
@@ -6032,7 +6056,12 @@ function update(dt){
     else { const inp={throttle:false,brake:true,steer:0,drift:false,boost:false};
     updateCar(player, inp, dt);
     if(!window.NETRACE) for(let i=1;i<cars.length;i++) updateCar(cars[i], aiInput(cars[i]), dt);
-    updateCamera(dt); updateHUD(); }
+    // VICTORY CUTSCENE: rising hero orbit around the car while the results card shows
+    window._finT=(window._finT||0)+dt;
+    const fT=window._finT, ang2=fT*0.55, d2=6.2+Math.sin(fT*0.4)*0.5, cy2=(player.visY||0);
+    camera.position.set(player.pos.x+Math.sin(ang2)*d2, cy2+2.0+Math.min(2.2,fT*0.35), player.pos.y+Math.cos(ang2)*d2);
+    camera.lookAt(player.pos.x, cy2+0.8, player.pos.y);
+    updateHUD(); }
   } else if(state==='menu'){                                   // car showcase: slow orbit around the selected car
     menuT += dt;
     for(let i=1;i<cars.length;i++){ cars[i].rig.group.visible=false; if(cars[i].shadowMesh) cars[i].shadowMesh.visible=false; }   // only the player's car (+ its shadow) on display
