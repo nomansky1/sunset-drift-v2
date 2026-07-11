@@ -16,3 +16,7 @@
 - Porsche_911_RWB_Widebody.glb -- "Porsche 911 RAUH-Welt [FREE]" by autoNgraphic (CC Attribution) -- https://sketchfab.com/3d-models/0e1f5e1c0ddc4c3f88b8484461146a79
 - NASCAR_2018_Camaro.glb -- "2018 NASCAR Camaro" by Lugnut Studio (CC Attribution-NonCommercial) -- https://sketchfab.com/3d-models/cb243928ff814a6e92bef555e95e7a21
 - Formula_One_LP830.glb -- "( FREE ) Formula One LP-830 SDC" by SDC PERFORMANCE™️ (CC Attribution) -- https://sketchfab.com/3d-models/aeebdfa53e294e0390f3c2e8bbfe31b6
+
+## Music
+- audio/menu.mp3 -- "Retroracing Menu" by Bogart VGM (CC-BY 4.0) -- https://opengameart.org/content/retroracing-menu-synthwave
+- audio/combat.mp3 -- "Drum and Bass" by bertsz (CC0) -- https://opengameart.org/content/drum-and-bass
