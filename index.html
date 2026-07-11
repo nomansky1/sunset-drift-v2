@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.28-->
+<!--BUILD:v10.29-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -531,7 +531,7 @@
   .brCard{ pointer-events:auto; cursor:pointer; background:linear-gradient(160deg,rgba(38,22,26,.92),rgba(16,8,12,.95));
     border:1px solid rgba(255,120,100,.22); border-radius:12px; padding:8px 8px 7px; text-align:center; transition:transform .12s, border-color .12s; }
   .brCard:hover{ transform:translateY(-3px); border-color:rgba(255,150,120,.65); }
-  .brCard canvas{ width:100%; border-radius:8px; display:block; margin-bottom:6px; background:#151318; }
+  .brCard canvas{ width:100%; aspect-ratio:132/112; object-fit:cover; border-radius:8px; display:block; margin-bottom:6px; background:#080b14; box-shadow:inset 0 0 18px rgba(90,150,255,.12); }
   .brCard b{ display:block; font-size:11px; letter-spacing:.6px; color:#ffe9e2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .brCard span{ font-size:9px; letter-spacing:.5px; color:rgba(255,205,190,.55); }
   #brPickFoot{ display:flex; justify-content:center; padding-top:8px; }
@@ -1191,7 +1191,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.28';
+(function(){ const BUILD='v10.29';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6573,21 +6573,66 @@ function init(){
   document.getElementById('champBtn').addEventListener('click', e=>{ e.stopPropagation(); startChampionship(); });
   // BATTLE -> ARENA PICKER (owner): pick which city you fight in; each card previews that arena's
   // REAL street layout (same seed math as buildBRCity, drawn in 2D).
+  // ISOMETRIC HOLO-CITY thumbnail (owner: 'extremely cool like the globe'): the arena rendered as a
+  // glowing hologram — extruded iso buildings from the real seed + the circuit floating over the city.
   function brArenaThumb(ti){
-    const cv=document.createElement('canvas'); cv.width=cv.height=96; const x=cv.getContext('2d');
+    const W=132,H=112, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+    const trk=TRACKS[ti]||{}, acc=(TRACK_ACCENT[trk.theme])||'#ff7a3c';
     const rng=mulberry32(20260710 + (ti|0)*7919);
     const BLOCK=42+((rng()*12)|0), ROAD=14+((rng()*5)|0), CELL=BLOCK+ROAD, N=6+((rng()*3)|0);
-    const parkR=0.10+rng()*0.16, u=96/(N*CELL);
-    x.fillStyle='#26262c'; x.fillRect(0,0,96,96);                       // roads
+    const parkR=0.10+rng()*0.16;
+    // holo backdrop + faint scanlines
+    const bg=x.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#0a0f1e'); bg.addColorStop(1,'#05070f');
+    x.fillStyle=bg; x.fillRect(0,0,W,H);
+    x.strokeStyle='rgba(120,180,255,.05)'; x.lineWidth=1;
+    for(let yy=0;yy<H;yy+=3){ x.beginPath(); x.moveTo(0,yy); x.lineTo(W,yy); x.stroke(); }
+    // isometric transform (2:1); grid centred
+    const tw=W/(N*2.35), th=tw*0.5, ox=W/2, oy=H*0.30;
+    const iso=(gx,gz,e)=>[ ox+(gx-gz)*tw, oy+(gx+gz)*th - (e||0) ];
+    const acc2=(a)=>{ const c=acc; return 'rgba('+parseInt(c.slice(1,3),16)+','+parseInt(c.slice(3,5),16)+','+parseInt(c.slice(5,7),16)+','+a+')'; };
+    // ground plate (dark iso diamond)
+    x.beginPath(); let p0=iso(0,0,0),p1=iso(N,0,0),p2=iso(N,N,0),p3=iso(0,N,0);
+    x.moveTo(p0[0],p0[1]); x.lineTo(p1[0],p1[1]); x.lineTo(p2[0],p2[1]); x.lineTo(p3[0],p3[1]); x.closePath();
+    x.fillStyle='rgba(20,28,48,.85)'; x.fill(); x.strokeStyle=acc2(0.22); x.stroke();
+    // collect blocks, then paint BACK-TO-FRONT (painter's algo on gx+gz)
+    const items=[];
     for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
-      const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u;
-      const park=rng()<parkR;
-      x.fillStyle=park?'#3c6b34':'#4b4a52'; x.fillRect(bx,bz,bw,bw);
-      if(!park){ const n2=1+((rng()*3)|0);                              // building pads
-        for(let b2=0;b2<n2;b2++){ x.fillStyle='rgba(210,205,220,'+(0.25+rng()*0.3)+')';
-          const w2=bw*(0.3+rng()*0.4), px=bx+rng()*(bw-w2), pz=bz+rng()*(bw-w2*0.8);
-          x.fillRect(px,pz,w2,w2*0.8); } } }
-    x.fillStyle='#ffd23b'; x.beginPath(); x.arc(48,48,3,0,7); x.fill();  // centre plaza
+      const park=rng()<parkR, cb=1.55-(Math.hypot(ix-N/2,iz-N/2)/(N/2||1));
+      const bldg=[];
+      if(!park){ const nB=1+((rng()*3)|0);
+        for(let b=0;b<nB;b++){ const w=0.28+rng()*0.34, d=0.28+rng()*0.34;
+          const px=ix+0.16+rng()*(0.68-w), pz=iz+0.16+rng()*(0.68-d);
+          const hh=(6+Math.pow(rng(),1.6)*30*Math.max(0.45,cb)); bldg.push([px,pz,w,d,hh]); } }
+      items.push({gx:ix,gz:iz,park,bldg}); }
+    items.sort((a,b)=>(a.gx+a.gz)-(b.gx+b.gz));
+    for(const it of items){
+      if(it.park){ const a=iso(it.gx+0.12,it.gz+0.12,0),b=iso(it.gx+0.88,it.gz+0.12,0),c=iso(it.gx+0.88,it.gz+0.88,0),d=iso(it.gx+0.12,it.gz+0.88,0);
+        x.beginPath(); x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.lineTo(c[0],c[1]);x.lineTo(d[0],d[1]);x.closePath();
+        x.fillStyle='rgba(70,200,120,.28)'; x.fill(); continue; }
+      for(const bd of it.bldg){ const [px,pz,w,d,hh]=bd;
+        const gx0=it.gx+px, gz0=it.gz+pz, gx1=gx0+w, gz1=gz0+d;
+        const tA=iso(gx0,gz0,hh),tB=iso(gx1,gz0,hh),tC=iso(gx1,gz1,hh),tD=iso(gx0,gz1,hh);
+        const bB=iso(gx1,gz0,0),bC=iso(gx1,gz1,0),bD=iso(gx0,gz1,0);
+        // right face
+        x.beginPath(); x.moveTo(tB[0],tB[1]);x.lineTo(tC[0],tC[1]);x.lineTo(bC[0],bC[1]);x.lineTo(bB[0],bB[1]);x.closePath();
+        x.fillStyle=acc2(0.14); x.fill();
+        // front face
+        x.beginPath(); x.moveTo(tC[0],tC[1]);x.lineTo(tD[0],tD[1]);x.lineTo(bD[0],bD[1]);x.lineTo(bC[0],bC[1]);x.closePath();
+        x.fillStyle=acc2(0.22); x.fill();
+        // top face (brightest)
+        x.beginPath(); x.moveTo(tA[0],tA[1]);x.lineTo(tB[0],tB[1]);x.lineTo(tC[0],tC[1]);x.lineTo(tD[0],tD[1]);x.closePath();
+        x.fillStyle=acc2(0.42); x.fill();
+        x.strokeStyle=acc2(0.7); x.lineWidth=0.7; x.stroke();          // glowing edges
+      }
+    }
+    // CIRCUIT floating over the city (from real ctrl, normalized to the grid, lifted)
+    if(trk.ctrl && trk.ctrl.length){ let mx2=0; trk.ctrl.forEach(p=>{ mx2=Math.max(mx2,Math.abs(p[0]),Math.abs(p[1])); }); const k=(N*0.44)/(mx2||1);
+      x.beginPath();
+      trk.ctrl.forEach((p,idx)=>{ const g=iso(N/2+p[0]*k, N/2+p[1]*k, 44); if(idx===0) x.moveTo(g[0],g[1]); else x.lineTo(g[0],g[1]); });
+      x.closePath(); x.strokeStyle=acc; x.lineWidth=2.4; x.shadowColor=acc; x.shadowBlur=6; x.stroke(); x.shadowBlur=0;
+      const sf=iso(N/2+trk.ctrl[0][0]*k, N/2+trk.ctrl[0][1]*k, 44);
+      x.fillStyle='#fff'; x.beginPath(); x.arc(sf[0],sf[1],2.2,0,7); x.fill();
+    }
     return {cv, meta:N+'×'+N+' BLOCKS'};
   }
   function brCityLabel(ti){ const t=TRACKS[ti]||{};
