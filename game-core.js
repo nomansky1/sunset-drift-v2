@@ -126,6 +126,14 @@ function updateCar(c, inp, dt){
   // integrate
   c.pos.addScaledVector(c.vel, dt);
 
+  // CUSTOM-TRACK CITY LIMITS: a soft perimeter that holds even in free roam (owner: no driving to infinity)
+  if(typeof _cityLimitR!=='undefined' && _cityLimitR>0 && typeof trackCentroid!=='undefined'){
+    _v.set(c.pos.x-trackCentroid.x, c.pos.y-trackCentroid.y); const dC2=_v.length();
+    if(dC2>_cityLimitR-1.2){ _v.multiplyScalar(1/dC2);
+      const vOut2=c.vel.dot(_v); if(vOut2>0) c.vel.addScaledVector(_v,-vOut2);
+      c.pos.set(trackCentroid.x+_v.x*(_cityLimitR-1.2), trackCentroid.y+_v.y*(_cityLimitR-1.2));
+      if(c.isPlayer && vOut2>10 && typeof audio!=='undefined'&&audio&&audio.thud) audio.thud(0.4); } }
+
   // curb barrier: SLIDE along it — cancel only the into-wall velocity, keep your speed
   // (races only — Battle Royale AND free roam are OPEN: no track barriers, cars roam the whole district)
   if((typeof brActive==='undefined' || !brActive) && !(typeof freeRoam!=='undefined' && freeRoam)){ const p=samplePts[c.trackIdx]; _v.set(c.pos.x-p.x, c.pos.y-p.y); const dd=_v.length();
@@ -311,11 +319,11 @@ function aiInput(c){
   const curve=Math.max(bend, Math.abs(angleDiff(Math.atan2(f.x-tx, f.y-tz), desired)));
   // brake toward a corner-appropriate speed (sharper corner -> slower) instead of a single threshold
   const gripCarry = c.isPlayer ? (0.9+0.12*(c.gripMul||1)+0.03*(c.tireLvl||0)) : (1.07+0.45*(aiAccel-1));   // GRIP/TIRES let a car carry more corner speed; AI corner-carry scales with difficulty to match a maxed player
-  const targetSpd=clamp((64 - curve*58)*aiAggro*gripCarry, 21, 80);                            // aggression: carry MORE corner speed (brake later) on hard
-  let brake = speed > targetSpd+4.5;
+  const targetSpd=clamp((64 - curve*44)*aiAggro*gripCarry, 30, 80);                            // owner: AI crawled through turns — flatter curve penalty + a 30 floor keeps them HONEST-fast
+  let brake = speed > targetSpd+7;                                                             // and they brake later
   if(curve>0.5 && !c._inCorner){ c._inCorner=true; c._missThis = !window.__auto && Math.random()<((c.aiMiss||0)*(c.isRival?0.25:1)); }   // decide the miss ONCE per corner; the RIVAL barely errs
   else if(curve<0.28) c._inCorner=false;
-  const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.3 : 0.85);   // miss = brake soft (wide line); very sharp = brake hard so it actually makes the turn
+  const brakeMul = (brake && c._missThis) ? 0.5 : (curve>0.7 ? 1.1 : 0.65);   // gentler braking overall — scrub speed, don't park (owner: corners made the game too easy)
   const boostHard = (c.isRival ? 14 : 20) / aiAggro;                                          // aggression: deploy NITROUS readily (lower threshold) on hard
   // AI COMPETITORS NEVER DRIFT (by request) — they corner on planted grip only (clean, fast lines).
   // Drift is reserved for the human player + multiplayer humans (they use their own manual input, not aiInput).
