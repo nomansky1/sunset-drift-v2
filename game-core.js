@@ -240,6 +240,7 @@ function updateCar(c, inp, dt){
   const burnout = inp.throttle && spd>2.5 && spd<8 && c._stopT>0;   // wheelspin only while pulling AWAY from a stop (not wedged at ~0)
   const aiSlide = !c.isPlayer && slip>2.6 && spd>18;                // AI corner hard on grip -> they get slide smoke too (owner request)
   const screech = (c.drifting && slip>(1.6+0.35*tire)) || hardBrake || burnout || aiSlide;   // TIRES grip harder before squealing
+  if(c.isPlayer) c._skidSnd = ((c.drifting && spd>6) || hardBrake || burnout);   // audio-only flag (physics-inert): locked-brake squeal too, not just drifts
   if(c.isPlayer && tire>0 && c.drifting && slip>2.4 && raceTime-(c._gripCue||-9)>1.6){ c._gripCue=raceTime; popup('🛞 GRIP','#7ce0ff'); }
   const rx=c.pos.x-Math.sin(c.heading)*1.6, rz=c.pos.y-Math.cos(c.heading)*1.6;
   const ey=c.visY||0;                                            // ground effects ride the road elevation
