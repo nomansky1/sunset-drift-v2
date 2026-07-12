@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.38-->
+<!--BUILD:v10.39-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -245,14 +245,47 @@
   .carArrow{ pointer-events:auto; width:46px; height:46px; border-radius:7px; display:flex; align-items:center; justify-content:center;
              font-size:18px; background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.24); cursor:pointer; transition:.14s; }
   .carArrow:active,.carArrow:hover{ background:rgba(255,150,60,.34); transform:scale(1.08); }
-  #settings{ margin-top:4px; padding:10px 14px; border-radius:8px; background:rgba(12,7,20,.5);
-             -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.08); box-shadow:0 8px 30px rgba(0,0,0,.35); }
-  #togRow{ display:flex; gap:9px; justify-content:center; }
-  .tog{ pointer-events:auto; padding:8px 15px; border-radius:5px; border:1.5px solid rgba(255,255,255,.16);
-        background:rgba(255,255,255,.06); font-size:min(3vw,12px); font-weight:800; letter-spacing:.5px; cursor:pointer; transition:.14s; }
-  .tog.on{ border-color:#7cc0ff; background:rgba(70,150,255,.3); box-shadow:0 4px 16px rgba(70,150,255,.35); color:#fff; }
-  #sndRow,#musRow{ display:flex; gap:9px; align-items:center; justify-content:center; margin-top:8px; flex-wrap:wrap; }
-  #volSlider,#musSlider{ pointer-events:auto; width:min(28vw,120px); accent-color:#ff8a3c; cursor:pointer; }
+  /* ---------- modern (Steam-style) settings surface ---------- */
+  #settings{ margin-top:4px; padding:15px 16px 12px; border-radius:16px; width:min(96vw,600px);
+             background:linear-gradient(180deg,rgba(20,15,32,.86),rgba(9,6,16,.92));
+             -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.10);
+             box-shadow:0 22px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+             display:flex; flex-direction:column; max-height:calc(100svh - 150px); }
+  .setBody{ overflow-y:auto; overflow-x:hidden; padding-right:5px; display:flex; flex-direction:column; gap:14px; }
+  .setBody::-webkit-scrollbar{ width:8px; } .setBody::-webkit-scrollbar-track{ background:transparent; }
+  .setBody::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.15); border-radius:8px; }
+  .setSec{ display:flex; flex-direction:column; gap:9px; }
+  .setH{ margin:0; font-size:10.5px; font-weight:800; letter-spacing:2.4px; color:#8b8aa2; text-transform:uppercase;
+         padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,.09); }
+  .setGrid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(188px,1fr)); gap:8px; }
+  .tog{ pointer-events:auto; display:flex; align-items:center; gap:9px; padding:11px 14px; border-radius:11px; position:relative;
+        border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.045); color:#d6d4e6;
+        font-size:12px; font-weight:700; letter-spacing:.4px; cursor:pointer; transition:.15s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tog:hover{ background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.22); transform:translateY(-1px); }
+  .tog .tgIco{ width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  /* switch affordance — pseudo-only, so togDiff/togQual innerHTML rewrites never destroy it */
+  .setToggle{ padding-right:58px; }
+  .setToggle::before{ content:''; position:absolute; right:13px; top:50%; transform:translateY(-50%);
+        width:36px; height:20px; border-radius:11px; background:rgba(255,255,255,.15); transition:.18s; }
+  .setToggle::after{ content:''; position:absolute; right:29px; top:50%; transform:translateY(-50%);
+        width:14px; height:14px; border-radius:50%; background:#c9c8da; box-shadow:0 1px 3px rgba(0,0,0,.5);
+        transition:right .2s cubic-bezier(.3,1.5,.5,1), background .18s; }
+  .setToggle.on{ border-color:rgba(95,185,255,.5); background:rgba(48,120,220,.16); color:#fff; }
+  .setToggle.on::before{ background:linear-gradient(90deg,#2f95ff,#5fd0ff); box-shadow:0 0 12px rgba(70,160,255,.6); }
+  .setToggle.on::after{ right:15px; background:#fff; }
+  /* value chip (difficulty cycles a label) */
+  .setVal.on{ border-color:rgba(255,182,86,.5); background:rgba(255,150,60,.16); color:#ffd9a0; }
+  /* action chips (open a hub / import-export / reset) */
+  .setAct{ color:#c9c7d8; padding-right:30px; }
+  .setAct::after{ content:'\203a'; position:absolute; right:13px; top:50%; transform:translateY(-50%); font-size:19px; font-weight:900; color:#7d7b92; transition:.15s; }
+  .setAct:hover::after{ color:#fff; transform:translate(3px,-50%); }
+  /* audio rows */
+  #sndRow{ display:flex; gap:9px; align-items:stretch; flex-wrap:wrap; }
+  .sndCtl{ display:flex; align-items:center; gap:10px; flex:1 1 210px; padding:9px 13px; border-radius:11px;
+           background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.10); }
+  .sndLbl{ font-size:10px; font-weight:800; letter-spacing:1.5px; color:#8b8aa2; flex:0 0 auto; }
+  .tog.sndIco{ padding:8px 10px; flex:0 0 auto; }
+  #volSlider,#musSlider{ pointer-events:auto; flex:1 1 auto; min-width:70px; accent-color:#ff8a3c; cursor:pointer; height:5px; }
   #musSlider{ accent-color:#7cc0ff; }
   .cta{ margin-top:6px; font-size:min(6.5vw,30px); font-weight:900; letter-spacing:1px; padding:15px 56px; border-radius:6px;
         background:linear-gradient(100deg,#ff5423,#ff8a2e 48%,#ffc23b); color:#160c06; cursor:pointer; position:relative; overflow:hidden;
@@ -342,6 +375,8 @@
   #panel-garage,#panel-settings{ justify-content:flex-end; padding-bottom:6px; }
   @keyframes panelIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
   #ctaRow{ flex:0 0 auto; justify-content:center; padding:6px 14px calc(env(safe-area-inset-bottom,8px) + 12px); }
+  #menu[data-tab="settings"] #ctaRow{ display:none; }        /* settings is self-contained — no giant RACE bar pinned under it */
+  #menu[data-tab="settings"] #panel-settings{ justify-content:center; }
   #trackPick{ flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; max-width:100%; width:100%;
               justify-content:safe center; padding:8px 4px 10px; margin-top:10px; -webkit-overflow-scrolling:touch; }
   #trackPick::-webkit-scrollbar{ height:0; }
@@ -696,9 +731,12 @@
     #carStatus{ margin-top:2px; font-size:11px; min-height:0; }
     #kitRow{ gap:3px; margin-top:5px; } .kit{ padding:3px 9px; font-size:10px; } .kit b{ flex-basis:50px; }
     .carArrow{ width:34px; height:34px; font-size:13px; }
-    #settings{ padding:4px 9px; margin-top:1px; }
-    #togRow{ gap:6px; } .tog{ padding:4px 10px; font-size:10px; }
-    #sndRow{ margin-top:4px; gap:7px; } #volSlider,#musSlider{ width:min(24vw,100px); }
+    #settings{ padding:9px 11px; margin-top:1px; max-height:calc(100svh - 96px); }
+    .setBody{ gap:9px; } .setSec{ gap:6px; } .setH{ padding-bottom:4px; font-size:9.5px; letter-spacing:1.8px; }
+    .setGrid{ grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px; }
+    .tog{ padding:8px 11px; font-size:11px; } .setToggle{ padding-right:52px; }
+    .setToggle::before{ right:11px; width:32px; height:18px; } .setToggle::after{ right:26px; width:12px; height:12px; } .setToggle.on::after{ right:15px; }
+    #sndRow{ gap:6px; } .sndCtl{ flex-basis:170px; padding:7px 10px; gap:8px; }
     #ctaRow{ gap:8px; }
     .cta{ font-size:19px; padding:7px 28px; margin-top:2px; }
     .cta.champ{ font-size:13px; padding:7px 13px; }
@@ -1072,40 +1110,64 @@
     </div>
     <div class="mPanel" id="panel-settings">
       <div id="settings">
-        <div id="togRow">
-          <div class="tog" id="togDiff"><svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg> NORMAL</div>
-          <div class="tog on" id="togAuto"><svg class="tgIco" viewBox="0 0 24 24"><path d="M4 15l1.6-4.4A2 2 0 0 1 7.5 9h9a2 2 0 0 1 1.9 1.6L20 15v4h-2.4v-1.6H6.4V19H4z"/><circle cx="7.6" cy="15" r="1.1"/><circle cx="16.4" cy="15" r="1.1"/></svg> AUTO</div>
-          <div class="tog" id="togRoam"><svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z"/></svg> FREE ROAM</div>
-          <div class="tog on" id="togGhost"><svg class="tgIco" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 1 7 7v10l-2.4-2-2.3 2-2.3-2-2.3 2-2.3-2L5 20V10a7 7 0 0 1 7-7z"/><circle cx="9.5" cy="10.5" r="1"/><circle cx="14.5" cy="10.5" r="1"/></svg> GHOST</div>
-          <div class="tog" id="togNight"><svg class="tgIco" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg> NIGHT</div>
-          <div class="tog" id="togRain"><svg class="tgIco" viewBox="0 0 24 24"><path d="M7 15a5 5 0 0 1 .8-9.9A6 6 0 0 1 19 8a4 4 0 0 1-1 7.9z"/><path d="M8 18l-1 3M12.5 18l-1 3M17 18l-1 3"/></svg> RAIN</div>
-          <div class="tog" id="togTT"><svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l3 2M10 2.8h4"/></svg> TIME TRIAL</div>
-          <div class="tog" id="togMore"><svg class="tgIco" viewBox="0 0 24 24"><rect x="2.8" y="8" width="18.4" height="9.4" rx="4.4"/><path d="M7.4 11v3.4M5.7 12.7h3.4"/><circle cx="16" cy="11.6" r="1"/><circle cx="18.4" cy="13.9" r="1"/></svg> PLAY &amp; CREATE</div>
-          <div class="tog" id="togAO">◑ AO</div>
-          <div class="tog" id="togAnime">🎌 ANIME</div>
-          <div class="tog" id="togComic">📖 COMIC</div>
-          <div class="tog" id="togLow">⚡ LITE</div>
-          <div class="tog" id="togQual">🖥 HIGH</div>
-          <div class="tog" id="togFS">⛶ FULLSCREEN</div>
-          <div class="tog" id="togSaveOut">💾 EXPORT SAVE</div>
-          <div class="tog" id="togSaveIn">📂 IMPORT SAVE</div>
+       <div class="setBody">
+        <div class="setSec">
+          <h4 class="setH">GAMEPLAY</h4>
+          <div class="setGrid">
+            <div class="tog setVal" id="togDiff"><svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/></svg> NORMAL</div>
+            <div class="tog setToggle on" id="togAuto"><svg class="tgIco" viewBox="0 0 24 24"><path d="M4 15l1.6-4.4A2 2 0 0 1 7.5 9h9a2 2 0 0 1 1.9 1.6L20 15v4h-2.4v-1.6H6.4V19H4z"/><circle cx="7.6" cy="15" r="1.1"/><circle cx="16.4" cy="15" r="1.1"/></svg> AUTO</div>
+            <div class="tog setToggle on" id="togGhost"><svg class="tgIco" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 1 7 7v10l-2.4-2-2.3 2-2.3-2-2.3 2-2.3-2L5 20V10a7 7 0 0 1 7-7z"/><circle cx="9.5" cy="10.5" r="1"/><circle cx="14.5" cy="10.5" r="1"/></svg> GHOST</div>
+            <div class="tog setToggle" id="togTT"><svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l3 2M10 2.8h4"/></svg> TIME TRIAL</div>
+            <div class="tog setToggle" id="togRoam"><svg class="tgIco" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z"/></svg> FREE ROAM</div>
+          </div>
         </div>
-        <div id="profRow">
-          <label id="avaWrap" title="Upload avatar">
-            <img id="avaImg" alt="">
-            <span id="avaPlus">＋</span>
-            <input id="avaFile" type="file" accept="image/*">
-          </label>
-          <input id="profName" type="text" maxlength="12" placeholder="YOUR NAME" aria-label="your name">
-          <div class="tog" id="supportBtn" style="display:none">💛 SUPPORT</div>
-          <div class="tog" id="resetData">🗑 RESET DATA</div>
+        <div class="setSec">
+          <h4 class="setH">WORLD</h4>
+          <div class="setGrid">
+            <div class="tog setToggle" id="togNight"><svg class="tgIco" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg> NIGHT</div>
+            <div class="tog setToggle" id="togRain"><svg class="tgIco" viewBox="0 0 24 24"><path d="M7 15a5 5 0 0 1 .8-9.9A6 6 0 0 1 19 8a4 4 0 0 1-1 7.9z"/><path d="M8 18l-1 3M12.5 18l-1 3M17 18l-1 3"/></svg> RAIN</div>
+          </div>
         </div>
-        <div id="sndRow">
-          <div class="tog" id="muteBtn">🔊</div>
-          <input id="volSlider" type="range" min="0" max="100" value="55" aria-label="sfx volume">
-          <div class="tog" id="musMuteBtn">🎵</div>
-          <input id="musSlider" type="range" min="0" max="100" value="5" aria-label="music volume">
+        <div class="setSec">
+          <h4 class="setH">GRAPHICS</h4>
+          <div class="setGrid">
+            <div class="tog setToggle" id="togAO">◑ AO</div>
+            <div class="tog setToggle" id="togAnime">🎌 ANIME</div>
+            <div class="tog setToggle" id="togComic">📖 COMIC</div>
+            <div class="tog setToggle" id="togLow">⚡ LITE</div>
+            <div class="tog setToggle" id="togQual">🖥 HIGH</div>
+            <div class="tog setToggle" id="togFS">⛶ FULLSCREEN</div>
+          </div>
         </div>
+        <div class="setSec">
+          <h4 class="setH">AUDIO</h4>
+          <div id="sndRow">
+            <div class="sndCtl"><div class="tog sndIco" id="muteBtn">🔊</div><input id="volSlider" type="range" min="0" max="100" value="55" aria-label="sfx volume"><span class="sndLbl">SFX</span></div>
+            <div class="sndCtl"><div class="tog sndIco" id="musMuteBtn">🎵</div><input id="musSlider" type="range" min="0" max="100" value="5" aria-label="music volume"><span class="sndLbl">MUSIC</span></div>
+          </div>
+        </div>
+        <div class="setSec">
+          <h4 class="setH">PROFILE</h4>
+          <div id="profRow">
+            <label id="avaWrap" title="Upload avatar">
+              <img id="avaImg" alt="">
+              <span id="avaPlus">＋</span>
+              <input id="avaFile" type="file" accept="image/*">
+            </label>
+            <input id="profName" type="text" maxlength="12" placeholder="YOUR NAME" aria-label="your name">
+            <div class="tog setAct" id="supportBtn" style="display:none">💛 SUPPORT</div>
+          </div>
+        </div>
+        <div class="setSec">
+          <h4 class="setH">MODES &amp; DATA</h4>
+          <div class="setGrid">
+            <div class="tog setAct" id="togMore"><svg class="tgIco" viewBox="0 0 24 24"><rect x="2.8" y="8" width="18.4" height="9.4" rx="4.4"/><path d="M7.4 11v3.4M5.7 12.7h3.4"/><circle cx="16" cy="11.6" r="1"/><circle cx="18.4" cy="13.9" r="1"/></svg> PLAY &amp; CREATE</div>
+            <div class="tog setAct" id="togSaveOut">💾 EXPORT SAVE</div>
+            <div class="tog setAct" id="togSaveIn">📂 IMPORT SAVE</div>
+            <div class="tog setAct" id="resetData">🗑 RESET DATA</div>
+          </div>
+        </div>
+       </div>
       </div>
       <div class="keys" id="keysHint">
         <span class="dk"><b>Arrows / WASD</b> drive &nbsp;•&nbsp; <b>Space</b> drift &nbsp;•&nbsp; <b>Shift</b> boost &nbsp;•&nbsp; <b>Esc</b> pause</span>
@@ -1219,7 +1281,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.38';
+(function(){ const BUILD='v10.39';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
