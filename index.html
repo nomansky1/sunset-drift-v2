@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.33-->
+<!--BUILD:v10.34-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -77,6 +77,17 @@
           text-shadow:0 6px 0 #b8341a,0 10px 30px rgba(0,0,0,.6); opacity:0; }
   #flash.show{ animation:pop .5s ease-out; }
   @keyframes pop{ 0%{ transform:scale(.4); opacity:0 } 30%{ transform:scale(1.15); opacity:1 } 100%{ transform:scale(1); opacity:1 } }
+  /* animated shockwave ring + radial speed-burst behind every countdown beat (owner: animation, not static) */
+  #flash::before{ content:''; position:absolute; left:50%; top:50%; width:20vh; height:20vh; border-radius:50%;
+    transform:translate(-50%,-50%) scale(0); border:0.7vh solid currentColor; opacity:0; }
+  #flash::after{ content:''; position:absolute; left:50%; top:50%; width:60vh; height:60vh; transform:translate(-50%,-50%) scale(0); opacity:0;
+    background:repeating-conic-gradient(from 0deg, currentColor 0deg 3deg, transparent 3deg 15deg); -webkit-mask:radial-gradient(circle, transparent 34%, #000 36%, #000 46%, transparent 52%); mask:radial-gradient(circle, transparent 34%, #000 36%, #000 46%, transparent 52%); }
+  #flash.show::before{ animation:cdRing .6s cubic-bezier(.2,.7,.3,1) both; }
+  #flash.show::after{ animation:cdBurst .5s ease-out both; }
+  @keyframes cdRing{ 0%{ transform:translate(-50%,-50%) scale(.3); opacity:.9 } 100%{ transform:translate(-50%,-50%) scale(2.6); opacity:0 } }
+  @keyframes cdBurst{ 0%{ transform:translate(-50%,-50%) scale(.2) rotate(0deg); opacity:.55 } 100%{ transform:translate(-50%,-50%) scale(1) rotate(22deg); opacity:0 } }
+  #flash.cdgo::before{ animation:cdRingGo .7s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes cdRingGo{ 0%{ transform:translate(-50%,-50%) scale(.3); opacity:1; border-width:1.4vh } 100%{ transform:translate(-50%,-50%) scale(4.2); opacity:0; border-width:0.2vh } }
   #best{ position:fixed; top:24%; left:50%; transform:translateX(-50%); z-index:6; pointer-events:none;
          font-size:5vh; font-weight:900; color:var(--accent2); text-shadow:0 3px 10px rgba(0,0,0,.6); opacity:0; }
   #best.show{ animation:bestpop 1.2s ease-out; }
@@ -1196,7 +1207,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.33';
+(function(){ const BUILD='v10.34';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
