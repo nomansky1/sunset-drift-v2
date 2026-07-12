@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.37-->
+<!--BUILD:v10.38-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -70,6 +70,18 @@
   .popup.go{ animation:popfloat 1.05s ease-out forwards; }
   @keyframes popfloat{ 0%{opacity:0; transform:translate(-50%,18px) scale(.7)} 16%{opacity:1; transform:translate(-50%,0) scale(1.12)}
                        30%{transform:translate(-50%,-2px) scale(1)} 72%{opacity:1} 100%{opacity:0; transform:translate(-50%,-46px) scale(1)} }
+  /* the leading icon on a popup ANIMATES (owner: animation instead of static emojis) — a moving glyph per event type */
+  .popup .pi{ display:inline-block; transform-origin:50% 58%; will-change:transform; margin-right:.12em; }
+  .popup.go .pi{ animation:piPulse .55s cubic-bezier(.2,1.4,.4,1) both; }
+  .popup.go .pi[data-fx="spin"]{ animation:piSpin .9s cubic-bezier(.15,.9,.3,1) both; }
+  .popup.go .pi[data-fx="flame"]{ animation:piFlame .42s ease-in-out infinite; }
+  .popup.go .pi[data-fx="shake"]{ animation:piShake .5s ease-out both; }
+  .popup.go .pi[data-fx="zap"]{ animation:piZap .55s ease-out both; }
+  @keyframes piPulse{ 0%{transform:scale(.5)} 55%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  @keyframes piSpin{ 0%{transform:rotate(0) scale(.55)} 60%{transform:rotate(340deg) scale(1.28)} 100%{transform:rotate(360deg) scale(1)} }
+  @keyframes piFlame{ 0%,100%{transform:scale(1) translateY(0); filter:brightness(1)} 50%{transform:scale(1.2) translateY(-1px); filter:brightness(1.4) saturate(1.3)} }
+  @keyframes piShake{ 0%{transform:scale(1.45)} 22%{transform:translate(-3px,0) rotate(-13deg) scale(1.2)} 44%{transform:translate(3px,0) rotate(11deg) scale(1.1)} 66%{transform:translate(-2px,0) rotate(-6deg)} 84%{transform:translate(2px,0) rotate(3deg)} 100%{transform:translate(0) rotate(0) scale(1)} }
+  @keyframes piZap{ 0%{transform:scale(.4); filter:brightness(2.2)} 25%{transform:scale(1.55); filter:brightness(1.7)} 50%{transform:scale(.88)} 72%{transform:scale(1.22)} 100%{transform:scale(1); filter:brightness(1)} }
 
   /* ---------- big center text (countdown / GO / NEW BEST) ---------- */
   #flash{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:6;
@@ -1207,7 +1219,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.37';
+(function(){ const BUILD='v10.38';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2935,7 +2947,13 @@ function popup(txt, color){
   const host=document.getElementById('popups'); if(!host) return;
   if(!_popPool.length){ for(let i=0;i<6;i++){ const d=document.createElement('div'); d.className='popup'; host.appendChild(d); _popPool.push(d); } }
   const d=_popPool[_popCur]; _popCur=(_popCur+1)%_popPool.length;
-  d.textContent=txt; d.style.color=color||'#fff'; d.style.top=(13+Math.random()*13)+'%';
+  d.textContent='';                                                          // rebuild: animate the leading icon glyph (owner: motion, not static emoji)
+  const m=/^([^\w\s](?:‍[^\s]|️)*)\s+([\s\S]+)$/u.exec(txt);         // leading emoji (+ optional VS16/ZWJ) then the rest of the label
+  if(m){ const ic=document.createElement('span'); ic.className='pi'; ic.textContent=m[1];
+    const e=[...m[1]][0]; ic.dataset.fx = e==='🌀'?'spin' : (e==='🔥'?'flame' : (e==='💥'?'shake' : (e==='⚡'?'zap':'pulse')));  // spread -> first CODE POINT (astral emoji safe); 🌀spin 🔥flame 💥shake ⚡zap
+    d.appendChild(ic); d.appendChild(document.createTextNode(m[2])); }        // text via textContent -> safe even when it contains a player name
+  else { d.appendChild(document.createTextNode(txt)); }
+  d.style.color=color||'#fff'; d.style.top=(13+Math.random()*13)+'%';
   d.classList.remove('go'); void d.offsetWidth; d.classList.add('go');
 }
 
