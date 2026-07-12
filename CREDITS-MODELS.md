@@ -21,3 +21,9 @@
 - audio/menu.mp3 -- "Retroracing Menu" by Bogart VGM (CC-BY 4.0) -- https://opengameart.org/content/retroracing-menu-synthwave
 - audio/combat.mp3 -- "Drum and Bass" by bertsz (CC0) -- https://opengameart.org/content/drum-and-bass
 - audio/hit*.ogg, audio/scrape*.ogg -- Kenney "Impact Sounds" (CC0) -- https://kenney.nl/assets/impact-sounds
+
+## SFX (v10.36)
+- audio/gd-eng-idle.wav — "Car Engine Loop 96kHz" by qubodup (OGA, CC-BY 3.0) — https://opengameart.org/content/car-engine-loop-96khz-4s
+- audio/gd-eng-rev.wav — "Racing Car Engine Sound Loops" by domasx2 (OGA, CC0) — https://opengameart.org/content/racing-car-engine-sound-loops
+- audio/gd-screech.wav — "Car Tire Squeal Skid Loop" by Tom Haigh/audible-edge (OGA, CC-BY 3.0) — https://opengameart.org/content/car-tire-squeal-skid-loop
+- audio/gd-nitrous.wav — procedurally generated (ffmpeg pink-noise purge)

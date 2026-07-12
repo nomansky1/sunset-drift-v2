@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.35-->
+<!--BUILD:v10.36-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1207,7 +1207,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.35';
+(function(){ const BUILD='v10.36';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2187,7 +2187,7 @@ class Particles {
 /* =========================================================================
    AUDIO  — tiny WebAudio engine hum + tyre screech + boost whoosh (guarded)
    ========================================================================= */
-const AUDIO_VER = 937;   // bump when any audio/gd-*.wav changes -> forces browsers past GitHub Pages 10-min cache
+const AUDIO_VER = 938;   // bump when any audio/gd-*.wav changes -> forces browsers past GitHub Pages 10-min cache
 class AudioEngine {
   start(){ if(window.__auto) return;   // SIM: never init/resume audio during a headless simulation
     if(this.ok) { this.resume(); return; }
@@ -2297,8 +2297,8 @@ class AudioEngine {
   }
   thud(v){ if(!this.ok) return; v=clamp(v||0.5,0.2,1);
     const pool=(v>0.55?this.buffers.hits:this.buffers.scrapes);                       // hard hit = heavy metal bang, graze = light metal scrape
-    if(pool&&pool.length){ this._play(pool[(Math.random()*pool.length)|0], 0.3+0.45*v); return; }
-    if(this.buffers.crash){ this._play(this.buffers.crash, 0.35+0.4*v); return; } try{ const t=this.ctx.currentTime, o=this.comp;
+    if(pool&&pool.length){ this._play(pool[(Math.random()*pool.length)|0], 0.12+0.20*v); return; }   // MINIMAL collision (owner): subtle metal tick, never a jarring bang
+    if(this.buffers.crash){ this._play(this.buffers.crash, 0.16+0.2*v); return; } try{ const t=this.ctx.currentTime, o=this.comp;
     const so=this.ctx.createOscillator(); so.type='sine'; so.frequency.setValueAtTime(150,t); so.frequency.exponentialRampToValueAtTime(46,t+0.18);
     const sg=this.ctx.createGain(); sg.gain.setValueAtTime(0.55*v,t); sg.gain.exponentialRampToValueAtTime(0.001,t+0.26);
     so.connect(sg); sg.connect(o); so.start(); so.stop(t+0.3);
