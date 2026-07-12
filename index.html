@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.31-->
+<!--BUILD:v10.32-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1195,7 +1195,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.31';
+(function(){ const BUILD='v10.32';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4836,9 +4836,20 @@ function carShadowAssets(){
   _carShadowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false,
     polygonOffset:true, polygonOffsetFactor:-7, polygonOffsetUnits:-7});  // soft AO contact shadow, beats road + skids
 }
+const ROAD_TOP=0.088;                                              // visible top of the road ribbon — wheels must rest AT this, not below
+function rigRideBase(c){                                          // per-rig base offset so the LOWEST wheel sits exactly on the road (owner: tyres were buried ~1-2.5cm)
+  if(c.rig._rideBase!=null) return c.rig._rideBase;
+  const g=c.rig.group, ry=g.rotation.x, sy=g.position.y;         // measure with the car flat + at 0
+  g.rotation.x=0; g.position.y=0; g.updateWorldMatrix(true,true);
+  let wmin=1e9; (c.rig.wheels||[]).forEach(w=>{ const b=new THREE.Box3().setFromObject(w); if(b.min.y<wmin) wmin=b.min.y; });
+  g.rotation.x=ry; g.position.y=sy;
+  c.rig._rideBase = (wmin<1e8) ? (ROAD_TOP - wmin) : 0.06;        // ground the lowest wheel on the road surface
+  return c.rig._rideBase;
+}
 function syncCarMesh(c){
   c.visY = (brActive||window.freeRoam) ? Math.max(terrainHeight(c.pos.x, c.pos.y), (beachSea!=null?beachSea+0.3:-45)) : roadElevExact(c.pos.x, c.pos.y, c.trackIdx);   // BR roams off-road -> follow terrain (but float on water, never sink under the sea)
-  c.rig.group.position.set(c.pos.x, 0.06+c.visY+(c.air||0)+(c.rig.lift||0), c.pos.y);   // +air = crest launch; +lift = upgraded tires raise ride height so wheels stay GROUNDED (never sunk into the road)
+  const rideB=rigRideBase(c);
+  c.rig.group.position.set(c.pos.x, rideB+c.visY+(c.air||0)+(c.rig.lift||0), c.pos.y);   // +air = crest launch; +lift = upgraded tires raise ride height
   // PITCH the car to follow the road grade so it never clips its nose/tail into a hill (and reads natural on slopes)
   let pitch=0;
   if(sampleElev.length && !((c.air||0)>0) && !brActive){
@@ -4855,7 +4866,7 @@ function syncCarMesh(c){
     }
   }
   c._pitch=(c._pitch||0)+(pitch-(c._pitch||0))*0.25;       // light smoothing -> no jitter at slope transitions
-  c.rig.group.position.y=0.06+c.visY+(c.air||0)+(c.rig.lift||0);   // visY may have been lifted onto the terrain above
+  c.rig.group.position.y=rideB+c.visY+(c.air||0)+(c.rig.lift||0);   // visY may have been lifted onto the terrain above
   c.rig.group.rotation.order='YXZ'; c.rig.group.rotation.y=c.heading; c.rig.group.rotation.x=-c._pitch;
   // soft contact shadow under the car (grounds it; AI cars cast no real shadow on mobile)
   carShadowAssets();
@@ -6520,7 +6531,7 @@ function init(){
   // cars
   cars=[]; player=makeCar(CONFIG.colors.player, true); cars.push(player);
   for(let i=0;i<CONFIG.aiCount;i++) cars.push(makeCar(CONFIG.colors.ai[i%CONFIG.colors.ai.length], false));
-  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=8') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
+  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=10') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
   loadCarModels();   // upgrades the box placeholders to the realistic GLB when it loads
   loadPropModels();  // swaps procedural trees/rocks/palms for real CC0 GLBs when they load
 
