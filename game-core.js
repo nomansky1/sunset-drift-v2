@@ -217,7 +217,8 @@ function updateCar(c, inp, dt){
         let ox=0, oz=0, node=w;
         while(node && node!==c.rig.group){ if(node.scale && (node.scale.x!==1)) break; ox+=node.position.x; oz+=node.position.z; node=node.parent; }
         w.userData._ox=ox; w.userData._oz=oz; }
-      const target=w.userData._py - w.userData._ox*szr + w.userData._oz*sxr;   // ground-stick: cancel roll/squat at THIS contact patch
+      const off=clamp(-w.userData._ox*szr + w.userData._oz*sxr, -0.08, 0.035);   // ground-stick, but CAP the upward travel so a hard-lean wheel can't punch through the fender arch (owner: no fender glitching)
+      const target=w.userData._py + off;
       w.position.y += (target-w.position.y)*0.5;                            // smoothed = damped suspension travel
       // CAMBER: the loaded (outboard) wheels lean into the corner a hair — plants the tyre, reads sporty
       w.rotation.z = -w.userData._ox*szr*0.9; }
