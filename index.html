@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.40-->
+<!--BUILD:v10.41-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1281,7 +1281,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.40';
+(function(){ const BUILD='v10.41';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5541,24 +5541,39 @@ function _mkBattery(){ const g=new THREE.Group();
     grp.add(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.16,0.05), plusM));
     grp.position.set(0,0,s*0.61); grp.rotation.y = s>0?0:Math.PI; g.add(grp); }
   return g; }
+// FLOATING PICKUP FX (owner: no collision, floating, cool effects): halo + rotating energy ring + ground hover pad + optional beacon shaft
+function _pickupFx(g, color, r, shaft){
+  addGlow(g, 0, 0, 0, color, r*3.2);                                      // soft additive glow halo (also guarantees glowTex)
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(r*1.18, r*0.11, 8, 26),
+    new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false, fog:false}));
+  ring.rotation.x=Math.PI/2; g.add(ring); g.userData.fxRing=ring;         // energy ring (tumbles in updatePickups)
+  const pad=new THREE.Mesh(new THREE.CircleGeometry(r*1.9, 22),
+    new THREE.MeshBasicMaterial({map:glowTex, color, transparent:true, opacity:0.5, blending:THREE.AdditiveBlending, depthWrite:false, fog:false}));
+  pad.rotation.x=-Math.PI/2; g.add(pad); g.userData.fxPad=pad;            // ground hover-glow (pinned to the street while the item floats)
+  if(shaft){ const sh=new THREE.Mesh(new THREE.CylinderGeometry(r*0.55, r*0.4, 3.4, 12,1,true),
+      new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.12, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending, fog:false}));
+    sh.position.y=0.1; g.add(sh); } }
 function buildPickupMesh(type){ const g=new THREE.Group();
   if(type==='supply'){                                                    // SUPPLY DROP: big gold CRATE + a light beam (visible arena-wide; everyone rushes it)
-    const crate=_mkCrate(2.2, 0xffc23b, 0x6f4a0e, 0.82); crate.position.y=0.35; g.add(crate);
+    const crate=_mkCrate(2.2, 0xffc23b, 0x6f4a0e, 0.82); g.add(crate);
     const beam=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.0,70,14,1,true), new THREE.MeshBasicMaterial({color:0xffd23b, transparent:true, opacity:0.14, side:THREE.DoubleSide, depthWrite:false})); beam.position.y=34; g.add(beam);
     const mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.62), new THREE.MeshBasicMaterial({color:0xfff0c0})); mk.position.y=2.1; g.add(mk);
+    _pickupFx(g, 0xffe36a, 1.7, false);
     g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
-  if(type==='heal'){ const bat=_mkBattery(); g.add(bat); g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }   // health battery
-  const crate=_mkCrate(1.5, 0xff8a2e, 0x5a2c08, 0.62); g.add(crate);      // rkt = ammo crate
-  const mk=new THREE.Mesh(new THREE.OctahedronGeometry(0.42), new THREE.MeshBasicMaterial({color:0xffd9a6})); mk.position.y=1.4; g.add(mk);
+  if(type==='heal'){ g.add(_mkBattery()); _pickupFx(g, 0x37f0a0, 1.0, true);   // health battery
+    g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
+  g.add(_mkCrate(1.5, 0xff8a2e, 0x5a2c08, 0.62)); _pickupFx(g, 0xff9a3a, 1.05, true);   // rkt = ammo crate
   g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
 function spawnPickup(type){ const central=type==='supply', ang=Math.random()*6.283;
   const rr= central ? Math.random()*Math.max(16,zoneR*0.32) : 18+Math.random()*Math.max(24,zoneR*0.6);   // supply near centre = contested
-  const x=zoneCX+Math.cos(ang)*rr, z=zoneCZ+Math.sin(ang)*rr, y=(brActive?terrainHeight(x,z):0)+1.0;
+  const x=zoneCX+Math.cos(ang)*rr, z=zoneCZ+Math.sin(ang)*rr, y=(brActive?terrainHeight(x,z):0)+(central?1.5:1.85);   // FLOAT clearly above the street
   const m=buildPickupMesh(type); m.position.set(x,y,z); scene.add(m); pickups.push({m,type,x,z,base:y,spin:Math.random()*6}); }
 function updatePickups(dt){ pickupTimer-=dt;
   if(pickups.length<4 && pickupTimer<=0){ pickupTimer=3.5; spawnPickup(Math.random()<0.55?'heal':'rkt'); }
   brSupplyT-=dt; if(brSupplyT<=0 && !pickups.some(p=>p.type==='supply')){ brSupplyT=17; spawnPickup('supply'); if(brActive) flash('📦 SUPPLY DROP','good'); }   // periodic contested drop
-  for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i]; p.spin+=dt; p.m.rotation.y=p.spin*(p.type==='supply'?0.8:1.5); p.m.position.y=p.base+Math.sin(p.spin*2.2)*(p.type==='supply'?0.32:0.2);
+  for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i]; p.spin+=dt; p.m.rotation.y=p.spin*(p.type==='supply'?0.8:1.4); p.m.position.y=p.base+Math.sin(p.spin*2.0)*(p.type==='supply'?0.34:0.3);
+    const rg=p.m.userData.fxRing; if(rg){ rg.rotation.z+=dt*2.4; const s=1+Math.sin(p.spin*3)*0.08; rg.scale.set(s,s,s); }   // energy ring tumbles + pulses
+    const pd=p.m.userData.fxPad; if(pd) pd.position.y=0.12-p.m.position.y;                                                 // keep the hover-glow pinned to the street
     let taken=false; for(const c of cars){ if(!c.alive) continue; if(p.type==='rkt'&&!c.isPlayer) continue;   // rocket crates player-only; heal + supply are for everyone
       if(Math.hypot(c.pos.x-p.x, c.pos.y-p.z) < (p.type==='supply'?4.4:3.4)){ collectPickup(p,c); taken=true; break; } }
     if(taken){ scene.remove(p.m); disposeGroup(p.m); pickups.splice(i,1); if(p.type!=='supply') pickupTimer=Math.min(pickupTimer,1.5); } } }
