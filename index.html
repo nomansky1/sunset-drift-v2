@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.54-->
+<!--BUILD:v10.55-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1296,7 +1296,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.54';
+(function(){ const BUILD='v10.55';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3410,12 +3410,21 @@ function buildStreetFurniture(rng){
     if(distToTrackApprox(cx,cz)<30) continue;
     for(let t=0;t<7;t++){ const x=cx+(rng()-0.5)*24, z=cz+(rng()-0.5)*24; treePos.push({x,z,s:1.0+rng()*0.6}); } }   // a small park: a cluster of trees
   if(treePos.length){
-    const trunkGeo=new THREE.CylinderGeometry(0.25,0.34,3,6); trunkGeo.translate(0,1.5,0);
-    const trunk=new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({color:0x5a3f28,roughness:1}), treePos.length);
-    const leaf=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.9,0), new THREE.MeshStandardMaterial({color:0x2f6b34,flatShading:true,roughness:1}), treePos.length);
-    treePos.forEach((t,k)=>{ const y=terrainHeight(t.x,t.z); _t.compose(_tp.set(t.x,y,t.z),_tq,_ts.set(t.s,t.s,t.s)); trunk.setMatrixAt(k,_t);
-      _t.compose(_tp.set(t.x,y+4*t.s,t.z),_tq,_ts.set(t.s,t.s,t.s)); leaf.setMatrixAt(k,_t); });
-    trunk.instanceMatrix.needsUpdate=leaf.instanceMatrix.needsUpdate=true; trunk.castShadow=leaf.castShadow=!isTouch; scene.add(trunk); scene.add(leaf); }
+    // DETAILED tree: tapered trunk + a MULTI-LOBE canopy (3 overlapping foliage clusters) with per-tree
+    // rotation + colour variation -> fuller, more organic than a single blob. Same footprint so it never
+    // clashes with the sidewalk/buildings. All instanced -> 4 draw calls for the whole street. (owner)
+    const trunkGeo=new THREE.CylinderGeometry(0.2,0.36,3.2,7); trunkGeo.translate(0,1.6,0);
+    const trunk=new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({color:0x5a3f28,roughness:1,flatShading:true}), treePos.length);
+    const leafMat=new THREE.MeshStandardMaterial({color:0xffffff, flatShading:true, roughness:1});   // white base, tinted per-tree via instanceColor
+    const lobeDefs=[[0,4.3,0,1.6],[0.85,5.0,0.4,1.1],[-0.8,4.75,-0.5,1.05]];   // main + upper + side lobe
+    const lobes=lobeDefs.map(d=>{ const g=new THREE.IcosahedronGeometry(d[3],0); g.translate(d[0],d[1],d[2]);
+      const m=new THREE.InstancedMesh(g, leafMat, treePos.length); m.castShadow=!isTouch; m.frustumCulled=false; return m; });
+    const greens=[0x2f6b34,0x357a3c,0x2a6030,0x3f8a44,0x49913f], _col=new THREE.Color();
+    treePos.forEach((t,k)=>{ const y=terrainHeight(t.x,t.z), yaw=rng()*6.283; _tq.setFromAxisAngle(_UP,yaw);
+      _t.compose(_tp.set(t.x,y,t.z),_tq,_ts.set(t.s,t.s,t.s)); trunk.setMatrixAt(k,_t); lobes.forEach(m=>m.setMatrixAt(k,_t));
+      _col.setHex(greens[(rng()*greens.length)|0]).multiplyScalar(0.82+rng()*0.32); lobes.forEach(m=>m.setColorAt(k,_col)); });
+    trunk.instanceMatrix.needsUpdate=true; trunk.castShadow=!isTouch; scene.add(trunk);
+    lobes.forEach(m=>{ m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true; scene.add(m); }); }
   const bushPos=[];
   for(let i=0;i<SAMPLES;i+=11){ if(rng()>0.55) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+2.5+rng()*4;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>CONFIG.roadHalfWidth+1.5) bushPos.push({x,z}); }
