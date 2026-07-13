@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.59-->
+<!--BUILD:v10.60-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -610,6 +610,49 @@
   .brCard b{ display:block; font-size:11px; letter-spacing:.6px; color:#ffe9e2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .brCard span{ font-size:9px; letter-spacing:.5px; color:rgba(255,205,190,.55); }
   #brPickFoot{ display:flex; justify-content:center; padding-top:8px; }
+  #brPickGrid{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }   /* bigger, less cramped cards */
+  #brPickHead span{ font-size:16px; }
+  #brPickHead span::after{ content:' · TAP TO SCOUT'; font-size:10px; letter-spacing:2px; color:rgba(255,180,160,.55); }
+  .brCard{ position:relative; padding:8px 8px 8px; }
+  .brCard b{ font-size:12px; }
+  .brCard .brDots{ display:flex; gap:3px; justify-content:center; margin-top:5px; }
+  .brCard .brDots i{ width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.18); }
+  .brCard .brDots i.on{ background:#ff7a3c; box-shadow:0 0 5px #ff7a3c; }
+  .brCard .brReal{ position:absolute; top:6px; right:7px; font-size:9px; letter-spacing:.5px; color:#ffce8a; background:rgba(40,20,10,.7); padding:1px 5px; border-radius:6px; border:1px solid rgba(255,180,90,.3); }
+  /* ---- ARENA DETAIL POPUP (globe-card style, battle-red holographic) ---- */
+  #brDetail{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(92vw,420px); z-index:6;
+    display:flex; flex-direction:column; gap:8px; border:1px solid rgba(255,120,90,.4); border-radius:18px; padding:11px 13px;
+    box-shadow:0 0 0 1px rgba(255,90,60,.14), 0 18px 60px rgba(0,0,0,.62), 0 0 40px rgba(255,110,60,.22), inset 0 0 22px rgba(255,110,60,.06);
+    animation:holoIn .46s cubic-bezier(.2,1.2,.35,1); }
+  #brDetail.hidden{ display:none; }
+  #brDetail::before,#brDetail::after{ content:''; position:absolute; width:22px; height:22px; pointer-events:none; border:2px solid rgba(255,170,130,.85); }
+  #brDetail::before{ top:-2px; left:-2px; border-right:none; border-bottom:none; border-radius:14px 0 0 0; }
+  #brDetail::after{ bottom:-2px; right:-2px; border-left:none; border-top:none; border-radius:0 0 14px 0; }
+  #bdTop,#bdMid,#bdBtns{ background:linear-gradient(160deg,rgba(40,20,22,.9),rgba(18,9,11,.92)); border:1px solid rgba(255,255,255,.1);
+    border-radius:11px; padding:9px 11px; -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px); }
+  #bdTop{ display:flex; align-items:center; gap:12px; }
+  #bdIcon{ font-size:30px; flex:0 0 auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+  #bdInfo{ flex:1; min-width:0; text-align:left; }
+  #bdName{ font-weight:900; font-size:16px; letter-spacing:.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #bdMeta{ font-size:12px; color:#f0b8a8; margin-top:2px; }
+  #bdBack{ width:34px; height:34px; border-radius:50%; background:rgba(30,16,20,.8); border:1px solid rgba(255,255,255,.25);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; flex:0 0 auto; }
+  #bdHolo{ position:relative; height:176px; border-radius:11px; border:1px dashed rgba(255,150,110,.4); overflow:hidden;
+    background:radial-gradient(ellipse at 50% 82%, rgba(255,110,60,.12) 0%, transparent 62%); display:flex; align-items:center; justify-content:center; }
+  #bdHolo .hScan{ position:absolute; inset:0; background:repeating-linear-gradient(0deg, rgba(255,170,130,.05) 0 2px, transparent 2px 5px); pointer-events:none; }
+  #bdMap{ width:90%; height:90%; display:flex; align-items:center; justify-content:center; filter:drop-shadow(0 4px 14px rgba(255,120,60,.35)); }
+  #bdMap svg{ width:100%; height:100%; }
+  #bdMid{ display:flex; flex-direction:column; gap:7px; text-align:left; }
+  #bdDiff{ font-size:12px; font-weight:800; letter-spacing:1px; color:#e8c9c0; }
+  #bdDiff .on{ color:#ffd23b; } #bdDiff .off{ color:rgba(255,255,255,.22); }
+  #bdTags{ font-size:12px; color:#f0c4b6; font-weight:700; }
+  #bdBtns{ display:flex; gap:8px; padding:8px; }
+  #bdBattle{ flex:1.5; text-align:center; font-weight:900; letter-spacing:1px; padding:13px 8px; border-radius:10px; font-size:15px; color:#fff; cursor:pointer;
+    background:linear-gradient(95deg,#e8342e,#ff7a3c); box-shadow:0 6px 18px rgba(230,50,40,.4); }
+  #bdRace{ flex:1; text-align:center; font-weight:900; letter-spacing:1px; padding:13px 8px; border-radius:10px; font-size:14px; color:#ffe2d6; cursor:pointer;
+    background:linear-gradient(95deg,rgba(90,40,44,.9),rgba(60,26,30,.9)); border:1px solid rgba(255,150,120,.3); }
+  #bdBattle:active,#bdRace:active{ transform:scale(.96); }
+  #brPick.detailOpen #brPickGrid, #brPick.detailOpen #brPickHead, #brPick.detailOpen #brPickFoot{ filter:blur(3px) brightness(.45); pointer-events:none; }
   #gcTrack{ display:none !important; }   /* the holo window IS the track map now — the little SVG thumb doubled it */
   #gcTop{ display:flex; align-items:center; gap:12px; }
   #globeRace{ flex:1.4; } #globeBattle{ flex:1; pointer-events:auto; cursor:pointer; text-align:center; font-weight:900; letter-spacing:1px;
@@ -1296,7 +1339,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.59';
+(function(){ const BUILD='v10.60';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -7066,28 +7109,50 @@ function init(){
   function brCityLabel(ti){ const t=TRACKS[ti]||{};
     if(t.osm) return (t.sub||'').split('·')[0].trim() || t.name;
     return t.name||('ARENA '+ti); }
-  let _brPickBuilt=false;
+  let _brPickBuilt=false, _brSelTi=0; const _brMeta={};
+  function brDetailTags(ti){ const t=TRACKS[ti]||{}, p=[];
+    if(t.theme) p.push(t.theme.toUpperCase());
+    if(_brMeta[ti]) p.push(_brMeta[ti]);
+    if(t.osm) p.push('📍 REAL CITY');
+    return p.join('  ·  '); }
+  function openBRDetail(ti){ _brSelTi=ti; const bp=document.getElementById('brPick'), bd=document.getElementById('brDetail'), t=TRACKS[ti]||{};
+    document.getElementById('bdName').textContent=brCityLabel(ti);
+    document.getElementById('bdMeta').textContent=(t.sub||t.name||(t.theme||'').toUpperCase());
+    const ic=document.querySelector('.trackBtn[data-i="'+ti+'"] .ic'); document.getElementById('bdIcon').textContent=(ic&&ic.textContent.trim())||'🏙️';
+    try{ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[t.theme])||'#ff7a3c'; document.getElementById('bdMap').innerHTML=(typeof trackThumb==='function'&&t.ctrl)?trackThumb(t.ctrl,acc):''; }catch(e){ document.getElementById('bdMap').innerHTML=''; }
+    let d=3; try{ d=(trackDifficulties()[ti])||3; }catch(e){}
+    document.getElementById('bdDiff').innerHTML='DIFFICULTY  <span class="on">'+'★'.repeat(d)+'</span><span class="off">'+'★'.repeat(5-d)+'</span>';
+    document.getElementById('bdTags').textContent='⚔  '+brDetailTags(ti);
+    bd.classList.remove('hidden'); bp.classList.add('detailOpen'); if(window.audio&&audio.ui) audio.ui(); }
+  function closeBRDetail(){ document.getElementById('brDetail').classList.add('hidden'); document.getElementById('brPick').classList.remove('detailOpen'); }
   function openBRPick(){
     const bp=document.getElementById('brPick'); if(!bp) return startBattle();
     if(!_brPickBuilt){ _brPickBuilt=true;
-      const grid=document.getElementById('brPickGrid');
+      const grid=document.getElementById('brPickGrid'); let DIFFS=[]; try{ DIFFS=trackDifficulties(); }catch(e){}
       for(let ti=0;ti<TRACKS.length;ti++){ if(!TRACKS[ti]||!TRACKS[ti].ctrl) continue;
-        const th=brArenaThumb(ti);
+        const th=brArenaThumb(ti); _brMeta[ti]=th.meta;
         const card=document.createElement('div'); card.className='brCard';
+        if(TRACKS[ti].osm){ const rb=document.createElement('div'); rb.className='brReal'; rb.textContent='REAL'; card.appendChild(rb); }
         card.appendChild(th.cv);
         const b3=document.createElement('b'); b3.textContent=brCityLabel(ti); card.appendChild(b3);
-        const sp=document.createElement('span'); sp.textContent=th.meta+(TRACKS[ti].osm?' · REAL CITY':''); card.appendChild(sp);
-        card.addEventListener('click', ev=>{ ev.stopPropagation(); if(window.audio&&audio.ui) audio.ui();
-          bp.classList.remove('show');
-          selectTrack(ti); playTransition(()=>startBattle()); });
+        const sp=document.createElement('span'); sp.textContent=th.meta; card.appendChild(sp);
+        const d=DIFFS[ti]||3, dots=document.createElement('div'); dots.className='brDots';
+        for(let k=0;k<5;k++){ const i2=document.createElement('i'); if(k<d) i2.className='on'; dots.appendChild(i2); }
+        card.appendChild(dots);
+        const _ti=ti; card.addEventListener('click', ev=>{ ev.stopPropagation(); openBRDetail(_ti); });
         grid.appendChild(card); }
-      document.getElementById('brPickClose').addEventListener('click', ev=>{ ev.stopPropagation(); bp.classList.remove('show'); });
+      document.getElementById('brPickClose').addEventListener('click', ev=>{ ev.stopPropagation(); if(bp.classList.contains('detailOpen')){ closeBRDetail(); return; } bp.classList.remove('show'); });
       document.getElementById('brPickRandom').addEventListener('click', ev=>{ ev.stopPropagation();
-        const ti=(Math.random()*TRACKS.length)|0; bp.classList.remove('show');
-        selectTrack(ti); playTransition(()=>startBattle()); });
-      window.addEventListener('keydown', ev=>{ if(ev.key==='Escape'&&bp.classList.contains('show')) bp.classList.remove('show'); });
+        const cands=[]; for(let ti=0;ti<TRACKS.length;ti++){ if(TRACKS[ti]&&TRACKS[ti].ctrl) cands.push(ti); }
+        if(cands.length) openBRDetail(cands[(Math.random()*cands.length)|0]); });
+      document.getElementById('bdBack').addEventListener('click', ev=>{ ev.stopPropagation(); closeBRDetail(); });
+      document.getElementById('bdBattle').addEventListener('click', ev=>{ ev.stopPropagation(); if(window.audio&&audio.ui) audio.ui();
+        closeBRDetail(); bp.classList.remove('show'); selectTrack(_brSelTi); playTransition(()=>startBattle()); });
+      document.getElementById('bdRace').addEventListener('click', ev=>{ ev.stopPropagation(); if(window.audio&&audio.ui) audio.ui();
+        closeBRDetail(); bp.classList.remove('show'); selectTrack(_brSelTi); playTransition(()=>{ if(typeof startGame==='function') startGame(); else startBattle(); }); });
+      window.addEventListener('keydown', ev=>{ if(ev.key==='Escape'&&bp.classList.contains('show')){ if(bp.classList.contains('detailOpen')) closeBRDetail(); else bp.classList.remove('show'); } });
     }
-    bp.classList.add('show');
+    closeBRDetail(); bp.classList.add('show');
   }
   document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return; openBRPick(); });
   { const dc=document.getElementById('dailyCard'); if(dc) dc.addEventListener('click', e=>{ e.stopPropagation(); startDaily(); }); }
@@ -7905,6 +7970,12 @@ window.NETRACE=false;
   <div id="brPickHead"><span>⚔ CHOOSE YOUR ARENA</span><div id="brPickClose">✕</div></div>
   <div id="brPickGrid"></div>
   <div id="brPickFoot"><div class="gaBtn" id="brPickRandom">🎲 RANDOM CITY</div></div>
+  <div id="brDetail" class="hidden">
+    <div id="bdTop"><div id="bdIcon">🏙️</div><div id="bdInfo"><div id="bdName">—</div><div id="bdMeta">—</div></div><div id="bdBack">✕</div></div>
+    <div id="bdHolo"><i class="hScan"></i><div id="bdMap"></div></div>
+    <div id="bdMid"><div id="bdDiff"></div><div id="bdTags"></div></div>
+    <div id="bdBtns"><div id="bdBattle">⚔ START BATTLE</div><div id="bdRace">▶ RACE</div></div>
+  </div>
 </div>
 <div id="globeModal">
   <div id="globeClose">✕</div>
