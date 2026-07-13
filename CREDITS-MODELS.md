@@ -27,3 +27,10 @@
 - audio/gd-eng-rev.wav — "Racing Car Engine Sound Loops" by domasx2 (OGA, CC0) — https://opengameart.org/content/racing-car-engine-sound-loops
 - audio/gd-screech.wav — "Car Tire Squeal Skid Loop" by Tom Haigh/audible-edge (OGA, CC-BY 3.0) — https://opengameart.org/content/car-tire-squeal-skid-loop
 - audio/gd-nitrous.wav — procedurally generated (ffmpeg pink-noise purge)
+
+## SFX v10.45 (ElevenLabs — generated on the owner's account)
+- audio/gd-eng-idle.wav — "sports car engine idling, low RPM steady rumble" (ElevenLabs Sound Effects, looped)
+- audio/gd-eng-rev.wav — "aggressive sports car engine revving, high RPM exhaust growl" (ElevenLabs Sound Effects, looped)
+- audio/gd-screech.wav — "car tires screeching/skidding on asphalt, drift burnout" (ElevenLabs Sound Effects, looped)
+- audio/gd-nitrous.wav — "nitrous purge / turbo blow-off whoosh" (ElevenLabs Sound Effects)
+- audio/gd-crash.wav — "car body-panel metal impact (minimal)" (ElevenLabs Sound Effects, trimmed)
