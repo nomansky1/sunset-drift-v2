@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.48-->
+<!--BUILD:v10.49-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1285,7 +1285,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.48';
+(function(){ const BUILD='v10.49';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4751,8 +4751,10 @@ function treadTex(){ if(_treadT) return _treadT;                        // proce
   _treadT=new THREE.CanvasTexture(c); _treadT.wrapS=_treadT.wrapT=THREE.RepeatWrapping; _treadT.repeat.set(8,2);
   SHARED.add(_treadT); return _treadT; }
 // MOLDED supercar body kit: curved geometry (no square boxes) measured off the car's bounding box so it fits + embeds into all 12 bodies.
+const BUILTIN_WING=new Set(['rwb','gt3p','mcl35m','lp830','quattro','wrx','skyline','nascar']);   // gen4 models ship WITH their own spoiler -> don't stack a clashing upgrade wing (owner: like both, no clash)
 function attachUpgrades(rig, carIdx, forceU){
   const u=forceU||upgOf(carIdx), g=rig.group, sh=!isTouch;
+  const builtinWing=BUILTIN_WING.has((CARS[carIdx]||{}).raw||'');
   rig.kitMats=null;
   if(!(u.eng||u.tire||u.nos||u.brake||u.turbo)) return;   // any owned upgrade shows its parts (brake/turbo were missing from this gate)
   const d=rig.dims||{W:2,H:1.5,Lz:4.6,yaw:0};                        // true normalized car size captured at build (axis-aligned, centered, +Z fwd)
@@ -4779,7 +4781,7 @@ function attachUpgrades(rig, carIdx, forceU){
     const dim=axis==='z'?s.z:axis==='y'?s.y:s.x, k=target/(dim||1);
     const m=new THREE.Mesh(geo,mat); m.castShadow=sh; m.scale.setScalar(k); m.position.set(x,y,z); if(rotX) m.rotation.x=rotX; kit.add(m); return m; };
   // ENGINE -> GT wing mounted on the car's REAL rear-deck surface (raycast) so it never floats (scoop removed - it hovered on sloped hoods)
-  if(u.eng>0){ const s=u.eng;
+  if(u.eng>0 && !builtinWing){ const s=u.eng;                          // built-in-spoiler cars keep their own wing (no clashing second wing); they still get the ground-effects kit below
     const wingZ=rear*0.72;                                             // deck = HIGHEST surface AT the wing's z (so a wing never sinks into a pickup bed nor floats on the cabin)
     const deckY=Math.max(surfY(0,wingZ,top*0.5), surfY(W*0.25,wingZ,-9), surfY(-W*0.25,wingZ,-9));
     if(tall){                                                          // pickup/SUV -> subtle ducktail lip on the rear deck (no GT wing)
