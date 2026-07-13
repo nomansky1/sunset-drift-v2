@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.57-->
+<!--BUILD:v10.58-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1296,7 +1296,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.57';
+(function(){ const BUILD='v10.58';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1415,7 +1415,7 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'PICKUP',  kind:'glb', raw:'pickup', yaw:0, spd:74,  grip:84, price:350},
              {name:'COUPE',   kind:'glb', raw:'sport',  yaw:0, spd:86,  grip:74, price:450},
              {name:'SUV',     kind:'glb', raw:'suv',    yaw:0, spd:80,  grip:82, price:600},
-             {name:'EXOTIC',  kind:'glb', raw:'super',  yaw:0, spd:100, grip:64, price:900},
+             {name:'EXOTIC',  kind:'glb', raw:'ferrari', yaw:0, spd:100, grip:64, price:900},   // gen4 Ferrari 458 (was low-poly electric-hypercar 'super') — owner: higher-poly cars that blend in
              {name:'CAB',         kind:'glb', raw:'taxi',     yaw:0, spd:76, grip:80, price:400},
              {name:'RACER',       kind:'glb', raw:'racer',    yaw:0, spd:90, grip:73, price:750},
              {name:'ROADSTER',    kind:'glb', raw:'roadster', yaw:0, spd:88, grip:76, price:850},
@@ -4381,6 +4381,7 @@ function loadCarModels(){
    ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
    ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?r5'],
    ['skyline','models/gen4/skyline.glb'],['gt3p','models/gen4/gt3p.glb'],['mcl35m','models/gen4/mcl35m.glb'],
+   ['ferrari','models/gen4/ferrari.glb?r1'],   // gen4 Ferrari 458 -> replaces the low-poly electric-hypercar in the EXOTIC slot (owner: higher-poly cars)
    ['rwb','models/gen4/rwb.glb'],['wrx','models/gen4/wrx.glb'],['nascar','models/gen4/nascar.glb'],   // gen4 = downloaded high-fidelity CC-BY cars (ATTRIBUTIONS in Downloads/3D_Racing_Assets)   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
    ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
     // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
