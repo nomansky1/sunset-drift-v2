@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.55-->
+<!--BUILD:v10.56-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1296,7 +1296,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.55';
+(function(){ const BUILD='v10.56';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6577,6 +6577,27 @@ const CINEMATIC_SHADER = {
     '}'
   ].join('\n')
 };
+// EXPOSURE + BLOOM per lighting mood. Extracted from buildWorld so buildComposer() can re-apply it
+// after ANY composer rebuild (resize / AO toggle / self-heal) — otherwise the fresh UnrealBloomPass
+// keeps its raw 0.6/0.86 constructor values and daytime silently reverts to a white-blooming flood.
+function applyToneBloom(){
+  if(!currentTheme) return;
+  const t=currentTheme.theme;
+  const bright = t==='desert' || t==='forest' || t==='beach' || t==='snow';   // open full-daylight (snow is very bright)
+  const warm   = t==='coast';                                       // bright sunset (still glowy, but don't clip white)
+  if(nightMode){
+    renderer.toneMappingExposure = 1.0;
+    if(bloomPass){ bloomPass.strength = isTouch?0.5:0.8; bloomPass.threshold = isTouch?0.78:0.7; }   // neon + lights pop (not car paint); phones tighter — half-res bloom floods
+  } else {
+    const mTrim = isTouch ? (bright?0.80:warm?0.84:0.88) : 1;            // PHONES clip the bright themes (owner: overexposed on mobile) -> trim exposure per tier
+    renderer.toneMappingExposure = (bright ? 0.68 : warm ? 0.78 : 0.88) * mTrim;   // owner: daytime sun/glare too bright
+    if(bloomPass){
+      bloomPass.strength  = bright ? 0.16 : warm ? 0.2 : 0.2;
+      bloomPass.threshold = bright ? 0.99 : 0.97;   // dusk: only the brightest lit windows bloom (not a neon smear)
+      bloomPass.radius    = 0.22;                    // wide radius smeared half the frame at half-res (owner phone shot)
+    }
+  }
+}
 function buildComposer(){
   if(typeof THREE.EffectComposer==='undefined' || typeof THREE.UnrealBloomPass==='undefined') return;
   try{
@@ -6612,6 +6633,7 @@ function buildComposer(){
       composer.addPass(fxaaPass);
     }
     syncComposerSize();
+    applyToneBloom();                                                     // re-apply per-mood exposure/bloom so a resize/AO rebuild never leaves the raw 0.6/0.86 daytime flood
   }catch(e){ composer=null; }
 }
 // ---- DYNAMIC POINT LIGHTS (rocket flight + explosion flash) — capped + skipped on LITE to protect the FPS moat ----
@@ -6747,26 +6769,31 @@ function disposeGroup(g){ g.traverse(o=>{
   if(o.material){ const ms=Array.isArray(o.material)?o.material:[o.material];
     ms.forEach(m=>{ if(SHARED.has(m)) return; for(const k in m){ const v=m[k]; if(v && v.isTexture && !SHARED.has(v)) v.dispose(); } if(m.dispose) m.dispose(); }); }
 }); }
+// KILL DAYTIME SKY-REFLECTION GLARE on world assets. MeshStandardMaterial defaults envMapIntensity=1.0,
+// so buildings/props/terrain MIRROR the bright-sky PMREM and blaze on the SHADED side the sun never reaches
+// (owner: "glare where the sun is not pointing"). Clamp world reflections low; cars + their glass (both
+// MeshPhysicalMaterial), the water and the wet road (roadMatRef) keep their full shine.
+function tameEnvGlare(){
+  if(!WORLD) return;
+  WORLD.traverse(o=>{ if(o.isMesh && o.material){
+    const ms=Array.isArray(o.material)?o.material:[o.material];
+    ms.forEach(m=>{
+      if(!m || m.envMapIntensity===undefined) return;
+      if(m.isMeshPhysicalMaterial) return;                              // cars + car glass — hero reflective surfaces, keep as-is
+      if(m===waterMat || m===roadMatRef) return;                        // water + wet-road sheen are meant to mirror the sky
+      const n=(m.name||'').toLowerCase(); if(/water|sea|ocean/.test(n)) return;
+      if(m.userData._envBase===undefined) m.userData._envBase=m.envMapIntensity;   // remember once -> idempotent across rebuilds
+      m.envMapIntensity=Math.min(m.userData._envBase, 0.2);
+    });
+  }});
+}
 function buildWorld(idx){
   currentTrack=idx; currentTheme=(idx===CUSTOM_IDX && customTrack)?customTrack:TRACKS[idx]; if(!currentTheme) return;
   const tp=TERRAIN[currentTheme.theme]; terrainAmp=tp?tp.amp:0; terrainBiome=tp?tp.biome:'flat'; terrainNoise=makeNoise(idx*131+7);
   if(brActive) terrainAmp=0;                                        // BATTLE ROYALE is a CITY fight on level ground — hills through the street grid buried cars under meshes (owner)
   beachSea = (currentTheme.water!==undefined) ? currentTheme.water : null; waterMat=null;   // seaside ocean (set before terrain build)
   const t=currentTheme.theme;                                       // tone per lighting mood
-  const bright = t==='desert' || t==='forest' || t==='beach' || t==='snow';   // open full-daylight (snow is very bright)
-  const warm   = t==='coast';                                       // bright sunset (still glowy, but don't clip white)
-  if(nightMode){
-    renderer.toneMappingExposure = 1.0;
-    if(bloomPass){ bloomPass.strength = isTouch?0.5:0.8; bloomPass.threshold = isTouch?0.78:0.7; }   // neon + lights pop (not car paint); phones tighter — half-res bloom floods
-  } else {
-    const mTrim = isTouch ? (bright?0.80:warm?0.84:0.88) : 1;            // PHONES clip the bright themes (owner: overexposed on mobile) -> trim exposure per tier
-    renderer.toneMappingExposure = (bright ? 0.68 : warm ? 0.78 : 0.88) * mTrim;   // owner: daytime sun/glare too bright
-    if(bloomPass){
-      bloomPass.strength  = bright ? 0.16 : warm ? 0.2 : 0.2;
-      bloomPass.threshold = bright ? 0.99 : 0.97;   // dusk: only the brightest lit windows bloom (not a neon smear)
-      bloomPass.radius    = 0.22;                    // wide radius smeared half the frame at half-res (owner phone shot)
-    }
-  }
+  applyToneBloom();                                                 // exposure + bloom per mood — extracted so buildComposer() re-applies it after any resize/AO rebuild (else daytime reverts to the raw 0.6/0.86 UnrealBloom flood and every asset blooms to white)
   if(cinePass){                                            // per-ENVIRONMENT cinematic grade (contrast, saturation, teal-orange, vignette)
     const G={ city:[1.18,0.98,1.12,0.50], coast:[1.14,1.04,1.15,0.46], docks:[1.12,0.96,0.90,0.44],
       beach:[1.10,1.08,0.75,0.40], forest:[1.13,1.02,0.90,0.46], snow:[1.10,0.92,0.70,0.42], desert:[1.16,1.03,1.25,0.50] }[t]||[1.16,0.97,1.15,0.48];
@@ -6794,6 +6821,7 @@ function buildWorld(idx){
   } finally { delete scene.add; }                                // restore the real Object3D.add
   ensureRain();                                                  // rain persists outside WORLD (real scene.add)
   captureEnv();                                                  // per-track reflections of the real environment
+  tameEnvGlare();                                                // clamp world sky-reflections AFTER capture -> shaded assets stop glaring; cars/glass/water keep shine
 }
 const RAIN_AREA=95, RAIN_HI=82, RAIN_SLANT=0.16;          // concentrated near the camera + windblown lean
 function ensureRain(){
