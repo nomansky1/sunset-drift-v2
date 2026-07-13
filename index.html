@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.42-->
+<!--BUILD:v10.43-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -337,6 +337,9 @@
   /* combat juice — kept minimal so it never clutters the road */
   #lowHp{ position:fixed; inset:0; z-index:19; pointer-events:none; opacity:0; transition:opacity .2s linear;
           box-shadow:inset 0 0 min(28vw,190px) min(9vw,60px) rgba(220,20,20,.85); }
+  #zoneOut{ position:fixed; inset:0; z-index:18; pointer-events:none; opacity:0; transition:opacity .18s linear;
+          box-shadow:inset 0 0 min(30vw,220px) min(11vw,80px) rgba(90,180,255,.7); }   /* BR zone edge warning */
+  #zoneOut.danger{ box-shadow:inset 0 0 min(32vw,240px) min(12vw,90px) rgba(255,64,36,.85); transition:none; }   /* outside the zone = red damage pulse */
   #hitMark{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(1.6); z-index:23; pointer-events:none;
             font-size:26px; font-weight:900; color:#fff; text-shadow:0 0 6px #f33,0 1px 3px #000; opacity:0; }
   #hitMark.show{ animation:hitPop .22s ease-out; }
@@ -1028,6 +1031,7 @@
 <div id="brHud"><div id="brAlive">🔥 6 ALIVE</div><div id="brHpWrap"><div id="brHpFill"></div></div><div id="brRockets">🚀 ×3</div><div id="brZone">ZONE 300m</div></div>
 <div id="brRadar"><canvas id="brRadarCv" width="132" height="132"></canvas></div>
 <div id="brArrows"><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span></div>
+<div id="zoneOut"></div>
 <div id="lowHp"></div>
 <div id="hitMark">✕</div>
 <div id="killFeed"></div>
@@ -1281,7 +1285,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.42';
+(function(){ const BUILD='v10.43';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5302,7 +5306,7 @@ const BR={ cars:6, maxHP:160, dmg:2.3, range:54, gunCd:0.24, zoneDps:9, shrink:1
   rkDmg:52, rkSplash:10, rkSpeed:56, rkTurn:2.0, rkLife:3.4, rkCd:2.4, rkAmmo:3 };   // GATLING: fast/low-dmg hitscan. ROCKETS: slow homing (rkTurn=dodge knob) + splash + knockback, limited ammo
 window.freeRoam=false;
 let brColliders=[], brGrid=null;
-let brActive=false, brAlive=0, brWon=false, zoneR=300, zoneCX=0, zoneCZ=0, zoneMesh=null, brTracers=[];
+let brActive=false, brAlive=0, brWon=false, zoneR=300, zoneCX=0, zoneCZ=0, zoneMesh=null, zoneRing=null, brTracers=[];
 let rockets=[], explosions=[], pickups=[], hpBars=[], mflashes=[], pickupTimer=0, brSupplyT=9;   // brSupplyT = supply-drop countdown
 // GLOBAL weapon upgrades (persist; apply to the player in battle) — the "gun upgrades" arsenal
 let warsenal={gat:0,rkt:0,arm:0};
@@ -5432,10 +5436,23 @@ function mountNitro(rig){ if(!rig.group || rig.nitroKit) return;
     const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.065,0.1,10), cmat); cap.position.y=bl*0.52; b.add(cap);
     b.rotation.x=0.55; b.position.set(sx*W*0.19, deckY, dz); g.add(b); }
   g.traverse(o=>{ if(o.isMesh) o.castShadow=!isTouch; }); rig.group.add(g); rig.nitroKit=g; }
-function buildZone(){ if(zoneMesh){ scene.remove(zoneMesh); zoneMesh.geometry.dispose(); }
-  const geo=new THREE.CylinderGeometry(1,1,80,64,1,true);
-  zoneMesh=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x3aa0ff, transparent:true, opacity:0.13, side:THREE.DoubleSide, depthWrite:false}));
-  zoneMesh.position.set(zoneCX,26,zoneCZ); zoneMesh.scale.set(zoneR,1,zoneR); scene.add(zoneMesh); }
+function buildZone(){ if(zoneMesh){ scene.remove(zoneMesh); if(zoneMesh.material.map)zoneMesh.material.map.dispose(); zoneMesh.geometry.dispose(); zoneMesh.material.dispose(); }
+  if(zoneRing){ scene.remove(zoneRing); zoneRing.geometry.dispose(); zoneRing.material.dispose(); zoneRing=null; }
+  // ENERGY WALL texture: vertical light streaks + horizontal scan bands (scrolls upward each frame)
+  const cv=document.createElement('canvas'); cv.width=64; cv.height=128; const x=cv.getContext('2d');
+  x.clearRect(0,0,64,128);
+  for(let i=0;i<24;i++){ const gx=Math.random()*64, a=0.14+Math.random()*0.5;
+    const grd=x.createLinearGradient(gx,0,gx,128); grd.addColorStop(0,'rgba(130,215,255,0)'); grd.addColorStop(0.5,'rgba(160,230,255,'+a+')'); grd.addColorStop(1,'rgba(130,215,255,0)');
+    x.fillStyle=grd; x.fillRect(gx,0,1+Math.random()*2,128); }
+  for(let y=0;y<128;y+=7){ x.fillStyle='rgba(90,190,255,'+(0.04+Math.random()*0.07)+')'; x.fillRect(0,y,64,2); }
+  const tex=new THREE.CanvasTexture(cv); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(10,2); tex.colorSpace=THREE.SRGBColorSpace;
+  zoneMesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,130,72,1,true),
+    new THREE.MeshBasicMaterial({map:tex, color:0x5ec8ff, transparent:true, opacity:0.34, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending, fog:false}));
+  zoneMesh.position.set(zoneCX,45,zoneCZ); zoneMesh.scale.set(zoneR,1,zoneR); zoneMesh.userData.tex=tex; zoneMesh.renderOrder=5; scene.add(zoneMesh);
+  // bright energy ring where the wall meets the street (grounds the wall + reads the boundary line)
+  zoneRing=new THREE.Mesh(new THREE.CylinderGeometry(1,1,6,72,1,true),
+    new THREE.MeshBasicMaterial({color:0xbfeeff, transparent:true, opacity:0.85, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending, fog:false}));
+  zoneRing.position.set(zoneCX,3,zoneCZ); zoneRing.scale.set(zoneR,1,zoneR); zoneRing.renderOrder=5; scene.add(zoneRing); }
 let _trGeo=null, _trMat=null, _trMatHot=null;
 function addTracer(a,b){                                                  // GLOWING BEAM tracer (the old 1px Line barely read at speed)
   if(!_trGeo){ _trGeo=new THREE.BoxGeometry(1,1,1); SHARED.add(_trGeo);
@@ -5674,7 +5691,10 @@ function battleFrame(dt){ raceTime+=dt;
     if((c._hunter||brAlive<=3) && player.alive && Math.hypot(player.pos.x-c.pos.x, player.pos.y-c.pos.y)<BR.range) c._brTarget=player;   // hunters lock their guns on the player when in range
     updateCar(c, brInput(c), dt); }
   resolveCollisions(); resolveBRBuildings();
-  zoneR=Math.max(BR.zoneMin, zoneR-BR.shrink*dt); if(zoneMesh) zoneMesh.scale.set(zoneR,1,zoneR);
+  zoneR=Math.max(BR.zoneMin, zoneR-BR.shrink*dt);
+  if(zoneMesh){ zoneMesh.scale.set(zoneR,1,zoneR); if(zoneMesh.userData.tex){ zoneMesh.userData.tex.offset.y-=dt*0.4; zoneMesh.userData.tex.offset.x+=dt*0.05; }
+    zoneMesh.material.opacity=0.46+0.1*Math.sin(raceTime*3.2); }                       // energy wall scrolls + pulses
+  if(zoneRing){ zoneRing.scale.set(zoneR,1,zoneR); zoneRing.material.opacity=0.72+0.18*Math.sin(raceTime*3.2+1); }
   if(player.alive) player._brTarget=brTarget(player);
   for(const c of cars){ if(!c.alive) continue; c._rkT=(c._rkT||0)-dt;
     if(c.rig.gunYaw && c._brTarget){ const dx=c._brTarget.pos.x-c.pos.x, dz=c._brTarget.pos.y-c.pos.y; c.rig.gunYaw.rotation.y=Math.atan2(dx,dz)-c.heading; }
@@ -5786,11 +5806,11 @@ function buildBRCity(){
   // ONE ground plane with the whole street grid BAKED into a canvas (asphalt, dashes, sidewalk aprons)
   { const S=2048, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
     const u=S/(N*CELL);
-    x.fillStyle='#33363c'; x.fillRect(0,0,S,S);
+    x.fillStyle='#202227'; x.fillRect(0,0,S,S);   // darker, richer asphalt (owner: ground was blown-out flat)
     for(let i=0;i<2600;i++){ x.fillStyle='rgba(255,255,255,'+(rng()*0.03)+')'; x.fillRect(rng()*S, rng()*S, 2,2); }
     for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
       const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u;
-      x.fillStyle='#5f5f59'; x.fillRect(bx-3.5*u, bz-3.5*u, bw+7*u, bw+7*u); }
+      x.fillStyle='#3a3b37'; x.fillRect(bx-3.5*u, bz-3.5*u, bw+7*u, bw+7*u); }   // darker sidewalks so they stop blowing out to white
     // CURB LINES around every block (dark edge + light curb face)
     for(let ix=0;ix<N;ix++) for(let iz=0;iz<N;iz++){
       const bx=(ROAD+ix*CELL)*u, bz=(ROAD+iz*CELL)*u, bw=BLOCK*u, cw=Math.max(1,0.45*u);
@@ -5810,7 +5830,7 @@ function buildBRCity(){
     for(let i=0;i<=N;i++){ const off=(i*CELL+ROAD/2)*u;
       for(let d=0;d<S;d+=8*u){ x.fillRect(off-0.18*u, d, 0.36*u, 3.6*u); x.fillRect(d, off-0.18*u, 3.6*u, 0.36*u); } }
     // ZEBRA CROSSWALKS at every intersection + manholes on road centres
-    x.fillStyle='rgba(225,223,214,.85)';
+    x.fillStyle='rgba(205,203,192,.6)';
     for(let ix=0;ix<=N;ix++) for(let iz=0;iz<=N;iz++){
       const ox=(ix*CELL+ROAD/2)*u, oz=(iz*CELL+ROAD/2)*u, hw=ROAD*0.5*u;
       for(let sb=-hw*0.72; sb<hw*0.72; sb+=1.5*u){
@@ -5821,7 +5841,7 @@ function buildBRCity(){
       x.beginPath(); x.arc(rng()<0.5?off:(t3+iz2*CELL*u)%S, rng()<0.5?(t3+iz2*CELL*u)%S:off, 0.55*u, 0, 7); x.fill(); }
     const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=isTouch?2:8;
     const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL, N*CELL),
-      new THREE.MeshStandardMaterial({map:tex, roughness:0.96, metalness:0}));
+      new THREE.MeshStandardMaterial({map:tex, color:0x8f9096, roughness:0.8, metalness:0.08}));   // color multiplier pulls the whole ground down out of the blow-out + faint wet sheen
     ground.rotation.x=-Math.PI/2; ground.position.set(cx, 0.06, cz); ground.receiveShadow=!isTouch; g.add(ground);
   }
   const mats=brFacadeMats();
@@ -5829,7 +5849,7 @@ function buildBRCity(){
   if(nightMode) g.add(new THREE.AmbientLight(0x323a55, 0.14*Math.PI));                        // ambient city-glow so streets never go pitch black
   const treeTrunks=[], treeTops=[];
   const parkM=new THREE.MeshStandardMaterial({color:0x4e7a3a, roughness:0.95});
-  const walkM=new THREE.MeshStandardMaterial({color:0x3d3d38, roughness:1});   // mid-grey still blew out pale under the warm key — darker concrete reads right   // light concrete BLEW OUT white under the sunset key light
+  const walkM=new THREE.MeshStandardMaterial({color:0x242521, roughness:0.86, metalness:0.05});   // the strong sun key blows mid-greys to white -> deep concrete + faint sheen so sidewalks read dark & rich (owner)
   const grid={x0:cx-half, z0:cz-half, cell:4.2, w:Math.ceil(N*CELL/4.2), h:Math.ceil(N*CELL/4.2)};
   grid.solid=new Uint8Array(grid.w*grid.h);
   function markSolid(x0,z0,x1,z1){ const g0x=Math.max(0,((x0-grid.x0)/grid.cell)|0), g1x=Math.min(grid.w-1,((x1-grid.x0)/grid.cell)|0);
@@ -6127,6 +6147,8 @@ function endBattle(){ brActive=false; document.body.classList.remove('inbattle')
   pickups.forEach(p=>{scene.remove(p.m); disposeGroup(p.m);}); pickups=[]; clearHpBars();
   const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity=0;
   if(zoneMesh){ scene.remove(zoneMesh); zoneMesh=null; }
+  if(zoneRing){ scene.remove(zoneRing); zoneRing.geometry.dispose(); zoneRing.material.dispose(); zoneRing=null; }
+  { const zo=document.getElementById('zoneOut'); if(zo) zo.style.opacity=0; }
   brTracers.forEach(t=>{ scene.remove(t.ln); }); brTracers=[];
   const h=document.getElementById('brHud'); if(h) h.classList.remove('show');
   cars.forEach(c=>{ c.alive=true; c.hp=BR.maxHP; if(c.rig.gun){ c.rig.group.remove(c.rig.gun); c.rig.gun=c.rig.gunYaw=c.rig.muzzle=null; } if(c.rig.armor){ c.rig.group.remove(c.rig.armor); c.rig.armor=null; } if(c.rig.nitroKit){ c.rig.group.remove(c.rig.nitroKit); c.rig.nitroKit=null; } if(c.rig.group) c.rig.group.visible=true; if(c.shadowMesh) c.shadowMesh.visible=true; });
@@ -6148,7 +6170,12 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
   const al=document.getElementById('brAlive'); if(al) al.textContent='🔥 '+brAlive+' ALIVE';
   const rk=document.getElementById('brRockets'); if(rk){ rk.textContent='🚀 ×'+(player.rkAmmo||0); rk.classList.toggle('empty',(player.rkAmmo||0)<=0); }
   const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0;
-  const zn=document.getElementById('brZone'); if(zn){ zn.textContent='ZONE '+Math.round(zoneR)+'m'; zn.classList.toggle('tight', zoneR<BR.zoneMin+40); } }
+  const zn=document.getElementById('brZone'); if(zn){ zn.textContent='ZONE '+Math.round(zoneR)+'m'; zn.classList.toggle('tight', zoneR<BR.zoneMin+40); }
+  const zo=document.getElementById('zoneOut'); if(zo){ const dC=Math.hypot(player.pos.x-zoneCX, player.pos.y-zoneCZ);
+    if(!player.alive) zo.style.opacity=0;
+    else if(dC>zoneR){ zo.classList.add('danger'); zo.style.opacity=(0.5+0.32*Math.abs(Math.sin(raceTime*5))).toFixed(2); }   // OUTSIDE the zone: red pulsing damage vignette
+    else if(dC>zoneR-18){ zo.classList.remove('danger'); zo.style.opacity=((dC-(zoneR-18))/18*0.5).toFixed(2); }             // nearing the edge: blue warning ramps in
+    else { zo.classList.remove('danger'); zo.style.opacity=0; } } }
 // BR RADAR: rotating minimap — player centered/up, enemies as dots (red=hunter), zone edge arc
 let _radarCtx=null;
 function drawBRRadar(){ const cv=document.getElementById('brRadarCv'); if(!cv) return;
