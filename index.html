@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.47-->
+<!--BUILD:v10.48-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1285,7 +1285,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.47';
+(function(){ const BUILD='v10.48';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2897,7 +2897,11 @@ function resetPickups(){ if(coinList) coinList.forEach(c=>c.alive=true); coinSpi
 function updateArcadeVisuals(dt){ if(typeof updateWrenches==='function') updateWrenches(dt);
   if(player&&player.rig&&player.rig.headSpot) player.rig.headSpot.visible=!!nightMode;
   if(updateArcadeVisuals._night!==nightMode){ updateArcadeVisuals._night=nightMode;
-    cars.forEach(c=>{ if(c.rig&&c.rig.lampMats){ c.rig.lampMats[0].emissiveIntensity=nightMode?2.2:0.7; c.rig.lampMats[1].emissiveIntensity=nightMode?2.0:0.8; } });
+    cars.forEach(c=>{ if(!c.rig) return;
+      if(c.rig.lampMats){ c.rig.lampMats[0].emissiveIntensity=nightMode?2.2:0.7; c.rig.lampMats[1].emissiveIntensity=nightMode?2.0:0.8; }
+      if(c.rig.headBeams) c.rig.headBeams.forEach(b=>{ b.material.opacity=nightMode?0.11:0.03; });   // diffuse beam active at night (owner)
+      if(c.rig.headPools) c.rig.headPools.forEach(p=>{ p.material.opacity=nightMode?0.17:0.06; });
+      if(c.rig.headHalos) c.rig.headHalos.forEach(h=>{ h.material.opacity=nightMode?0.5:0.4; }); });
     if(typeof landmarkGlowMats!=='undefined') landmarkGlowMats.forEach(m=>{ m.emissiveIntensity=(m.userData._baseEI||1)*(nightMode?2.6:1); }); }
   if(coinMesh){ coinSpin+=dt*3.2; _Q.setFromAxisAngle(_UP, coinSpin);   // one rotation for all coins this frame
     const cq=(typeof camera!=='undefined'&&camera)?camera.quaternion:_Q;
@@ -4258,8 +4262,13 @@ function addGlow(parent, x,y,z, color, scale){
     const rg=g.createRadialGradient(32,32,1,32,32,32); rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(1,'rgba(255,255,255,0)');
     g.fillStyle=rg; g.fillRect(0,0,64,64); glowTex=new THREE.CanvasTexture(c); }
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex, color, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.9}));
-  s.position.set(x,y,z); s.scale.set(scale,scale,1); parent.add(s);
+  s.position.set(x,y,z); s.scale.set(scale,scale,1); parent.add(s); return s;
 }
+let _beamTex=null;
+function beamTex(){ if(_beamTex) return _beamTex;   // soft length gradient: bright at the bulb, fading to nothing ahead (additive -> black = invisible) = diffuse beam, no hard tip
+  const c=document.createElement('canvas'); c.width=4; c.height=64; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,64); g.addColorStop(0,'#000000'); g.addColorStop(0.5,'#7d745c'); g.addColorStop(1,'#fff8e6');
+  x.fillStyle=g; x.fillRect(0,0,4,64); _beamTex=new THREE.CanvasTexture(c); _beamTex.needsUpdate=true; return _beamTex; }
 function buildCar(color){
   const g=new THREE.Group();
   const chassis=new THREE.Group(); g.add(chassis);
@@ -4688,6 +4697,7 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     const headM=new THREE.MeshStandardMaterial({color:0xfff6d8, emissive:0xfff0c0, emissiveIntensity:nightMode?2.2:0.7, roughness:0.3});
     const tailM=new THREE.MeshStandardMaterial({color:0x4d1014, emissive:0xff2018, emissiveIntensity:nightMode?2.0:0.8, roughness:0.4});
     rig.lampMats=[headM,tailM]; tailM.userData._restEI=tailM.emissiveIntensity;
+    rig.headBeams=[]; rig.headPools=[]; rig.headHalos=[];   // reset per rebuild (were accumulating stale refs across every upgradeCars)
     // MOLD the lamps onto each car's real nose/tail contour (wedge noses sit far inside the bbox
     // plane — a fixed Lz/2 lamp floats in the air there). Raycast body surface, embed 1cm.
     const _lr=new THREE.Raycaster(), _lo=new THREE.Vector3(), _ld=new THREE.Vector3();
@@ -4701,20 +4711,22 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
       const hz=surfZ(sx, ly, 1), tz=surfZ(sx, ly, -1);
       const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, hz+0.005); rig.group.add(hl);
       const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, tz-0.005); rig.group.add(tl);
-      addGlow(rig.group, sx*lx, ly, hz+0.1, 0xfff2c8, nightMode?1.7:0.85);     // bright lens core halo (rides the group incl. lean)
-      addGlow(rig.group, sx*lx, ly, tz-0.1, 0xff2822, nightMode?1.2:0.6);
-      // VOLUMETRIC HEADLIGHT SHAFT: a tapered additive cone streaming forward off each lamp — subtle by
-      // day, a real light beam at night. Reads immersive from the chase cam (owner: headlights felt flat).
-      { const beamLen=nightMode?7.5:3.6, beamOp=nightMode?0.16:0.05;
-        const cone=new THREE.Mesh(new THREE.ConeGeometry(0.5, beamLen, 12, 1, true),
-          new THREE.MeshBasicMaterial({color:0xfff0cc, transparent:true, opacity:beamOp,
-            blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, fog:false}));
-        cone.rotation.x=Math.PI/2; cone.position.set(sx*lx, ly-0.02, hz+beamLen*0.5); rig.group.add(cone); }
-      // road POOL under the beam (always on; strong at night) — lights the tarmac just ahead
-      { const bm=new THREE.Mesh(new THREE.PlaneGeometry(1.6, nightMode?7.5:3.4),
-          new THREE.MeshBasicMaterial({map:glowTex, color:0xffedb8, transparent:true, opacity:nightMode?0.24:0.07,
+      { const hh=addGlow(rig.group, sx*lx, ly, hz+0.1, 0xffe9c2, nightMode?1.35:0.85);     // soft lens core halo (rides the group incl. lean)
+        hh.material.opacity=nightMode?0.5:0.4; (rig.headHalos||(rig.headHalos=[])).push(hh); }
+      addGlow(rig.group, sx*lx, ly, tz-0.1, 0xff2822, nightMode?1.05:0.6);
+      // DIFFUSED HEADLIGHT BEAM: a soft cone that SPREADS forward off the bulb (narrow at the lamp, wide + fading
+      // ahead). Gradient map dissolves the far end -> soft diffuse light, not a hard sharp triangle. Kept dim so
+      // UnrealBloom doesn't blow it into a searchlight flare. (owner: diffuse it + active at night)
+      { const BL=7.2, cg=new THREE.ConeGeometry(1.15, BL, 24, 1, true); cg.translate(0,-BL/2,0);   // apex -> origin (the bulb)
+        const cone=new THREE.Mesh(cg, new THREE.MeshBasicMaterial({map:beamTex(), color:0xffe6b4, transparent:true,
+          opacity:nightMode?0.11:0.03, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, fog:false}));
+        cone.rotation.x=-Math.PI/2 - 0.13; cone.position.set(sx*lx, ly, hz+0.02);   // spreads forward, angled slightly toward the road
+        rig.group.add(cone); (rig.headBeams||(rig.headBeams=[])).push(cone); }
+      // road POOL under the beam — lights the tarmac ahead (updates with night)
+      { const bm=new THREE.Mesh(new THREE.PlaneGeometry(2.0, 7.4),
+          new THREE.MeshBasicMaterial({map:glowTex, color:0xffedb8, transparent:true, opacity:nightMode?0.17:0.06,
             blending:THREE.AdditiveBlending, depthWrite:false, fog:false}));
-        bm.rotation.x=-Math.PI/2; bm.position.set(sx*lx*0.8, 0.09, Lz/2+(nightMode?3.9:2.0)); rig.group.add(bm); } }
+        bm.rotation.x=-Math.PI/2; bm.position.set(sx*lx*0.8, 0.09, Lz/2+3.7); rig.group.add(bm); (rig.headPools||(rig.headPools=[])).push(bm); } }
   }
 }
 // rounded (molded) box: a rounded-rect profile extruded + beveled -> no hard square edges
