@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.60-->
+<!--BUILD:v10.61-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1339,7 +1339,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.60';
+(function(){ const BUILD='v10.61';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5042,7 +5042,10 @@ function carShadowAssets(){
 const ROAD_TOP=0.088;                                              // visible top of the road ribbon — wheels must rest AT this, not below
 function rigRideBase(c){                                          // per-rig base offset so the LOWEST wheel sits exactly on the road (owner: tyres were buried ~1-2.5cm)
   if(c.rig._rideBase!=null) return c.rig._rideBase;
-  c.rig.group.traverse(o=>{ if(o.isMesh && !/wheel/i.test(o.name||'') && o.position.z < -2.0) o.position.z = -1.55; });   // TUCK import-displaced body parts back onto the car (rwb exhaust tips floated behind the bumper)
+  { const _tg=new THREE.Vector3(), _tw=new THREE.Vector3(); c.rig.group.updateWorldMatrix(true,true);   // TUCK import-displaced parts back onto the car, but ONLY small ones (rwb/Spitfire exhaust tips ~0.18u) — NEVER the body: Kenney/gen bodies sit at local z<-2 (offset lives in the transform, compensated by chassis-centring), and yanking them to -1.55 exploded the car off its wheels (owner: HATCH)
+    c.rig.group.traverse(o=>{ if(o.isMesh && !/wheel/i.test(o.name||'') && o.position.z < -2.0 && o.geometry){
+      if(!o.geometry.boundingBox) o.geometry.computeBoundingBox(); o.geometry.boundingBox.getSize(_tg); o.getWorldScale(_tw);
+      if(Math.max(_tg.x*Math.abs(_tw.x), _tg.y*Math.abs(_tw.y), _tg.z*Math.abs(_tw.z)) < 0.6) o.position.z = -1.55; } }); }
   const g=c.rig.group, ry=g.rotation.x, sy=g.position.y;         // measure with the car flat + at 0
   g.rotation.x=0; g.position.y=0; g.updateWorldMatrix(true,true);
   let wmin=1e9; const wb=[];
