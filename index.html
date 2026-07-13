@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.53-->
+<!--BUILD:v10.54-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1296,7 +1296,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.53';
+(function(){ const BUILD='v10.54';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5124,55 +5124,40 @@ function initMap(){
   mapCtx=cv.getContext('2d'); mapCtx.scale(dpr,dpr);
   let minx=Infinity,maxx=-Infinity,minz=Infinity,maxz=-Infinity;
   samplePts.forEach(p=>{ minx=Math.min(minx,p.x); maxx=Math.max(maxx,p.x); minz=Math.min(minz,p.y); maxz=Math.max(maxz,p.y); });
-  const pad=12,size=130; mapBox={minx,minz,pad,size, sx:(size-2*pad)/(maxx-minx), sz:(size-2*pad)/(maxz-minz)};
+  const pad=16,size=130, sc=Math.min((size-2*pad)/((maxx-minx)||1),(size-2*pad)/((maxz-minz)||1));   // UNIFORM scale -> the TRUE circuit shape (not stretched to fill)
+  mapBox={minx,minz,pad,size,sc, cxw:(minx+maxx)/2, czw:(minz+maxz)/2};
   mapPath=samplePts.map(p=>mapXY(p.x,p.y));
 }
-function mapXY(x,z){ return [ mapBox.pad+(x-mapBox.minx)*mapBox.sx, mapBox.pad+(z-mapBox.minz)*mapBox.sz ]; }
-// 3D GPS MAP: player-locked nav view — the route ahead recedes into the distance in perspective, forward = up
+function mapXY(x,z){ return [ mapBox.size/2+(x-mapBox.cxw)*mapBox.sc, mapBox.size/2+(z-mapBox.czw)*mapBox.sc ]; }   // centred, uniform
+// 3D GPS MAP: the WHOLE circuit (the actual track you're racing) drawn as a 3D-tilted route, with your car + rivals on it
 function drawMap(){
-  const ctx=mapCtx; if(!ctx||!player||!SAMPLES) return; const S=130;
+  const ctx=mapCtx; if(!ctx||!player||!mapPath.length) return; const S=130;
   ctx.clearRect(0,0,S,S);
-  const p=player, h=p.heading, ch=Math.cos(h), sh=Math.sin(h);
-  const cx=S*0.5, baseY=S*0.95, horizon=S*0.17, camDist=46, PXX=2.3, HW=(CONFIG.roadHalfWidth||9);
-  const proj=(wx,wz)=>{ const dx=wx-p.pos.x, dz=wz-p.pos.y;
-    const along=dx*sh+dz*ch, side=dx*ch-dz*sh, depth=along+camDist;
-    if(depth<9) return null; const k=camDist/depth;
-    return [cx+side*k*PXX, baseY-(baseY-horizon)*(1-k), k]; };
-  // GPS backdrop: deep navy pane + a fading horizon glow
-  ctx.fillStyle='rgba(9,13,24,.62)'; ctx.fillRect(0,0,S,S);
-  const sky=ctx.createLinearGradient(0,horizon-8,0,horizon+34); sky.addColorStop(0,'rgba(60,120,200,.22)'); sky.addColorStop(1,'rgba(60,120,200,0)');
-  ctx.fillStyle=sky; ctx.fillRect(0,horizon-8,S,42);
-  // ROUTE RIBBON: build left/right edges through the window ahead (+ a little behind), fill as a tapering road
-  const N=SAMPLES, pi=player.trackIdx|0, L=[], R=[], CN=[];
-  for(let i=-Math.round(N*0.06); i<Math.round(N*0.5); i++){ const idx=((pi+i)%N+N)%N; const sp=samplePts[idx], nn=sampleNorm[idx]||{x:0,y:0};
-    const ql=proj(sp.x-nn.x*HW, sp.y-nn.y*HW), qr=proj(sp.x+nn.x*HW, sp.y+nn.y*HW), qc=proj(sp.x,sp.y);
-    if(ql&&qr){ L.push(ql); R.push(qr); CN.push(qc); } }
-  if(L.length>1){
-    ctx.beginPath(); L.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));
-    for(let i=R.length-1;i>=0;i--) ctx.lineTo(R[i][0],R[i][1]); ctx.closePath();
-    const g=ctx.createLinearGradient(0,horizon,0,baseY); g.addColorStop(0,'rgba(70,86,120,.35)'); g.addColorStop(1,'rgba(120,140,180,.9)');
-    ctx.fillStyle=g; ctx.fill();
-    ctx.lineJoin='round'; ctx.strokeStyle='rgba(120,220,255,.85)'; ctx.lineWidth=1.4;   // glowing edge lines
-    ctx.beginPath(); L.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.stroke();
-    ctx.beginPath(); R.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.stroke();
-    // centre dashes
-    ctx.strokeStyle='rgba(255,225,120,.9)'; ctx.setLineDash([3,4]); ctx.lineWidth=1.2;
-    ctx.beginPath(); CN.forEach((q,i)=> q&&(i&&CN[i-1]?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]))); ctx.stroke(); ctx.setLineDash([]);
-  }
-  // start/finish line if it's in view
-  { const s0=samplePts[0], n0=sampleNorm[0]||{x:0,y:0};
-    const a=proj(s0.x-n0.x*HW,s0.y-n0.y*HW), b=proj(s0.x+n0.x*HW,s0.y+n0.y*HW);
-    if(a&&b){ ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=2.4; ctx.setLineDash([2,2]); ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.setLineDash([]); } }
-  // RIVAL cars: perspective dots ahead/behind
-  cars.forEach(c=>{ if(c.isPlayer) return; const q=proj(c.pos.x,c.pos.y); if(!q) return;
-    const r=Math.max(1.5, 3.2*q[2]); ctx.fillStyle='rgba(90,200,255,'+(0.5+0.5*q[2])+')'; ctx.beginPath(); ctx.arc(q[0],q[1],r,0,7); ctx.fill(); });
-  // PLAYER arrow pinned at the bottom-centre, pointing up (nav marker)
-  ctx.save(); ctx.translate(cx, baseY-16); ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(5.5,6); ctx.lineTo(0,3); ctx.lineTo(-5.5,6); ctx.closePath();
-  ctx.fillStyle='#ff4d4d'; ctx.shadowColor='rgba(255,60,60,.9)'; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
-  ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.stroke(); ctx.restore();
-  // compass N (small, top-right) — points to world-north relative to heading
-  ctx.save(); ctx.translate(S-13, 13); ctx.rotate(-h); ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font='700 8px system-ui'; ctx.textAlign='center'; ctx.fillText('N',0,-4);
-  ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(0,-3); ctx.stroke(); ctx.restore();
+  ctx.fillStyle='rgba(9,13,24,.6)'; ctx.fillRect(0,0,S,S);
+  // 3D tilt: lean the (north-up) circuit plane back so it reads 3D — far rows recede toward a vanishing centre
+  const vanish=S*0.5, horizon=S*0.13, baseY=S*0.985, K=1.7, pmin=1/(1+K);
+  const tilt=(mx,my)=>{ const persp=1/(1+(1-my/S)*K);
+    return [ vanish+(mx-vanish)*persp, horizon+(baseY-horizon)*(persp-pmin)/(1-pmin) ]; };
+  const TP=mapPath.map(pp=>tilt(pp[0],pp[1]));
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  const strokeLoop=(w,st,dash)=>{ ctx.lineWidth=w; ctx.strokeStyle=st; if(dash)ctx.setLineDash(dash); ctx.beginPath();
+    TP.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.closePath(); ctx.stroke(); if(dash)ctx.setLineDash([]); };
+  strokeLoop(7,'rgba(6,10,18,.95)');                 // road base
+  strokeLoop(3,'rgba(120,220,255,.9)');              // glowing route (the circuit shape)
+  strokeLoop(1,'rgba(255,225,120,.6)',[2.5,4]);      // centre dashes
+  // start/finish
+  { const s=tilt.apply(null,mapXY(samplePts[0].x,samplePts[0].y)); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(s[0],s[1],2.6,0,7); ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.5)'; ctx.lineWidth=1; ctx.stroke(); }
+  // rival cars on the circuit
+  cars.forEach(c=>{ if(c.isPlayer) return; const m=tilt.apply(null,mapXY(c.pos.x,c.pos.y)); ctx.fillStyle='rgba(90,200,255,.95)'; ctx.beginPath(); ctx.arc(m[0],m[1],2.4,0,7); ctx.fill(); });
+  // YOUR car — an arrow at your position, pointing the way you're heading
+  { const pm=tilt.apply(null,mapXY(player.pos.x,player.pos.y));
+    const fw=mapXY(player.pos.x+Math.sin(player.heading)*10, player.pos.y+Math.cos(player.heading)*10);
+    const pf=tilt(fw[0],fw[1]); const ang=Math.atan2(pf[1]-pm[1], pf[0]-pm[0]);
+    ctx.save(); ctx.translate(pm[0],pm[1]); ctx.rotate(ang+Math.PI/2);
+    ctx.beginPath(); ctx.moveTo(0,-6.5); ctx.lineTo(4.5,5); ctx.lineTo(0,2.5); ctx.lineTo(-4.5,5); ctx.closePath();
+    ctx.fillStyle='#ff4d4d'; ctx.shadowColor='rgba(255,60,60,.9)'; ctx.shadowBlur=7; ctx.fill(); ctx.shadowBlur=0; ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.stroke(); ctx.restore(); }
+  // compass
+  ctx.fillStyle='rgba(255,255,255,.7)'; ctx.font='700 8px system-ui'; ctx.textAlign='center'; ctx.fillText('N',S-12,14);
 }
 const elLapNow=document.getElementById('lapNow'), elCurTime=document.getElementById('curTime'),
   elBestTime=document.getElementById('bestTime'), elPosNow=document.getElementById('posNow'),
