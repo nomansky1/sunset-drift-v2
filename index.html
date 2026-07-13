@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.41-->
+<!--BUILD:v10.42-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1281,7 +1281,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.41';
+(function(){ const BUILD='v10.42';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4498,6 +4498,11 @@ function brSolid(x,z){ if(!brGrid) return false;
   const gx=((x-brGrid.x0)/brGrid.cell)|0, gz=((z-brGrid.z0)/brGrid.cell)|0;
   if(gx<0||gx>=brGrid.w||gz<0||gz>=brGrid.h) return false;
   return !!brGrid.solid[gz*brGrid.w+gx]; }
+// LINE OF SIGHT: a building between shooter and target blocks the shot (owner: cover me from rivals)
+function brLineClear(ax,az,bx,bz){ if(!brActive||!brGrid) return true;
+  const dx=bx-ax, dz=bz-az, dist=Math.hypot(dx,dz)||1, step=brGrid.cell*0.5, n=Math.min(90, Math.ceil(dist/step));
+  for(let i=1;i<n;i++){ const t=i/n; if(brSolid(ax+dx*t, az+dz*t)) return false; }   // any solid cell along the ray -> blocked
+  return true; }
 // axis-separated slide against the occupancy grid (velocity into a solid cell is removed, car keeps sliding)
 function resolveBRBuildings(){
   if(!brGrid) return;
@@ -4932,7 +4937,7 @@ function carShadowAssets(){
   const g=new THREE.PlaneGeometry(3.0,4.7); g.rotateX(-Math.PI/2);        // lie flat; long axis = car forward (+Z)
   _carShadowGeo=g;
   const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
-  const rg=x.createRadialGradient(32,32,2,32,32,31); rg.addColorStop(0,'rgba(8,5,3,0.88)'); rg.addColorStop(0.36,'rgba(12,8,5,0.64)'); rg.addColorStop(0.7,'rgba(16,10,6,0.24)'); rg.addColorStop(1,'rgba(20,12,6,0)');   // owner: immerse the car onto the road — deeper, tighter AO core glues it down
+  const rg=x.createRadialGradient(32,32,2,32,32,31); rg.addColorStop(0,'rgba(10,7,5,0.5)'); rg.addColorStop(0.42,'rgba(12,9,6,0.30)'); rg.addColorStop(0.74,'rgba(16,11,7,0.11)'); rg.addColorStop(1,'rgba(20,12,6,0)');   // owner: very minimal, soft contact shadow that just blends the car onto the track
   x.fillStyle=rg; x.fillRect(0,0,64,64);
   _carShadowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false,
     polygonOffset:true, polygonOffsetFactor:-7, polygonOffsetUnits:-7});  // soft AO contact shadow, beats road + skids
@@ -5675,7 +5680,7 @@ function battleFrame(dt){ raceTime+=dt;
     if(c.rig.gunYaw && c._brTarget){ const dx=c._brTarget.pos.x-c.pos.x, dz=c._brTarget.pos.y-c.pos.y; c.rig.gunYaw.rotation.y=Math.atan2(dx,dz)-c.heading; }
     if(c.rig.gunSpin){ c._spin=Math.max(c._brTarget?16:0, (c._spin||0)*0.93); c.rig.gunSpin.rotation.z += c._spin*dt; }   // gatling barrels spool + spin hard while firing
     c._gunT=(c._gunT||0)-dt;
-    if(c._brTarget && c._gunT<=0){ c._gunT=BR.gunCd; c._spin=46; c._trTog=!c._trTog;
+    if(c._brTarget && c._gunT<=0 && brLineClear(c.pos.x,c.pos.y,c._brTarget.pos.x,c._brTarget.pos.y)){ c._gunT=BR.gunCd; c._spin=46; c._trTog=!c._trTog;   // hold fire when a building blocks the shot
       const mz=new THREE.Vector3(); (c.rig.muzzle||c.rig.group).getWorldPosition(mz);
       muzzleFlash(mz.x,mz.y,mz.z);                                                                              // crisp muzzle flash (better shooting fx)
       if(!isTouch || c.isPlayer) ejectShell(mz, c.heading);                                                     // brass kicks out the side (player-only on phones)
@@ -5688,7 +5693,7 @@ function battleFrame(dt){ raceTime+=dt;
       propsOnSegment(c.pos.x, c.pos.y, c._brTarget.pos.x, c._brTarget.pos.y, 2.2, BR.dmg*0.6, c); }   // stray gatling fire chews up props in the line of fire
     if(!c.isPlayer && c._brTarget && c._rkT<=0){ const dx=c._brTarget.pos.x-c.pos.x, dz=c._brTarget.pos.y-c.pos.y, dd=Math.hypot(dx,dz);
       const aimOk=Math.abs(angleDiff(Math.atan2(dx,dz), c.heading))<0.55;                 // AI fires rockets AIMED: in range + roughly nose-on (no more wasted random launches)
-      if(dd<BR.range*0.9 && aimOk && Math.random()<0.9) fireRocket(c); }
+      if(dd<BR.range*0.9 && aimOk && Math.random()<0.9 && brLineClear(c.pos.x,c.pos.y,c._brTarget.pos.x,c._brTarget.pos.y)) fireRocket(c); }   // no rockets into walls
     const hf=c.hp/(c.hpMax||BR.maxHP);                                                                          // progressive damage read-out: smoke hurt, fire critical
     if(hf<0.42){ c._dmgT=(c._dmgT||0)-dt; if(c._dmgT<=0){ c._dmgT=0.13; const x=c.pos.x,y=(c.visY||0)+0.75,z=c.pos.y;
       tireSmoke.emit(x,y,z,0,1.3,0, hf<0.2?0.6:0.45, hf<0.2?9:6);
