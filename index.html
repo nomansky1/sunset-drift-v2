@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.46-->
+<!--BUILD:v10.47-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1285,7 +1285,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.46';
+(function(){ const BUILD='v10.47';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4990,7 +4990,7 @@ function syncCarMesh(c){
   c.shadowMesh.visible = !!(c.rig && c.rig.group && c.rig.group.visible);
 }
 
-</script><script src="spline.js"></script><script src="game-core.js?v995"></script><script>
+</script><script src="spline.js"></script><script src="game-core.js?v996"></script><script>
 
 /* =========================================================================
    CAMERA

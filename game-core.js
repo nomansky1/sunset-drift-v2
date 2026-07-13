@@ -252,11 +252,12 @@ function updateCar(c, inp, dt){
       // breaking traction in a drift/burnout); a locked-brake car smokes from the FRONTS. Emit from the
       // actual contact patches, not a generic centreline spot.
       const dm=c.rig.dims||{W:2.3,Lz:4.6}, halfT=dm.W*0.42, fwx2=Math.sin(c.heading), fwz2=Math.cos(c.heading);
-      const emitAxle=(along, weight)=>{ const ax=c.pos.x+fwx2*along, az=c.pos.y+fwz2*along;
+      const emitAxle=(along, weight)=>{ const ax=c.pos.x+fwx2*along, az=c.pos.y+fwz2*along, pl=c.isPlayer;
         for(let s=-1;s<=1;s+=2){ const wx=ax+Math.cos(c.heading)*halfT*s, wz=az-Math.sin(c.heading)*halfT*s;
-          if(offT){ dust.emit(wx,0.35+ey,wz,(Math.random()-.5)*2,1.3+Math.random(),(Math.random()-.5)*2, 0.55, 12+Math.random()*8); }
-          else if(Math.random()<weight*(c.isPlayer?1:0.4))
-            tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.9, 0.8+Math.random()*0.7, (Math.random()-.5)*0.9, 0.7+intensity*0.25, 5+intensity*2.5+Math.random()*3); } };
+          if(offT){ dust.emit(wx,0.35+ey,wz,(Math.random()-.5)*2,1.3+Math.random(),(Math.random()-.5)*2, pl?0.55:0.4, pl?(12+Math.random()*8):(7+Math.random()*4)); }   // AI dust: smaller + clears faster (owner: too much, hurts visibility)
+          else if(Math.random()<weight*(pl?1:0.26))                                                                   // AI smoke far less often (was 0.4)
+            tireSmoke.emit(wx,0.2+ey,wz,(Math.random()-.5)*0.9, 0.8+Math.random()*0.7, (Math.random()-.5)*0.9,
+              pl?(0.7+intensity*0.25):(0.4+intensity*0.13), pl?(5+intensity*2.5+Math.random()*3):(3+intensity*1.1+Math.random()*1.4)); } };   // AI puffs smaller + short-lived; player drift unchanged
       const rearW = (burnout||c.drifting) ? 1 : 0.55, frontW = hardBrake ? 0.9 : (c.drifting?0.35:0.2);
       emitAxle(-dm.Lz*0.32, rearW);                                 // rear tyres = the drift smokers
       emitAxle( dm.Lz*0.30, frontW);                                // front tyres = brake-lock / scrub
