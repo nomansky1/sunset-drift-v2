@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.50-->
+<!--BUILD:v10.51-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1285,7 +1285,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.50';
+(function(){ const BUILD='v10.51';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1420,7 +1420,7 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'VORTEX',      kind:'glb', raw:'kartD',    yaw:0, spd:86, grip:92, price:3000},
              {name:'PHANTOM',     kind:'glb', raw:'kartE',    yaw:0, spd:88, grip:90, price:3200},
              {name:'MOUNTIE',  kind:'glb', raw:'wrx',     yaw:0, spd:82, grip:86, price:3400},
-             {name:'SPITFIRE', kind:'glb', raw:'rwb',   yaw:Math.PI, spd:92, grip:76, price:3700},   // owner: model imported backward -> turn 180 to face the start line (lamps/kit raycast the rotated geo, so they follow)
+             {name:'SPITFIRE', kind:'glb', raw:'rwb',   yaw:0, spd:92, grip:76, price:3700},   // orientation baked in (integrate_gen4 flip=True) -> faces fwd at yaw=0
              {name:'BOLIDE',   kind:'glb', raw:'racer',   yaw:0, spd:94, grip:74, price:4000},
              {name:'AUTOBAHN', kind:'glb', raw:'gt3p',    yaw:0, spd:100,grip:72, price:4400},   // gen4: real Porsche 911 GT3 (CC-BY)
              {name:'ROSSO',    kind:'glb', raw:'super',   yaw:0, spd:102,grip:66, price:4800},
@@ -5004,7 +5004,7 @@ function syncCarMesh(c){
   c.shadowMesh.visible = !!(c.rig && c.rig.group && c.rig.group.visible);
 }
 
-</script><script src="spline.js"></script><script src="game-core.js?v996"></script><script>
+</script><script src="spline.js"></script><script src="game-core.js?v997"></script><script>
 
 /* =========================================================================
    CAMERA
@@ -6826,7 +6826,7 @@ function init(){
   // cars
   cars=[]; player=makeCar(CONFIG.colors.player, true); cars.push(player);
   for(let i=0;i<CONFIG.aiCount;i++) cars.push(makeCar(CONFIG.colors.ai[i%CONFIG.colors.ai.length], false));
-  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=10') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
+  try{ THREE.DefaultLoadingManager.setURLModifier(u => /\.(glb|png|jpe?g|webp|hdr)($|\?)/i.test(u) ? (u.split('?')[0]+'?v=12') : u); }catch(e){}   // one-time cache-bust: force phones to re-fetch fresh GLBs + TEXTURES (fixes stale cache -> "car models gone" + plain/unpaved road)
   loadCarModels();   // upgrades the box placeholders to the realistic GLB when it loads
   loadPropModels();  // swaps procedural trees/rocks/palms for real CC0 GLBs when they load
 

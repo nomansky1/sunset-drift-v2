@@ -285,6 +285,10 @@ function updateCar(c, inp, dt){
         tireSmoke.emit(exX+(Math.random()-.5)*0.3, 0.45+ey, exZ+(Math.random()-.5)*0.3,
           -fwx*0.5, 0.55+Math.random()*0.3, -fwz*0.5, 0.85, 2.6+Math.random()*1.2); }   // lazy idle wisps from the pipes
     }
+    else if(c.isPlayer && inp && inp.throttle && spd<24 && tireSmoke){       // EXHAUST FUMES on acceleration (owner): light wisps trailing off the pipes, only the player, only when it reads
+      c._exT=(c._exT||0)-dt;
+      if(c._exT<=0){ c._exT=0.12+Math.random()*0.08;
+        tireSmoke.emit(exX+(Math.random()-.5)*0.22, 0.4+ey, exZ+(Math.random()-.5)*0.22, -fwx*1.1, 0.35+Math.random()*0.3, -fwz*1.1, 0.4, 1.5+Math.random()*0.8); } }
     if(burnout && tireSmoke && Math.random()<0.45)                          // launch blip: a fat puff out the exhaust
       tireSmoke.emit(exX, 0.5+ey, exZ, -fwx*1.6, 0.9, -fwz*1.6, 0.9, 5+Math.random()*3);
   }
