@@ -230,6 +230,14 @@ function updateCar(c, inp, dt){
   const slip=Math.abs(lateral), spd=c.vel.length();
   const offT=c.trackDist>CONFIG.roadHalfWidth;
   const hardBrake = inp.brake && spd>14 && c.vel.dot(_f)>0;         // locking the brakes at speed
+  // BRAKE ROTORS glow with heat: builds under braking, cools gradually (thermal inertia) — the disc "animation effect"
+  if(c.rig.brakeMats && c.rig.brakeMats.length){
+    const load = (inp.brake && spd>5) ? (hardBrake?1:0.5) : 0;
+    c._brakeHeat = Math.max(0, Math.min(1, (c._brakeHeat||0) + (load>0 ? dt*(1.5+load) : -dt*0.8)));
+    const ei = c._brakeHeat*c._brakeHeat*2.8;
+    for(let bi=0; bi<c.rig.brakeMats.length; bi++){ const bm=c.rig.brakeMats[bi]; bm.emissiveIntensity=ei;
+      if(bm.emissive) bm.emissive.setRGB(1, 0.14+0.32*c._brakeHeat, 0.02+0.05*c._brakeHeat); } }   // deep-red -> orange as they heat
+
   // IDLE EXHAUST: soft grey puffs curl out of the real tailpipes while the engine idles
   if(spd<1.8 && !inp.throttle && c.rig.exhaustPts && typeof tireSmoke!=='undefined'){
     c._exhT=(c._exhT||0)-dt;
