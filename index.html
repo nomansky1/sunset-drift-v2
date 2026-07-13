@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.43-->
+<!--BUILD:v10.44-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1285,7 +1285,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.43';
+(function(){ const BUILD='v10.44';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5304,6 +5304,9 @@ function updateDebris(dt){ for(let i=debris.length-1;i>=0;i--){ const d=debris[i
    ========================================================================= */
 const BR={ cars:6, maxHP:160, dmg:2.3, range:54, gunCd:0.24, zoneDps:9, shrink:1.5, zoneMin:46, orbit:28,
   rkDmg:52, rkSplash:10, rkSpeed:56, rkTurn:2.0, rkLife:3.4, rkCd:2.4, rkAmmo:3 };   // GATLING: fast/low-dmg hitscan. ROCKETS: slow homing (rkTurn=dodge knob) + splash + knockback, limited ammo
+// PHASED SHRINKING ZONE (owner: better BR environment logic) — hold, then close to a smaller RE-CENTRED circle, repeat
+const ZONE={ holdFirst:13, hold:8, closeBase:11, closeMin:6, factor:0.62 };
+let zonePhase='hold', zoneT=0, zoneR0=0, zoneR1=0, zoneX0=0, zoneZ0=0, zoneX1=0, zoneZ1=0, zoneDur=0, zoneRound=0;
 window.freeRoam=false;
 let brColliders=[], brGrid=null;
 let brActive=false, brAlive=0, brWon=false, zoneR=300, zoneCX=0, zoneCZ=0, zoneMesh=null, zoneRing=null, brTracers=[];
@@ -5453,6 +5456,30 @@ function buildZone(){ if(zoneMesh){ scene.remove(zoneMesh); if(zoneMesh.material
   zoneRing=new THREE.Mesh(new THREE.CylinderGeometry(1,1,6,72,1,true),
     new THREE.MeshBasicMaterial({color:0xbfeeff, transparent:true, opacity:0.85, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending, fog:false}));
   zoneRing.position.set(zoneCX,3,zoneCZ); zoneRing.scale.set(zoneR,1,zoneR); zoneRing.renderOrder=5; scene.add(zoneRing); }
+function updateZone(dt){
+  zoneT-=dt;
+  if(zonePhase==='hold'){
+    if(zoneT<=0 && zoneR>BR.zoneMin+1){                              // begin a new closing phase toward a smaller, RE-CENTRED circle
+      zoneRound++; zoneR0=zoneR; zoneX0=zoneCX; zoneZ0=zoneCZ;
+      zoneR1=Math.max(BR.zoneMin, zoneR*ZONE.factor);
+      const maxOff=Math.max(0, zoneR0-zoneR1)*0.8, ang=Math.random()*6.283, off=Math.sqrt(Math.random())*maxOff;
+      zoneX1=zoneX0+Math.cos(ang)*off; zoneZ1=zoneZ0+Math.sin(ang)*off;   // new centre stays inside the old ring (forces a rotation)
+      zoneDur=Math.max(ZONE.closeMin, ZONE.closeBase-zoneRound*0.7);
+      zonePhase='close'; zoneT=zoneDur;
+      popup('⚠️ ZONE CLOSING','#ff6a4d'); if(audio&&audio.ui) audio.ui();
+    }
+  } else {                                                          // closing: ease radius + centre from old to new
+    const k=zoneDur>0?clamp(1-zoneT/zoneDur,0,1):1, e=k*k*(3-2*k);
+    zoneR=zoneR0+(zoneR1-zoneR0)*e; zoneCX=zoneX0+(zoneX1-zoneX0)*e; zoneCZ=zoneZ0+(zoneZ1-zoneZ0)*e;
+    if(zoneT<=0){ zoneR=zoneR1; zoneCX=zoneX1; zoneCZ=zoneZ1; zonePhase='hold';
+      zoneT=(zoneR1<=BR.zoneMin+1)?1e9:ZONE.hold; if(zoneR1>BR.zoneMin+1) popup('✔ ZONE SET','#7ce0ff'); }
+  }
+  if(zoneMesh){ zoneMesh.position.set(zoneCX,45,zoneCZ); zoneMesh.scale.set(zoneR,1,zoneR);   // wall now MOVES with the re-centring circle
+    if(zoneMesh.userData.tex){ zoneMesh.userData.tex.offset.y-=dt*(zonePhase==='close'?0.9:0.4); zoneMesh.userData.tex.offset.x+=dt*0.05; }
+    zoneMesh.material.opacity=(zonePhase==='close'?0.6:0.44)+0.1*Math.sin(raceTime*3.2); }   // wall glows brighter + scrolls faster while actively closing
+  if(zoneRing){ zoneRing.position.set(zoneCX,3,zoneCZ); zoneRing.scale.set(zoneR,1,zoneR);
+    zoneRing.material.opacity=(zonePhase==='close'?0.92:0.72)+0.18*Math.sin(raceTime*3.2+1); }
+}
 let _trGeo=null, _trMat=null, _trMatHot=null;
 function addTracer(a,b){                                                  // GLOWING BEAM tracer (the old 1px Line barely read at speed)
   if(!_trGeo){ _trGeo=new THREE.BoxGeometry(1,1,1); SHARED.add(_trGeo);
@@ -5586,9 +5613,12 @@ function buildPickupMesh(type){ const g=new THREE.Group();
     g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
   g.add(_mkCrate(1.5, 0xff8a2e, 0x5a2c08, 0.62)); _pickupFx(g, 0xff9a3a, 1.05, true);   // rkt = ammo crate
   g.traverse(o=>{ if(o.isMesh) o.castShadow=false; }); return g; }
-function spawnPickup(type){ const central=type==='supply', ang=Math.random()*6.283;
-  const rr= central ? Math.random()*Math.max(16,zoneR*0.32) : 18+Math.random()*Math.max(24,zoneR*0.6);   // supply near centre = contested
-  const x=zoneCX+Math.cos(ang)*rr, z=zoneCZ+Math.sin(ang)*rr, y=(brActive?terrainHeight(x,z):0)+(central?1.5:1.85);   // FLOAT clearly above the street
+function spawnPickup(type){ const central=type==='supply';
+  let x=zoneCX, z=zoneCZ, tries=0;                                          // spawn INSIDE the current (shrinking) zone AND never inside a building (was landing in walls)
+  do{ const ang=Math.random()*6.283, rr= central ? Math.random()*Math.max(14,zoneR*0.30) : Math.random()*Math.max(20,zoneR*0.82);
+    x=zoneCX+Math.cos(ang)*rr; z=zoneCZ+Math.sin(ang)*rr; tries++;
+  } while(tries<24 && brActive && brGrid && brSolid(x,z));
+  const y=(brActive?terrainHeight(x,z):0)+(central?1.5:1.85);               // FLOAT clearly above the street
   const m=buildPickupMesh(type); m.position.set(x,y,z); scene.add(m); pickups.push({m,type,x,z,base:y,spin:Math.random()*6}); }
 function updatePickups(dt){ pickupTimer-=dt;
   if(pickups.length<4 && pickupTimer<=0){ pickupTimer=3.5; spawnPickup(Math.random()<0.55?'heal':'rkt'); }
@@ -5691,10 +5721,7 @@ function battleFrame(dt){ raceTime+=dt;
     if((c._hunter||brAlive<=3) && player.alive && Math.hypot(player.pos.x-c.pos.x, player.pos.y-c.pos.y)<BR.range) c._brTarget=player;   // hunters lock their guns on the player when in range
     updateCar(c, brInput(c), dt); }
   resolveCollisions(); resolveBRBuildings();
-  zoneR=Math.max(BR.zoneMin, zoneR-BR.shrink*dt);
-  if(zoneMesh){ zoneMesh.scale.set(zoneR,1,zoneR); if(zoneMesh.userData.tex){ zoneMesh.userData.tex.offset.y-=dt*0.4; zoneMesh.userData.tex.offset.x+=dt*0.05; }
-    zoneMesh.material.opacity=0.46+0.1*Math.sin(raceTime*3.2); }                       // energy wall scrolls + pulses
-  if(zoneRing){ zoneRing.scale.set(zoneR,1,zoneR); zoneRing.material.opacity=0.72+0.18*Math.sin(raceTime*3.2+1); }
+  updateZone(dt);
   if(player.alive) player._brTarget=brTarget(player);
   for(const c of cars){ if(!c.alive) continue; c._rkT=(c._rkT||0)-dt;
     if(c.rig.gunYaw && c._brTarget){ const dx=c._brTarget.pos.x-c.pos.x, dz=c._brTarget.pos.y-c.pos.y; c.rig.gunYaw.rotation.y=Math.atan2(dx,dz)-c.heading; }
@@ -6108,7 +6135,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   while(cars.length < BR.cars){ cars.push(makeCar(CONFIG.colors.ai[cars.length%CONFIG.colors.ai.length], false)); }   // spawn extra fighters for the battle (races stay at 4)
   upgradeCars();                                                         // build real models + liveries/kits for the new cars
   selectTrack(currentTrack);                                            // battle in the SELECTED environment (any track's world = the open arena)
-  zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; buildZone(); buildBRCity(); buildBRProps();
+  zoneCX=trackCentroid.x; zoneCZ=trackCentroid.y; zoneR=trackRadius+70; zonePhase='hold'; zoneT=ZONE.holdFirst; zoneRound=0; buildZone(); buildBRCity(); buildBRProps();
   audio.start(); if(audio.setCar) audio.setCar((CARS[selectedCar]||{}).raw||'');
   playModeMusic('audio/combat.mp3', currentTheme?currentTheme.theme:'city');   // dedicated combat loop (falls back to theme beat)
   const m=carMul(selectedCar); player.spdMul=m.spd; player.gripMul=m.grip; player.engLvl=0; player.tireLvl=0; player.nosMax=1; player.nosDrain=player.nosForce=player.nosFill=1; player.brakeLvl=0; player.turboMul=1;
@@ -6170,7 +6197,7 @@ function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.
   const al=document.getElementById('brAlive'); if(al) al.textContent='🔥 '+brAlive+' ALIVE';
   const rk=document.getElementById('brRockets'); if(rk){ rk.textContent='🚀 ×'+(player.rkAmmo||0); rk.classList.toggle('empty',(player.rkAmmo||0)<=0); }
   const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0;
-  const zn=document.getElementById('brZone'); if(zn){ zn.textContent='ZONE '+Math.round(zoneR)+'m'; zn.classList.toggle('tight', zoneR<BR.zoneMin+40); }
+  const zn=document.getElementById('brZone'); if(zn){ const closing=zonePhase==='close'; zn.textContent=(closing?'⚠ CLOSING ':'ZONE ')+Math.round(zoneR)+'m'; zn.classList.toggle('tight', closing||zoneR<BR.zoneMin+40); }
   const zo=document.getElementById('zoneOut'); if(zo){ const dC=Math.hypot(player.pos.x-zoneCX, player.pos.y-zoneCZ);
     if(!player.alive) zo.style.opacity=0;
     else if(dC>zoneR){ zo.classList.add('danger'); zo.style.opacity=(0.5+0.32*Math.abs(Math.sin(raceTime*5))).toFixed(2); }   // OUTSIDE the zone: red pulsing damage vignette
