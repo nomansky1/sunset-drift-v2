@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.52-->
+<!--BUILD:v10.53-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -48,11 +48,11 @@
   #speedBox{ position:absolute; bottom:calc(env(safe-area-inset-bottom,10px) + 2px); left:50%; transform:translateX(-50%);
              width:148px; height:148px; }
   #speedo{ display:block; width:148px; height:148px; }
-  #speedNum{ position:absolute; left:0; right:0; top:46%; transform:translateY(-50%); text-align:center;
+  #speedNum{ display:none; position:absolute; left:0; right:0; top:46%; transform:translateY(-50%); text-align:center;
              font-size:44px; font-weight:900; line-height:1; letter-spacing:-1px;
              background:linear-gradient(180deg,#fff,#bfe0ff); -webkit-background-clip:text; background-clip:text; color:transparent;
-             filter:drop-shadow(0 2px 8px rgba(0,0,0,.6)); }
-  #speedUnit{ position:absolute; left:0; right:0; top:64%; text-align:center; font-size:10px; letter-spacing:3px; opacity:.55; }
+             filter:drop-shadow(0 2px 8px rgba(0,0,0,.6)); }   /* desktop: the canvas gauge draws the number (no double) */
+  #speedUnit{ display:none; position:absolute; left:0; right:0; top:64%; text-align:center; font-size:10px; letter-spacing:3px; opacity:.55; }
   #boostWrap{ position:absolute; left:28px; right:28px; bottom:23px; height:8px; background:rgba(0,0,0,.5);
               border-radius:5px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.5); }
   #boostWrap::after{ content:'BOOST'; position:absolute; left:50%; top:-15px; transform:translateX(-50%); font-size:8px; letter-spacing:3px; opacity:.55; font-weight:800; }
@@ -63,6 +63,17 @@
              display:none; font-size:min(5.2vw,22px); font-weight:900; letter-spacing:1px; color:#fff;
              text-shadow:0 2px 8px rgba(0,0,0,.6); }
   #scoreBox .cx{ color:#ffd23b; font-size:.8em; }
+  /* ---------- HUD animations (owner) ---------- */
+  #posBox.posPop{ animation:hudPop .42s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes hudPop{ 0%{ transform:translateX(-50%) scale(1.5); } 60%{ transform:translateX(-50%) scale(.93); } 100%{ transform:translateX(-50%) scale(1); } }
+  #posBox.posUp{ animation:hudPop .42s cubic-bezier(.2,1.6,.4,1), hudGlowUp .6s ease-out; }
+  #posBox.posDn{ animation:hudPop .42s cubic-bezier(.2,1.6,.4,1), hudGlowDn .6s ease-out; }
+  @keyframes hudGlowUp{ 0%{ box-shadow:0 0 20px 4px rgba(95,224,138,.85); } 100%{ box-shadow:0 8px 22px rgba(0,0,0,.45); } }
+  @keyframes hudGlowDn{ 0%{ box-shadow:0 0 20px 4px rgba(255,90,60,.85); } 100%{ box-shadow:0 8px 22px rgba(0,0,0,.45); } }
+  #lapBox.lapFlash{ animation:hudLapFlash .7s ease-out; }
+  @keyframes hudLapFlash{ 0%{ box-shadow:0 0 0 0 rgba(255,210,60,.8); } 100%{ box-shadow:0 0 0 15px rgba(255,210,60,0); } }
+  #boostWrap.full #boostBar{ animation:hudBoostFull .85s ease-in-out infinite; }
+  @keyframes hudBoostFull{ 0%,100%{ box-shadow:0 0 8px rgba(255,150,60,.6); } 50%{ box-shadow:0 0 18px 2px rgba(255,205,90,.95); } }
   /* floating juice popups (near-miss / overtake / boost / score) */
   #popups{ position:fixed; inset:0; z-index:7; pointer-events:none; }
   .popup{ position:absolute; left:50%; top:20%; transform:translateX(-50%); opacity:0; white-space:nowrap;
@@ -690,8 +701,8 @@
   /* mobile HUD: compact speed readout hugging the bottom edge (out of the center sightline) + smaller map */
   body.touch #speedBox{ width:auto; height:auto; bottom:calc(env(safe-area-inset-bottom,6px) + 2px); transform:translateX(-50%); text-align:center; }
   body.touch #speedo{ display:none; }                                  /* drop the big circular gauge on phones */
-  body.touch #speedNum{ position:static; transform:none; font-size:26px; }
-  body.touch #speedUnit{ position:static; top:auto; font-size:8px; letter-spacing:2px; margin-top:-2px; }
+  body.touch #speedNum{ display:block; position:static; transform:none; font-size:26px; }   /* phones: canvas gauge is hidden -> DOM number is the readout */
+  body.touch #speedUnit{ display:block; position:static; top:auto; font-size:8px; letter-spacing:2px; margin-top:-2px; }
   body.touch #boostWrap{ position:static; left:auto; right:auto; bottom:auto; width:140px; height:7px; margin:4px auto 0; }
   body.touch #boostWrap::after{ top:-12px; }
   body.touch #mapBox{ transform:scale(.8); transform-origin:top right; }
@@ -1285,7 +1296,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.52';
+(function(){ const BUILD='v10.53';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5117,23 +5128,58 @@ function initMap(){
   mapPath=samplePts.map(p=>mapXY(p.x,p.y));
 }
 function mapXY(x,z){ return [ mapBox.pad+(x-mapBox.minx)*mapBox.sx, mapBox.pad+(z-mapBox.minz)*mapBox.sz ]; }
+// 3D GPS MAP: player-locked nav view — the route ahead recedes into the distance in perspective, forward = up
 function drawMap(){
-  const ctx=mapCtx; if(!ctx) return; ctx.clearRect(0,0,130,130);
-  ctx.lineJoin='round'; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=4.5;
-  ctx.beginPath(); mapPath.forEach((p,i)=> i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath(); ctx.stroke();
-  ctx.strokeStyle='rgba(60,60,70,.9)'; ctx.lineWidth=2.6; ctx.stroke();
-  // start
-  const s=mapXY(samplePts[0].x,samplePts[0].y); ctx.fillStyle='#fff'; ctx.fillRect(s[0]-2,s[1]-2,4,4);
-  // cars
-  cars.forEach(c=>{ const m=mapXY(c.pos.x,c.pos.y); ctx.beginPath();
-    ctx.fillStyle = c.isPlayer?'#ff3b3b':'#39c0ff'; ctx.arc(m[0],m[1], c.isPlayer?4:3, 0, 7); ctx.fill();
-    if(c.isPlayer){ ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); } });
+  const ctx=mapCtx; if(!ctx||!player||!SAMPLES) return; const S=130;
+  ctx.clearRect(0,0,S,S);
+  const p=player, h=p.heading, ch=Math.cos(h), sh=Math.sin(h);
+  const cx=S*0.5, baseY=S*0.95, horizon=S*0.17, camDist=46, PXX=2.3, HW=(CONFIG.roadHalfWidth||9);
+  const proj=(wx,wz)=>{ const dx=wx-p.pos.x, dz=wz-p.pos.y;
+    const along=dx*sh+dz*ch, side=dx*ch-dz*sh, depth=along+camDist;
+    if(depth<9) return null; const k=camDist/depth;
+    return [cx+side*k*PXX, baseY-(baseY-horizon)*(1-k), k]; };
+  // GPS backdrop: deep navy pane + a fading horizon glow
+  ctx.fillStyle='rgba(9,13,24,.62)'; ctx.fillRect(0,0,S,S);
+  const sky=ctx.createLinearGradient(0,horizon-8,0,horizon+34); sky.addColorStop(0,'rgba(60,120,200,.22)'); sky.addColorStop(1,'rgba(60,120,200,0)');
+  ctx.fillStyle=sky; ctx.fillRect(0,horizon-8,S,42);
+  // ROUTE RIBBON: build left/right edges through the window ahead (+ a little behind), fill as a tapering road
+  const N=SAMPLES, pi=player.trackIdx|0, L=[], R=[], CN=[];
+  for(let i=-Math.round(N*0.06); i<Math.round(N*0.5); i++){ const idx=((pi+i)%N+N)%N; const sp=samplePts[idx], nn=sampleNorm[idx]||{x:0,y:0};
+    const ql=proj(sp.x-nn.x*HW, sp.y-nn.y*HW), qr=proj(sp.x+nn.x*HW, sp.y+nn.y*HW), qc=proj(sp.x,sp.y);
+    if(ql&&qr){ L.push(ql); R.push(qr); CN.push(qc); } }
+  if(L.length>1){
+    ctx.beginPath(); L.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));
+    for(let i=R.length-1;i>=0;i--) ctx.lineTo(R[i][0],R[i][1]); ctx.closePath();
+    const g=ctx.createLinearGradient(0,horizon,0,baseY); g.addColorStop(0,'rgba(70,86,120,.35)'); g.addColorStop(1,'rgba(120,140,180,.9)');
+    ctx.fillStyle=g; ctx.fill();
+    ctx.lineJoin='round'; ctx.strokeStyle='rgba(120,220,255,.85)'; ctx.lineWidth=1.4;   // glowing edge lines
+    ctx.beginPath(); L.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.stroke();
+    ctx.beginPath(); R.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.stroke();
+    // centre dashes
+    ctx.strokeStyle='rgba(255,225,120,.9)'; ctx.setLineDash([3,4]); ctx.lineWidth=1.2;
+    ctx.beginPath(); CN.forEach((q,i)=> q&&(i&&CN[i-1]?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]))); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // start/finish line if it's in view
+  { const s0=samplePts[0], n0=sampleNorm[0]||{x:0,y:0};
+    const a=proj(s0.x-n0.x*HW,s0.y-n0.y*HW), b=proj(s0.x+n0.x*HW,s0.y+n0.y*HW);
+    if(a&&b){ ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=2.4; ctx.setLineDash([2,2]); ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); ctx.setLineDash([]); } }
+  // RIVAL cars: perspective dots ahead/behind
+  cars.forEach(c=>{ if(c.isPlayer) return; const q=proj(c.pos.x,c.pos.y); if(!q) return;
+    const r=Math.max(1.5, 3.2*q[2]); ctx.fillStyle='rgba(90,200,255,'+(0.5+0.5*q[2])+')'; ctx.beginPath(); ctx.arc(q[0],q[1],r,0,7); ctx.fill(); });
+  // PLAYER arrow pinned at the bottom-centre, pointing up (nav marker)
+  ctx.save(); ctx.translate(cx, baseY-16); ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(5.5,6); ctx.lineTo(0,3); ctx.lineTo(-5.5,6); ctx.closePath();
+  ctx.fillStyle='#ff4d4d'; ctx.shadowColor='rgba(255,60,60,.9)'; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.stroke(); ctx.restore();
+  // compass N (small, top-right) — points to world-north relative to heading
+  ctx.save(); ctx.translate(S-13, 13); ctx.rotate(-h); ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font='700 8px system-ui'; ctx.textAlign='center'; ctx.fillText('N',0,-4);
+  ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,4); ctx.lineTo(0,-3); ctx.stroke(); ctx.restore();
 }
 const elLapNow=document.getElementById('lapNow'), elCurTime=document.getElementById('curTime'),
   elBestTime=document.getElementById('bestTime'), elPosNow=document.getElementById('posNow'),
   elPosOf=document.getElementById('posOf'), elSpeedNum=document.getElementById('speedNum'),
   elBoostBar=document.getElementById('boostBar'), elBoostWrap=document.getElementById('boostWrap'),
-  elScore=document.getElementById('scoreBox'), elRival=document.getElementById('rivalTag');
+  elScore=document.getElementById('scoreBox'), elRival=document.getElementById('rivalTag'),
+  elPosBox=document.getElementById('posBox'), elLapBox=document.getElementById('lapBox');
 let _rivalTxt='', _scoreTxt='';                                  // cache HUD strings -> skip per-frame re-parse
 function fmt(t){ if(t==null) return '--'; const m=Math.floor(t/60), s=(t%60); return m+':'+(s<10?'0':'')+s.toFixed(1); }
 function ordinal(n){ return n+(['th','st','nd','rd'][(n%100>>3^1&&n%10)||0]||'th'); }
@@ -5188,10 +5234,14 @@ function drawCluster(x, W, H, kmh, maxKmh, boostFrac, boosting){
   x.textAlign='start';
 }
 function updateHUD(){
-  elLapNow.textContent=Math.min(player.lap+1,CONFIG.laps);
+  const lapN=Math.min(player.lap+1,CONFIG.laps);
+  if(lapN!==updateHUD._lap){ updateHUD._lap=lapN; if(elLapBox){ elLapBox.classList.remove('lapFlash'); void elLapBox.offsetWidth; elLapBox.classList.add('lapFlash'); } }   // lap tick -> flash
+  elLapNow.textContent=lapN;
   elCurTime.textContent=fmt(raceTime);
   elBestTime.textContent='BEST '+(bestLap?fmt(bestLap):'--');
-  const r=rankOf(player); elPosNow.innerHTML=r+'<span style="font-size:14px">'+ordinal(r).replace(String(r),'')+'</span>';
+  const r=rankOf(player);
+  if(r!==updateHUD._rank){ if(updateHUD._rank!=null && elPosBox){ elPosBox.classList.remove('posPop','posUp','posDn'); void elPosBox.offsetWidth; elPosBox.classList.add('posPop', r<updateHUD._rank?'posUp':'posDn'); } updateHUD._rank=r; }   // rank change -> pop (green up / red down)
+  elPosNow.innerHTML=r+'<span style="font-size:14px">'+ordinal(r).replace(String(r),'')+'</span>';
   elPosOf.textContent='of '+cars.length;
   if(player._lastRank && r<player._lastRank && state==='race' && raceTime-(player._otT||-9)>1.0){ player._otT=raceTime; combo++; addScore(80,'OVERTAKE','#ffd23b'); }   // gained a place (debounced vs line-jitter)
   player._lastRank=r;
@@ -5211,8 +5261,10 @@ function updateHUD(){
         window._ckW=(window._ckW||0)+(st-(window._ckW||0))*0.28;
         const w=document.getElementById('ckWheel'); if(w) w.style.transform='translateX(-50%) rotate('+(-window._ckW*135).toFixed(1)+'deg)';
       } else { ck.classList.add('hidden'); document.body.classList.remove('ck-view'); } } }
-  elBoostBar.style.width=(player.boost/(CONFIG.boostMax*(player.nosMax||1))*100)+'%';   // scale by the (possibly bigger) NOS tank
+  const boostFrac=player.boost/(CONFIG.boostMax*(player.nosMax||1));
+  elBoostBar.style.width=(boostFrac*100)+'%';   // scale by the (possibly bigger) NOS tank
   elBoostWrap.classList.toggle('charging', player.drifting && !player.boosting);
+  elBoostWrap.classList.toggle('full', boostFrac>0.98 && !player.boosting);   // NOS ready -> pulse
   // rival tag + pass callouts
   const rv=cars[rivalIdx];
   if(elRival && rv && state==='race'){
