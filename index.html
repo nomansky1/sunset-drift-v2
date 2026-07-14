@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.80-->
+<!--BUILD:v10.81-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.80';
+(function(){ const BUILD='v10.81';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3523,10 +3523,10 @@ function buildStreetFurniture(rng){
   const _t=new THREE.Matrix4(), _tp=new THREE.Vector3(), _tq=new THREE.Quaternion(), _ts=new THREE.Vector3();
   const treePos=[];
   for(let i=0;i<SAMPLES;i+=18){ const p=samplePts[i], n=sampleNorm[i], side=((i/18)%2)?1:-1, off=roadEdge(i)+3.5+rng()*2.5;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+2) treePos.push({x,z,s:0.9+rng()*0.5}); }   // line the street
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+2 && !occHit(x,z,1.6,1.6)) treePos.push({x,z,s:0.9+rng()*0.5}); }   // line the street (skip building lots)
   for(let c=0;c<4;c++){ const a=rng()*6.283, rad=trackRadius+30+rng()*120, cx=trackCentroid.x+Math.cos(a)*rad, cz=trackCentroid.y+Math.sin(a)*rad;
     if(distToTrackApprox(cx,cz)<30) continue;
-    for(let t=0;t<7;t++){ const x=cx+(rng()-0.5)*24, z=cz+(rng()-0.5)*24; treePos.push({x,z,s:1.0+rng()*0.6}); } }   // a small park: a cluster of trees
+    for(let t=0;t<7;t++){ const x=cx+(rng()-0.5)*24, z=cz+(rng()-0.5)*24; if(occHit(x,z,1.6,1.6)) continue; treePos.push({x,z,s:1.0+rng()*0.6}); } }   // a small park: a cluster of trees (skip lots)
   if(treePos.length){
     // DETAILED tree: tapered trunk + a MULTI-LOBE canopy (3 overlapping foliage clusters) with per-tree
     // rotation + colour variation -> fuller, more organic than a single blob. Same footprint so it never
@@ -3545,7 +3545,7 @@ function buildStreetFurniture(rng){
     lobes.forEach(m=>{ m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true; scene.add(m); }); }
   const bushPos=[];
   for(let i=0;i<SAMPLES;i+=11){ if(rng()>0.55) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=roadEdge(i)+2.5+rng()*4;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+1.5) bushPos.push({x,z}); }
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+1.5 && !occHit(x,z,1,1)) bushPos.push({x,z}); }
   if(bushPos.length){ const bush=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.7,0), new THREE.MeshStandardMaterial({color:0x3a7a3e,flatShading:true,roughness:1}), bushPos.length);
     bushPos.forEach((b,k)=>{ _t.compose(_tp.set(b.x,terrainHeight(b.x,b.z)+0.5,b.z),_tq,_ts.set(1,0.8,1)); bush.setMatrixAt(k,_t); });
     bush.instanceMatrix.needsUpdate=true; bush.castShadow=!isTouch; scene.add(bush); }
@@ -3695,12 +3695,13 @@ function scatterProps(){ if(typeof brActive!=='undefined' && brActive) return;  
   const th=currentTheme?currentTheme.theme:'city';
   if(th==='coast') buildCoast(rng);
   else if(th==='beach') buildCoast(rng);                 // palms line the beach road
-  else if(th==='docks'){ buildDocks(rng); buildStreetFurniture(rng); }
+  else if(th==='docks') buildDocks(rng);
   else if(th==='desert') buildDesert(rng);
   else if(th==='forest' || th==='snow') buildForest(rng);   // snow reuses the pine scatter (white ground)
-  else { buildCity(rng); buildStreetFurniture(rng); }
-  buildTrackFurniture(rng);             // MOVED UP: builds the roadside district + block-grid city FIRST so the shared
-                                        // occupancy map is full before trees/props scatter -> nothing lands inside a building
+  else buildCity(rng);
+  buildTrackFurniture(rng);             // build the roadside district + block-grid city FIRST so the shared
+                                        // occupancy map is full before ANY trees/props scatter -> nothing lands inside a building
+  if(th==='city'||th==='docks') buildStreetFurniture(rng);   // streetlights + STREET TREES: run AFTER buildings so trees skip occupied lots (was in the dispatch = before buildings existed -> trees inside walls)
   buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it)
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
@@ -3937,8 +3938,9 @@ function buildPark(rng){
   const cx0=trackCentroid.x, cz0=trackCentroid.y, hw=CONFIG.roadHalfWidth;
   let cx=null, cz=null;
   for(let a=0;a<26;a++){ const ang=rng()*6.283, rad=trackRadius+34+rng()*95, x=cx0+Math.cos(ang)*rad, z=cz0+Math.sin(ang)*rad;
-    if(distToTrackApprox(x,z)>hw+14 && terrainSlope(x,z)<0.16 && heightFrac(x,z)>-0.05){ cx=x; cz=z; break; } }
+    if(distToTrackApprox(x,z)>hw+14 && terrainSlope(x,z)<0.16 && heightFrac(x,z)>-0.05 && !occHit(x,z,15,15)){ cx=x; cz=z; break; } }   // don't drop the park on a building
   if(cx==null) return;
+  if(typeof occMark==='function') occMark(cx,cz,14,14);   // reserve the park lawn so nothing scatters into it
   const sh=!isTouch, y0=terrainHeight(cx,cz), g=new THREE.Group(); g.position.set(cx,y0,cz); g.rotation.y=rng()*6.283; scene.add(g);
   { const gt=new THREE.TextureLoader().load('textures/grass.jpg'); gt.wrapS=gt.wrapT=THREE.RepeatWrapping;
     gt.colorSpace=THREE.SRGBColorSpace; gt.repeat.set(7,7);
