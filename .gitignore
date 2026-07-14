@@ -3,3 +3,4 @@ models/cc0/incoming/
 audio/incoming/
 models/cc0/cars/incoming/
 LAUNCH_COPY.md
+models/gen4/*.bak
