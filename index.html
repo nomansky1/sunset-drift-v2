@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.74-->
+<!--BUILD:v10.75-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.74';
+(function(){ const BUILD='v10.75';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3797,6 +3797,25 @@ function buildPackDistrict(rng){
     if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth+wHalf+2) continue;                           // clear of every road leg (accounts for the building's own width)
     (xf[key]=xf[key]||[]).push(propMat(x, z, hgt, Math.atan2(-n.x*side,-n.y*side)+ (rng()-0.5)*0.15, 0));
     if(hgt>14) camColliders.push({x,z,r:hgt*0.45, top:hgt});                                       // chase cam won't clip tall towers
+  }
+  for(const k in xf) instProp(propModels[k], xf[k]);
+  if(th==='city'||th==='coast'||th==='docks') fillCityGrid(rng, set, th);   // owner: FILL the world beyond the roadside row -> a real city, not a lone ribbon
+}
+// fill the WORLD around the track with a city-block grid (behind the detailed roadside row) so it reads as a real
+// city to the horizon. Buildings snap to a jittered grid facing the grid streets; the track + roadside row stay clear.
+function fillCityGrid(rng, set, th){
+  const cx=(trackCentroid?trackCentroid.x:0), cz=(trackCentroid?trackCentroid.y:0);
+  const R=(typeof trackRadius!=='undefined'?trackRadius:200)+60;
+  const GB=isTouch?48:36;                              // city-block pitch (phones sparser)
+  const xf={}; let n=0, cap=isTouch?90:220;
+  for(let gx=-R; gx<=R && n<cap; gx+=GB) for(let gz=-R; gz<=R && n<cap; gz+=GB){
+    const x=cx+gx+(rng()-0.5)*11, z=cz+gz+(rng()-0.5)*11;
+    if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth+44) continue;                 // clear the track AND the detailed roadside row
+    if(terrainAmp>0 && typeof terrainSlope==='function' && terrainSlope(x,z)>0.16) continue;
+    const pick=set[Math.floor(rng()*set.length)], key=pick[0], hgt=pick[1]*(0.8+rng()*0.55);
+    if(!propModels[key]) continue;
+    const rot=Math.floor(rng()*4)*(Math.PI/2)+(rng()-0.5)*0.18;                    // grid-aligned facing (varied)
+    (xf[key]=xf[key]||[]).push(propMat(x, z, hgt, rot, 0)); n++;
   }
   for(const k in xf) instProp(propModels[k], xf[k]);
 }
