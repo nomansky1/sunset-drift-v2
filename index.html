@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.63-->
+<!--BUILD:v10.64-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.63';
+(function(){ const BUILD='v10.64';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6603,62 +6603,72 @@ const CINEMATIC_SHADER = {
     '  col.rgb += mix(vec3(-0.015,0.0,0.03), vec3(0.045,0.018,-0.02), smoothstep(0.2,0.8,l))*uTone;', // teal/orange
     '  float v=smoothstep(0.95,0.30,length(vUv-0.5));',
     '  col.rgb*=mix(1.0,v,uVignette);',                                    // vignette
-    '  if(uCel>0.01){',                                                  // 🎌 ANIME: posterized luminance bands + punchy saturation + lifted blacks
-    '    float cl=dot(col.rgb, vec3(0.299,0.587,0.114));',
-    '    float bands=floor(cl*4.0+0.5)/4.0;',
-    '    col.rgb *= mix(1.0, (bands+0.02)/max(cl,0.02), uCel*0.85);',
-    '    float l3=dot(col.rgb, vec3(0.299,0.587,0.114));',
-    '    col.rgb=mix(vec3(l3), col.rgb, 1.0+0.45*uCel);',
-    '    col.rgb=max(col.rgb, vec3(0.018)*uCel);',
+    '  col.rgb=pow(max(col.rgb,0.0), vec3(0.4545));',                      // linear -> sRGB BEFORE the stylized modes: they band/ink in PERCEPTUAL space (linear-space posterize crushed all the darks = the old muddy look)
+    '  if(uCel+uComic>0.05){',                                          // shared ink-line gradient: Sobel on perceptual luma, wide taps low-pass texture noise
+    '    vec2 e=1.6/uRes; vec3 LM=vec3(0.299,0.587,0.114);',
+    '    float tl=pow(dot(texture2D(tDiffuse,vUv+vec2(-e.x,-e.y)).rgb,LM),0.4545);',
+    '    float tc=pow(dot(texture2D(tDiffuse,vUv+vec2( 0.0,-e.y)).rgb,LM),0.4545);',
+    '    float tr=pow(dot(texture2D(tDiffuse,vUv+vec2( e.x,-e.y)).rgb,LM),0.4545);',
+    '    float ml=pow(dot(texture2D(tDiffuse,vUv+vec2(-e.x, 0.0)).rgb,LM),0.4545);',
+    '    float mr=pow(dot(texture2D(tDiffuse,vUv+vec2( e.x, 0.0)).rgb,LM),0.4545);',
+    '    float bl=pow(dot(texture2D(tDiffuse,vUv+vec2(-e.x, e.y)).rgb,LM),0.4545);',
+    '    float bc=pow(dot(texture2D(tDiffuse,vUv+vec2( 0.0, e.y)).rgb,LM),0.4545);',
+    '    float br=pow(dot(texture2D(tDiffuse,vUv+vec2( e.x, e.y)).rgb,LM),0.4545);',
+    '    float gx=(tr+2.0*mr+br)-(tl+2.0*ml+bl), gy=(bl+2.0*bc+br)-(tl+2.0*tc+tr);',
+    '    float g=sqrt(gx*gx+gy*gy);',
+    '    if(uCel>0.01){',                                                // 🎌 ANIME: soft painterly cel + rich vivid colour + GLOWING cool rim light + airy blooming highlights + manga speed lines
+    '      vec3 ac=col.rgb; float al=dot(ac,LM);',
+    '      float qb=floor(al*5.0)/5.0+0.1;',
+    '      ac*=mix(1.0,qb/max(al,0.04),0.42);',                          // GENTLE cel banding (softer than the comic crush)
+    '      float a2=dot(ac,LM); ac=mix(vec3(a2),ac,1.44); ac=clamp(ac,0.0,1.0);',   // rich, vivid anime colour
+    '      ac=mix(ac,vec3(1.0,0.98,0.95),smoothstep(0.80,1.0,a2)*0.45);',// airy blooming highlights
+    '      ac+=vec3(0.30,0.48,0.78)*smoothstep(0.36,0.74,g)*(0.35+0.5*a2);', // cool GLOWING rim light on silhouettes = the anime tell
+    '      ac=mix(ac,vec3(0.10,0.07,0.16),smoothstep(0.56,0.84,g)*0.4);',// thin indigo accent only on the hardest edges (not a heavy comic line)
+    '      float sp=clamp(uSpeed*1.4,0.0,1.0)*smoothstep(0.24,0.55,length(dir));',
+    '      if(sp>0.003){ float an=atan(dir.y,dir.x);',                   // manga SPEED LINES streaking in from the frame edges at speed/boost
+    '        float s1=pow(sin(an*80.0+1.7)*0.5+0.5,26.0);',
+    '        float s2=pow(sin(an*46.0)*0.5+0.5,40.0);',
+    '        ac=mix(ac,vec3(1.0),s1*sp*0.75); ac=mix(ac,vec3(0.06,0.05,0.11),s2*sp*0.5); }',
+    '      col.rgb=mix(col.rgb,clamp(ac,0.0,1.0),uCel);',
+    '    }',
+    '    if(uComic>0.01){',                                              // 📖 COMIC (clean modern cel-comic): FLAT vivid colour fills + bright cel highlights + BOLD clean ink lines + Ben-Day dots ONLY as a whisper in the deepest shadow
+    '      vec3 pc=col.rgb; float lp=dot(pc,LM);',
+    '      pc=clamp(mix(vec3(lp),pc,1.7),0.0,1.0);',                     // punch chroma HARD -> vivid comic inks
+    '      float ql=floor(lp*4.0+0.5)/4.0;',                            // 4 flat luma steps
+    '      pc*=clamp(ql/max(lp,0.04),0.6,1.7);',                        // snap to the band, keep hue, clamp so it never washes/blows
+    '      pc=clamp(pc,0.0,1.0);',
+    '      pc=mix(pc,vec3(1.0,0.99,0.95),smoothstep(0.82,1.0,lp)*0.55);',// clean bright cel highlights (comic white)
+    '      float a=0.383972; mat2 rt=mat2(cos(a),-sin(a),sin(a),cos(a));',
+    '      vec2 hc=fract(rt*(vUv*uRes)/max(4.0,uRes.y/120.0))-0.5;',
+    '      float sh=smoothstep(0.32,0.08,lp);',                          // deepest shadow ONLY -> a hint of Ben-Day texture (keeps sky/mids clean & flat)
+    '      float dotv=smoothstep(0.30,0.12,length(hc));',
+    '      pc=mix(pc,pc*0.62,dotv*sh*0.7);',
+    '      pc=max(pc,vec3(0.06,0.05,0.08));',
+    '      pc=mix(pc,vec3(0.04,0.03,0.06),smoothstep(0.15,0.40,g));',     // BOLD clean black holding lines
+    '      float sp2=clamp(uSpeed*1.5,0.0,1.0)*smoothstep(0.30,0.6,length(dir));',
+    '      if(sp2>0.003){ float an=atan(dir.y,dir.x); float st=pow(sin(an*70.0)*0.5+0.5,30.0);',   // action speed streaks at speed/boost
+    '        pc=mix(pc,vec3(0.05,0.04,0.07),st*sp2*0.6); }',
+    '      col.rgb=mix(col.rgb,pc,uComic);',
+    '    }',
     '  }',
-    '  if(uComic>0.01){',                                               // 📖 COMIC BOOK: bold black holding lines + flat saturated cel fills + Ben-Day halftone dots
-    '    vec2 px=1.4/uRes; vec3 LUM=vec3(0.299,0.587,0.114);',          // sample a touch wider -> BOLDER ink than the old thin riso line
-    '    float gx=0.0, gy=0.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2(-px.x,-px.y)).rgb,LUM)*-1.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2(-px.x, 0.0 )).rgb,LUM)*-2.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2(-px.x, px.y)).rgb,LUM)*-1.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x,-px.y)).rgb,LUM)* 1.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x, 0.0 )).rgb,LUM)* 2.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x, px.y)).rgb,LUM)* 1.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2(-px.x,-px.y)).rgb,LUM)*-1.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2( 0.0 ,-px.y)).rgb,LUM)*-2.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2( px.x,-px.y)).rgb,LUM)*-1.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2(-px.x, px.y)).rgb,LUM)* 1.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2( 0.0 , px.y)).rgb,LUM)* 2.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2( px.x, px.y)).rgb,LUM)* 1.0;',
-    '    float ink=smoothstep(0.12,0.42,sqrt(gx*gx+gy*gy));',           // full Sobel -> BOLD comic holding lines
-    '    vec3 pc=col.rgb; float lp=dot(pc,LUM);',
-    '    pc=mix(vec3(lp),pc,1.55); pc=clamp(pc,0.0,1.0);',              // comic inks are VIVID -> punch the saturation
-    '    pc=floor(pc*4.0+0.5)/4.0;',                                    // 4-level FLAT cel fills (no soft gradients)
-    '    pc=max(pc, vec3(0.06,0.05,0.075));',                          // keep deep shadows as dark INK, not dead black -> printed colour stays alive
-    '    float a=0.383972; mat2 rot=mat2(cos(a),-sin(a),sin(a),cos(a));',// classic ~22deg Ben-Day screen angle
-    '    float pitch=max(3.5, uRes.y/150.0);',                          // halftone dot pitch scales with screen size
-    '    vec2 hc=fract(rot*(vUv*uRes)/pitch)-0.5;',
-    '    float shade=clamp(1.0-lp,0.0,1.0);',                           // darker -> bigger dots
-    '    float rad=smoothstep(0.02,0.85,shade)*0.72;',
-    '    float dotv=smoothstep(rad+0.10, rad-0.10, length(hc)*1.9);',   // 1.0 inside a printed dot
-    '    float dotMask=smoothstep(0.95,0.5,lp);',                       // dots bite in mid/shadow; highlights stay clean
-    '    pc=mix(pc, pc*0.42, dotv*dotMask);',                           // Ben-Day ink dots darken the shading (eased so dots texture, not obliterate)
-    '    pc=mix(pc, vec3(0.98,0.96,0.90), smoothstep(0.86,1.0,lp)*0.6);',// cream newsprint paper in the highlights
-    '    pc=mix(pc, vec3(0.04,0.03,0.05), ink*uComic);',               // bold near-black holding lines on top
-    '    col.rgb=mix(col.rgb, pc, uComic);',
-    '  }',
-    '  if(uVoxel>0.01){',                                              // 🧊 VOXEL: pixelate the frame into shaded cube-tiles (Crossy-Road / MagicaVoxel look)
-    '    float bs=max(4.0, floor(uRes.y/165.0));',                     // fine grid = high-detail voxels
-    '    vec2 blk=floor(vUv*uRes/bs); vec2 buv=(blk+0.5)*bs/uRes;',
-    '    vec3 vc=texture2D(tDiffuse, buv).rgb;',                        // one flat colour per cube (pixelate)
+    '  if(uVoxel>0.01){',                                                // 🧊 VOXEL: clean vibrant blocks that read as glossy plastic cubes (flat face + rounded bevel + glint) — Crossy-Road palette rules: flat shading, vivid colour
+    '    float bs=max(6.0,floor(uRes.y/110.0));',
+    '    vec2 bb=floor(vUv*uRes/bs)*bs/uRes; vec2 bp=vec2(bs)/uRes;',
+    '    vec3 vc=(texture2D(tDiffuse,bb+bp*0.25).rgb+texture2D(tDiffuse,bb+bp*vec2(0.75,0.25)).rgb',
+    '            +texture2D(tDiffuse,bb+bp*vec2(0.25,0.75)).rgb+texture2D(tDiffuse,bb+bp*0.75).rgb)*0.25;',   // box-downsample = stable clean block colour (centre point-sample shimmered)
+    '    vc=pow(max(vc,0.0),vec3(0.4545));',
     '    float lv=dot(vc,vec3(0.299,0.587,0.114));',
-    '    vc=mix(vec3(lv),vc,1.16); vc=clamp(floor(vc*6.0+0.5)/6.0,0.0,1.0);',  // flat quantised voxel palette
-    '    vec2 f=fract(vUv*uRes/bs); float diag=(f.x+(1.0-f.y))*0.5;',
-    '    vc*=mix(1.30,0.72,diag);',                                    // isometric cube shading: top-left face lit, bottom-right shaded (stronger -> reads as 3D cubes)
-    '    vc*=1.0+0.14*smoothstep(0.16,0.0,f.x)*smoothstep(0.84,1.0,f.y);',// bright top-left corner highlight = light hitting each cube
-    '    float grout=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y));',
-    '    vc*=mix(0.48,1.0,smoothstep(0.0,0.08,grout));',              // darker/wider seams clearly separate the cubes
-    '    col.rgb=mix(col.rgb, vc, uVoxel);',
+    '    vc=mix(vec3(lv),vc,1.3); vc=clamp(floor(vc*7.0+0.5)/7.0,0.0,1.0);',  // vibrant flat voxel palette
+    '    vc=max(vc,vec3(0.05,0.05,0.08));',
+    '    vec2 f=fract(vUv*uRes/bs);',
+    '    float ed=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y));',
+    '    vc*=mix(0.58,1.0,smoothstep(0.0,0.14,ed));',                     // rounded bevel: edges roll dark -> separates cubes without dirty grout
+    '    vc*=1.0+0.08*smoothstep(0.14,0.5,ed);',                          // flat face centre slightly lit
+    '    vc+=vec3(0.16)*smoothstep(0.34,0.06,length(f-vec2(0.32,0.70)));',// small glossy glint top-left of each cube face
+    '    col.rgb=mix(col.rgb,vc,uVoxel);',
     '  }',
     '  float dh=fract(sin(dot(vUv*vec2(1920.0,1080.0),vec2(12.9898,78.233)))*43758.5453);',
     '  col.rgb += (dh-0.5)/255.0;',                                        // dither -> kills 8-bit sky/bloom banding
-    '  col.rgb=pow(max(col.rgb,0.0), vec3(0.4545));',                      // linear -> sRGB
     '  gl_FragColor=vec4(col.rgb,1.0);',
     '}'
   ].join('\n')
@@ -6682,6 +6692,9 @@ function applyToneBloom(){
       bloomPass.threshold = bright ? 0.99 : 0.97;   // dusk: only the brightest lit windows bloom (not a neon smear)
       bloomPass.radius    = 0.22;                    // wide radius smeared half the frame at half-res (owner phone shot)
     }
+  }
+  if(typeof animeMode!=='undefined' && animeMode && bloomPass){        // 🎌 ANIME: gentle illustration glow on the GENUINE highlights only (threshold high so daytime doesn't flood to white)
+    bloomPass.strength = isTouch?0.28:0.42; bloomPass.threshold = nightMode?0.7:0.85; bloomPass.radius = 0.4;
   }
 }
 function buildComposer(){
