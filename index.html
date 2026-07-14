@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.69-->
+<!--BUILD:v10.70-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.69';
+(function(){ const BUILD='v10.70';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6815,74 +6815,89 @@ function renderCarMask(){
 // sample a texture's pixels into a small cached canvas so voxelizeCar can read the car's painted colour from its MAP
 function _voxTexData(tex){ if(!tex) return null; if(tex.__vdat!==undefined) return tex.__vdat;
   try{ const img=tex.image; if(!img||!(img.width||img.videoWidth)){ tex.__vdat=null; return null; }
-    const w=Math.min(img.width||128,96), h=Math.min(img.height||128,96);
+    const w=Math.min(img.width||64,44), h=Math.min(img.height||64,44);   // small = heavy bilinear DOWNSAMPLE -> blends noisy/holo textures into smooth voxel colour regions
     const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true});
+    cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
     cx.drawImage(img,0,0,w,h); tex.__vdat={data:cx.getImageData(0,0,w,h).data,w:w,h:h}; return tex.__vdat;
   }catch(e){ tex.__vdat=null; return null; } }
 // 🧊 REAL VOXEL GEOMETRY — rebuild a car out of actual small cubes (world-locked, lit by the scene = the true
 // MagicaVoxel look, not a screen-space filter). Surface-samples the car's triangles into a voxel grid in
 // rig.group space so the cube shell moves/leans with the car. Built ONCE per car on toggle (not per frame).
+const _WHEEL_RE=/wheel|tyre|tire|\brim\b|hub|brake/i, _GLASS_RE=/glass|windshield|windscreen|window|glazing|canopy/i;
 function voxelizeCar(car){
   try{
     const rig=car&&car.rig; if(!rig||!rig.group||!rig.chassis) return;
     if(rig._voxelMesh) return;                                          // already voxelized
     const grp=rig.group; grp.updateWorldMatrix(true,true);
     const invGrp=new THREE.Matrix4().copy(grp.matrixWorld).invert(), M=new THREE.Matrix4();
-    const meshes=[]; grp.traverse(o=>{ if(!o.isMesh||!o.visible||o.isSprite||o.userData._inkHull||o.userData._voxel) return;   // traverse the WHOLE car group (not just chassis) so EXHAUST tips / lights / gun voxelize too
+    const all=[]; grp.traverse(o=>{ if(!o.isMesh||!o.visible||o.isSprite||o.userData._inkHull||o.userData._voxel) return;   // WHOLE car group (exhaust/lights/gun too), skip fx
       if(!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position) return;
-      if(/shadow/i.test(o.name||'')) return;                                                    // never the flat ground-shadow disc
-      const _mm=Array.isArray(o.material)?o.material[0]:o.material; if(_mm&&_mm.blending===THREE.AdditiveBlending) return;   // skip glow/flame/headlight-halo FX; KEEP glass, exhaust, lens
-      meshes.push(o); });
-    if(!meshes.length) return;
-    const CAP=car.isPlayer?30000:9000;
+      if(/shadow/i.test(o.name||'')) return;
+      const _mm=Array.isArray(o.material)?o.material[0]:o.material; if(_mm&&_mm.blending===THREE.AdditiveBlending) return;   // skip glow/flame; KEEP glass, exhaust, lens
+      all.push(o); });
+    if(!all.length) return;
     const bb=new THREE.Box3(), v=new THREE.Vector3();
-    meshes.forEach(m=>{ m.updateWorldMatrix(true,false); M.multiplyMatrices(invGrp,m.matrixWorld); const pos=m.geometry.attributes.position;
+    all.forEach(m=>{ m.updateWorldMatrix(true,false); M.multiplyMatrices(invGrp,m.matrixWorld); const pos=m.geometry.attributes.position;
       for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(M); bb.expandByPoint(v); } });
-    const size=new THREE.Vector3(); bb.getSize(size); const cube=Math.max(size.x,size.z)/((car.isPlayer?95:54)*(isTouch?0.72:1));   // owner (2nd pass): even SMALLER cubes -> fine tyre/exhaust/rim detail; AI coarser + phones coarser to hold FPS
-    if(!(cube>1e-4)) return;
-    const cells=new Map(), a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),p=new THREE.Vector3(),hsl={h:0,s:0,l:0},col=new THREE.Color();
-    for(const m of meshes){ M.multiplyMatrices(invGrp,m.matrixWorld); const g=m.geometry, pos=g.attributes.position, idx=g.index, vc=g.attributes.color;   // procedural cars store colour in VERTEX colours; GLB cars in material.color
-      const mat=Array.isArray(m.material)?m.material[0]:m.material; const matHex=(mat&&mat.color)?mat.color.getHex():0x9092a0;
-      const _tmap=mat&&(mat.map||mat.bumpMap||mat.roughnessMap); const tdColor=!!(mat&&mat.map); const td=_tmap?_voxTexData(_tmap):null, uv=g.attributes.uv;   // colour from the paint MAP; else a bump/rough map -> greyscale TREAD texture on flat parts (tyres/exhaust)
-      const _nm=(m.name||'')+' '+((mat&&mat.name)||''); const isWheel=/wheel|tyre|tire|\brim\b|hub|brake/i.test(_nm);   // tyres/rims get their OWN palette by radius (the atlas maps wheels to BODY colour on some cars -> yellow tyres, owner)
-      let wcy=0,wcz=0,wr=1; if(isWheel){ const wb=new THREE.Box3(),_wv=new THREE.Vector3(); for(let vi=0;vi<pos.count;vi++){ _wv.fromBufferAttribute(pos,vi).applyMatrix4(M); wb.expandByPoint(_wv);} wcy=(wb.min.y+wb.max.y)/2; wcz=(wb.min.z+wb.max.z)/2; wr=Math.max((wb.max.y-wb.min.y)/2,(wb.max.z-wb.min.z)/2,0.02); }
-      const tris=idx?idx.count/3:pos.count/3;
-      for(let t=0;t<tris;t++){ const i0=idx?idx.getX(t*3):t*3, i1=idx?idx.getX(t*3+1):t*3+1, i2=idx?idx.getX(t*3+2):t*3+2;
-        a.fromBufferAttribute(pos,i0).applyMatrix4(M); b.fromBufferAttribute(pos,i1).applyMatrix4(M); c.fromBufferAttribute(pos,i2).applyMatrix4(M);
-        let hex=matHex;
-        if(vc){ col.setRGB((vc.getX(i0)+vc.getX(i1)+vc.getX(i2))/3,(vc.getY(i0)+vc.getY(i1)+vc.getY(i2))/3,(vc.getZ(i0)+vc.getZ(i1)+vc.getZ(i2))/3); hex=col.getHex(); }   // vertex-colour cars
-        else if(td&&uv){ let uu=(uv.getX(i0)+uv.getX(i1)+uv.getX(i2))/3, vv=(uv.getY(i0)+uv.getY(i1)+uv.getY(i2))/3; uu-=Math.floor(uu); vv-=Math.floor(vv);   // sample the map at the triangle's mean UV
-          const px=Math.min(td.w-1,Math.max(0,(uu*td.w)|0)), py=Math.min(td.h-1,Math.max(0,((1.0-vv)*td.h)|0)), o4=(py*td.w+px)*4;
-          if(tdColor){ if(THREE.SRGBColorSpace) col.setRGB(td.data[o4]/255,td.data[o4+1]/255,td.data[o4+2]/255,THREE.SRGBColorSpace); else col.setRGB(td.data[o4]/255,td.data[o4+1]/255,td.data[o4+2]/255); }   // paint map -> colour
-          else { const lum=(td.data[o4]*0.299+td.data[o4+1]*0.587+td.data[o4+2]*0.114)/255; col.setHex(matHex).multiplyScalar(0.55+0.55*lum); }   // bump/rough map -> greyscale tread texture over the base colour
-          hex=col.getHex(); }
-        e1.subVectors(b,a); e2.subVectors(c,a);
-        const n=Math.min(26, 1+Math.ceil(Math.max(a.distanceTo(b),a.distanceTo(c))/cube));   // sample at cube resolution -> NO gaps even on big flat panels (doors/roof)
-        for(let s=0;s<=n;s++) for(let r=0;r<=n-s;r++){ const u=s/n, w=r/n;
-          p.copy(a).addScaledVector(e1,u).addScaledVector(e2,w);
-          const gx=Math.floor((p.x-bb.min.x)/cube), gy=Math.floor((p.y-bb.min.y)/cube), gz=Math.floor((p.z-bb.min.z)/cube);
-          const key=gx+'_'+gy+'_'+gz; if(!cells.has(key)){ let ch=hex;
-            if(isWheel){ const dy=p.y-wcy, dz=p.z-wcz, rr=Math.sqrt(dy*dy+dz*dz)/wr; ch = rr<0.58?0x8d9299:(rr<0.82?0x1a1a1e:0x101012); }   // inner = machined-grey RIM, outer ring = black TYRE, edge darkest
-            cells.set(key,{x:gx,y:gy,z:gz,c:ch}); } }
-        if(cells.size>CAP) break; }
-      if(cells.size>CAP) break; }
-    if(!cells.size) return;
-    const geo=new THREE.BoxGeometry(cube,cube,cube);                    // full-size cubes touch exactly -> NO gaps (a solid voxel model; faces read via lighting, not seams)
-    const vmat=new THREE.MeshStandardMaterial({roughness:0.55, metalness:0.02});
-    const inst=new THREE.InstancedMesh(geo, vmat, cells.size);
-    const m4=new THREE.Matrix4(); let i=0;
-    cells.forEach(cell=>{ m4.makeTranslation(bb.min.x+(cell.x+0.5)*cube, bb.min.y+(cell.y+0.5)*cube, bb.min.z+(cell.z+0.5)*cube);
-      inst.setMatrixAt(i,m4);
-      col.setHex(cell.c).getHSL(hsl); col.setHSL(hsl.h, Math.min(1,hsl.s*1.4+0.05), Math.min(0.88,Math.max(0.16,hsl.l)));   // vibrant voxel palette (boost at build time)
-      inst.setColorAt(i, col); i++; });
-    inst.instanceMatrix.needsUpdate=true; if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
-    inst.castShadow=true; inst.receiveShadow=false; inst.userData._voxel=true; inst.frustumCulled=false;
-    grp.add(inst); rig._voxelMesh=inst;
-    rig._voxelHidden=meshes.filter(m=>m.visible); rig._voxelHidden.forEach(m=>{ m.visible=false; });   // hide the smooth car; cubes replace it
+    const size=new THREE.Vector3(); bb.getSize(size); if(!(Math.max(size.x,size.z)>1e-3)) return;
+    const bodyCube=Math.max(size.x,size.z)/((car.isPlayer?96:56)*(isTouch?0.72:1)), wheelCube=bodyCube*0.5;   // owner: FINER cubes around the tyres (half-size wheel grid)
+    const nmOf=m=>{ const mm=Array.isArray(m.material)?m.material[0]:m.material; return (m.name||'')+' '+((mm&&mm.name)||''); };
+    const wheels=all.filter(m=>_WHEEL_RE.test(nmOf(m))), body=all.filter(m=>!_WHEEL_RE.test(nmOf(m)));
+    const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color();
+    function fill(list, cube, cap){
+      const cells=new Map();
+      for(const m of list){ M.multiplyMatrices(invGrp,m.matrixWorld); const g=m.geometry, pos=g.attributes.position, idx=g.index, vc=g.attributes.color;
+        const mat=Array.isArray(m.material)?m.material[0]:m.material; const matHex=(mat&&mat.color)?mat.color.getHex():0x9092a0;
+        const _tmap=mat&&(mat.map||mat.bumpMap||mat.roughnessMap); const tdColor=!!(mat&&mat.map); const td=_tmap?_voxTexData(_tmap):null, uv=g.attributes.uv;
+        const _nm=nmOf(m); const isWheel=_WHEEL_RE.test(_nm);
+        const isGlass=_GLASS_RE.test(_nm) || (!isWheel && mat && mat.transparent && mat.opacity!=null && mat.opacity<0.85);   // windshield/windows -> tinted-glass cubes
+        let wcy=0,wcz=0,wr=1; if(isWheel){ const wb=new THREE.Box3(),_wv=new THREE.Vector3(); for(let vi=0;vi<pos.count;vi++){ _wv.fromBufferAttribute(pos,vi).applyMatrix4(M); wb.expandByPoint(_wv);} wcy=(wb.min.y+wb.max.y)/2; wcz=(wb.min.z+wb.max.z)/2; wr=Math.max((wb.max.y-wb.min.y)/2,(wb.max.z-wb.min.z)/2,0.02); }
+        const tris=idx?idx.count/3:pos.count/3;
+        for(let t=0;t<tris;t++){ const i0=idx?idx.getX(t*3):t*3, i1=idx?idx.getX(t*3+1):t*3+1, i2=idx?idx.getX(t*3+2):t*3+2;
+          a.fromBufferAttribute(pos,i0).applyMatrix4(M); b.fromBufferAttribute(pos,i1).applyMatrix4(M); c.fromBufferAttribute(pos,i2).applyMatrix4(M);
+          col.setHex(matHex);
+          if(vc){ col.setRGB((vc.getX(i0)+vc.getX(i1)+vc.getX(i2))/3,(vc.getY(i0)+vc.getY(i1)+vc.getY(i2))/3,(vc.getZ(i0)+vc.getZ(i1)+vc.getZ(i2))/3); }
+          else if(td&&uv){ let uu=(uv.getX(i0)+uv.getX(i1)+uv.getX(i2))/3, vv=(uv.getY(i0)+uv.getY(i1)+uv.getY(i2))/3; uu-=Math.floor(uu); vv-=Math.floor(vv);
+            const px=Math.min(td.w-1,Math.max(0,(uu*td.w)|0)), py=Math.min(td.h-1,Math.max(0,((1.0-vv)*td.h)|0)), o4=(py*td.w+px)*4;
+            if(tdColor){ if(THREE.SRGBColorSpace) col.setRGB(td.data[o4]/255,td.data[o4+1]/255,td.data[o4+2]/255,THREE.SRGBColorSpace); else col.setRGB(td.data[o4]/255,td.data[o4+1]/255,td.data[o4+2]/255); }
+            else { const lum=(td.data[o4]*0.299+td.data[o4+1]*0.587+td.data[o4+2]*0.114)/255; col.setHex(matHex).multiplyScalar(0.55+0.55*lum); } }
+          e1.subVectors(b,a); e2.subVectors(c,a);
+          const n=Math.min(24, 1+Math.ceil(Math.max(a.distanceTo(b),a.distanceTo(c))/cube));
+          for(let s=0;s<=n;s++) for(let r=0;r<=n-s;r++){ const u=s/n, w=r/n;
+            p.copy(a).addScaledVector(e1,u).addScaledVector(e2,w);
+            const gx=Math.floor((p.x-bb.min.x)/cube), gy=Math.floor((p.y-bb.min.y)/cube), gz=Math.floor((p.z-bb.min.z)/cube);
+            const key=gx+'_'+gy+'_'+gz; let cell=cells.get(key);
+            if(!cell){ cell={x:gx,y:gy,z:gz,r:0,g:0,b:0,n:0,fx:-1}; cells.set(key,cell);
+              if(isGlass) cell.fx=0x2e4c68;                                                                                        // tinted windshield glass
+              else if(isWheel){ const dy=p.y-wcy, dz=p.z-wcz, rr=Math.sqrt(dy*dy+dz*dz)/wr; cell.fx = rr<0.52?0xb9c0cc:(rr<0.66?0x6b7078:(rr<0.86?0x1c1c22:0x0e0e12)); } }   // alloy hub -> spokes -> tyre -> edge
+            if(cell.fx<0){ cell.r+=col.r; cell.g+=col.g; cell.b+=col.b; cell.n++; } }   // AVERAGE the body colour per cube -> kills the texture speckle
+          if(cells.size>cap) break; }
+        if(cells.size>cap) break; }
+      return cells;
+    }
+    const bodyCells=fill(body, bodyCube, car.isPlayer?26000:8000), wheelCells=fill(wheels, wheelCube, car.isPlayer?18000:5000);
+    if(!bodyCells.size && !wheelCells.size) return;
+    const group=new THREE.Group(); group.userData._voxel=true; const hsl={h:0,s:0,l:0};
+    function build(cells, cube){
+      if(!cells.size) return;
+      const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(cube,cube,cube), new THREE.MeshStandardMaterial({roughness:0.94, metalness:0.0, flatShading:true}), cells.size);   // MATTE flat cubes (like MagicaVoxel) -> no specular speckle, clean faces
+      const m4=new THREE.Matrix4(); let i=0;
+      cells.forEach(cell=>{ m4.makeTranslation(bb.min.x+(cell.x+0.5)*cube, bb.min.y+(cell.y+0.5)*cube, bb.min.z+(cell.z+0.5)*cube); inst.setMatrixAt(i,m4);
+        if(cell.fx>=0){ col.setHex(cell.fx); }                                                                                    // wheel/glass fixed palette
+        else { const nn=Math.max(1,cell.n); col.setRGB(cell.r/nn, cell.g/nn, cell.b/nn); col.getHSL(hsl);
+          if((cell.y*cube)/Math.max(size.y,0.01)>0.5 && hsl.l<0.27 && hsl.s<0.5){ col.setHex(0x2e4c68); }   // dark low-sat cube up in the cabin = WINDSHIELD/window (baked into the paint on many models) -> glass tint so it reads as glass
+          else col.setHSL(Math.round(hsl.h*12)/12, Math.min(0.95,Math.round(hsl.s*0.95*5)/5), Math.min(0.9,Math.max(0.12,Math.round(hsl.l*7)/7))); }   // averaged body colour, HARD-QUANTISED to a small clean voxel palette (collapses rainbow speckle)
+        inst.setColorAt(i,col); i++; });
+      inst.instanceMatrix.needsUpdate=true; if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
+      inst.castShadow=true; inst.receiveShadow=false; inst.userData._voxel=true; inst.frustumCulled=false; group.add(inst);
+    }
+    build(bodyCells, bodyCube); build(wheelCells, wheelCube);
+    grp.add(group); rig._voxelMesh=group;
+    rig._voxelHidden=all.filter(m=>m.visible); rig._voxelHidden.forEach(m=>{ m.visible=false; });   // hide the smooth car; cubes replace it
   }catch(e){ console.warn('[voxel] '+e.message); }
 }
 function unvoxelizeCar(car){ const rig=car&&car.rig; if(!rig||!rig._voxelMesh) return;
-  try{ rig.group.remove(rig._voxelMesh); rig._voxelMesh.geometry.dispose(); rig._voxelMesh.material.dispose(); }catch(e){}
+  try{ rig.group.remove(rig._voxelMesh); rig._voxelMesh.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); }catch(e){}   // _voxelMesh is a GROUP (body + finer-wheel instanced meshes)
   rig._voxelMesh=null; if(rig._voxelHidden){ rig._voxelHidden.forEach(m=>{ m.visible=true; }); rig._voxelHidden=null; } }
 function voxelizeAllCars(on){ if(!cars) return; cars.forEach(c=>{ if(on) voxelizeCar(c); else unvoxelizeCar(c); }); }
 function animate(){ requestAnimationFrame(animate);
