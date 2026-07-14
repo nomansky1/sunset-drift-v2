@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.70-->
+<!--BUILD:v10.71-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.70';
+(function(){ const BUILD='v10.71';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6868,8 +6868,8 @@ function voxelizeCar(car){
             const gx=Math.floor((p.x-bb.min.x)/cube), gy=Math.floor((p.y-bb.min.y)/cube), gz=Math.floor((p.z-bb.min.z)/cube);
             const key=gx+'_'+gy+'_'+gz; let cell=cells.get(key);
             if(!cell){ cell={x:gx,y:gy,z:gz,r:0,g:0,b:0,n:0,fx:-1}; cells.set(key,cell);
-              if(isGlass) cell.fx=0x2e4c68;                                                                                        // tinted windshield glass
-              else if(isWheel){ const dy=p.y-wcy, dz=p.z-wcz, rr=Math.sqrt(dy*dy+dz*dz)/wr; cell.fx = rr<0.52?0xb9c0cc:(rr<0.66?0x6b7078:(rr<0.86?0x1c1c22:0x0e0e12)); } }   // alloy hub -> spokes -> tyre -> edge
+              if(isWheel){ const dy=p.y-wcy, dz=p.z-wcz, rr=Math.sqrt(dy*dy+dz*dz)/wr; cell.fx = rr<0.52?0xb9c0cc:(rr<0.66?0x6b7078:(rr<0.86?0x1c1c22:0x0e0e12)); } }   // alloy hub -> spokes -> tyre -> edge
+            if(isGlass) cell.fx=0x28455f;                                                                                          // GLASS ALWAYS wins its cells (windshield + side/rear windows override body-colour bleed)
             if(cell.fx<0){ cell.r+=col.r; cell.g+=col.g; cell.b+=col.b; cell.n++; } }   // AVERAGE the body colour per cube -> kills the texture speckle
           if(cells.size>cap) break; }
         if(cells.size>cap) break; }
