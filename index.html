@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.72-->
+<!--BUILD:v10.73-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.72';
+(function(){ const BUILD='v10.73';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3774,10 +3774,11 @@ function buildTrackFurniture(rng){
 // beach houses on the coast, gas stations in the desert — real buildings, not just boxes
 function buildPackDistrict(rng){
   const th=currentTheme?currentTheme.theme:'city';
+  const REAL=[['bld-r0',19],['bld-r1',22],['bld-r2',24],['bld-r3',18],['bld-r4',18],['bld-r5',18],['bld-r6',14],['bld-r7',14],['bld-r8',13],['bld-r9',12]];   // realistic EU shop/apartment mid-rise (owner's Buildings pack)
   const SETS={
-    city:  [['bldg-sky-a',30],['bldg-sky-b',26],['bldg-sky-c',22],['bldg-shop-a',7],['bldg-shop-b',8],['bldg-shop-c',6]],
+    city:  [['bldg-sky-a',30],['bldg-sky-b',26],['bldg-sky-c',22],['bld-r1',22],['bld-r2',24],['bld-r0',19],['bld-r3',18]],   // towers + realistic mid-rise between them
     docks: [['bldg-factory-a',15],['bldg-factory-b',17],['bldg-gas',7],['bldg-shop-a',7]],
-    coast: [['bldg-house-a',7],['bldg-house-b',8],['bldg-shop-c',6],['bldg-gas',7],['bldg-shop-a',7]],
+    coast: REAL.concat([['bldg-shop-c',6],['bldg-gas',7]]),   // European coastal city (Barcelona etc.) -> realistic mid-rise
     beach: [['bldg-house-a',7],['bldg-house-b',8],['bldg-house-c',7],['bldg-shop-c',6]],
     tropical:[['bldg-house-b',8],['bldg-house-c',7],['bldg-shop-c',6]],
     desert:[['bldg-gas',7],['bldg-house-a',7],['bldg-shop-a',7]],
@@ -3787,11 +3788,13 @@ function buildPackDistrict(rng){
   for(let i=0;i<SAMPLES;i+=step){
     const p=samplePts[i], n=sampleNorm[i], side=(Math.floor(i/step)%2)?1:-1;
     const pick=set[Math.floor(rng()*set.length)], key=pick[0], hgt=pick[1];
-    const off=(sampleHW[i]||CONFIG.roadHalfWidth)+(hgt>14?26:15)+rng()*8;
+    const rReal=key.indexOf('bld-r')===0;                                                        // realistic buildings are WIDE facades -> clear by ~their half-width, not a fixed margin
+    const wHalf=rReal? hgt*0.85 : (hgt>14?16:8);
+    const off=(sampleHW[i]||CONFIG.roadHalfWidth)+wHalf+6+rng()*8;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
     if(!propModels[key]) continue;
     if(terrainAmp>0 && typeof terrainSlope==='function' && terrainSlope(x,z)>0.14) continue;      // no buildings on steep hills
-    if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth+(hgt>14?16:8)) continue;                     // clear of every road leg
+    if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth+wHalf+2) continue;                           // clear of every road leg (accounts for the building's own width)
     (xf[key]=xf[key]||[]).push(propMat(x, z, hgt, Math.atan2(-n.x*side,-n.y*side)+ (rng()-0.5)*0.15, 0));
     if(hgt>14) camColliders.push({x,z,r:hgt*0.45, top:hgt});                                       // chase cam won't clip tall towers
   }
@@ -4956,6 +4959,12 @@ const PROP_SPECS={
   'bldg-house-a':{file:'models/city/bldg-house-a.glb', fit:'height'}, 'bldg-house-b':{file:'models/city/bldg-house-b.glb', fit:'height'}, 'bldg-house-c':{file:'models/city/bldg-house-c.glb', fit:'height'},
   'bldg-factory-a':{file:'models/city/bldg-factory-a.glb', fit:'height'}, 'bldg-factory-b':{file:'models/city/bldg-factory-b.glb', fit:'height'},
   'bldg-gas':{file:'models/city/bldg-gas.glb', fit:'height'},
+  // REALISTIC European shop/apartment buildings (owner's itch.io Buildings pack, extracted per-building + textured)
+  'bld-r0':{file:'models/city/realistic/building.glb', fit:'height'},    'bld-r1':{file:'models/city/realistic/building-01.glb', fit:'height'},
+  'bld-r2':{file:'models/city/realistic/building-02.glb', fit:'height'}, 'bld-r3':{file:'models/city/realistic/building-03.glb', fit:'height'},
+  'bld-r4':{file:'models/city/realistic/building-04.glb', fit:'height'}, 'bld-r5':{file:'models/city/realistic/building-05.glb', fit:'height'},
+  'bld-r6':{file:'models/city/realistic/building-06.glb', fit:'height'}, 'bld-r7':{file:'models/city/realistic/building-07.glb', fit:'height'},
+  'bld-r8':{file:'models/city/realistic/building-08.glb', fit:'height'}, 'bld-r9':{file:'models/city/realistic/building-09.glb', fit:'height'},
 };
 function prepProp(root, fit){           // bake -> normalize (base y=0, centred XZ, ref dim = 1); returns [{geometry,material}]
   root.updateMatrixWorld(true);
