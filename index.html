@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.79-->
+<!--BUILD:v10.80-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.79';
+(function(){ const BUILD='v10.80';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3255,6 +3255,10 @@ function occMark(x,z,rx,rz){ if(!occ) return; const r=_occRange(x,z,rx,rz), a=oc
   for(let gz=r[2];gz<=r[3];gz++) for(let gx=r[0];gx<=r[1];gx++) a[gz*w+gx]=1; }
 // claim a building lot: skip if the footprint (+gap) is taken, else mark it and return true
 function occClaim(x,z,rx,rz,gap){ gap=gap||3; if(occHit(x,z,rx+gap,rz+gap)) return false; occMark(x,z,rx,rz); return true; }
+// TRUE road half-width at sample i: on wide tracks CONFIG.roadHalfWidth (base*hwMul, e.g. Miami 15.6) is
+// WIDER than sampleHW (per-sample base, ~13) — roadside props must clear whichever is bigger or they sit
+// ON the racing surface (owner: lamps/palms inside the Miami track edge).
+function roadEdge(i){ return Math.max((typeof sampleHW!=='undefined'&&sampleHW[i])||0, CONFIG.roadHalfWidth); }
 const _ssA=new THREE.Color(), _ssB=new THREE.Color(), _ssRock=new THREE.Color();
 function _ss(t){ t=t<0?0:t>1?1:t; return t*t*(3-2*t); }                 // smoothstep -> kills the banded topo-map look
 function _grad(col, f, s0,c0, s1,c1){ _ssA.setHex(c0); _ssB.setHex(c1); col.copy(_ssA).lerp(_ssB, _ss((f-s0)/((s1-s0)||1))); }
@@ -3475,7 +3479,7 @@ function buildCity(rng){
 function buildRoadsideAmenities(rng, addPoles){
   const _m=new THREE.Matrix4(), _q=new THREE.Quaternion();
   if(addPoles){                                                // modern lamp posts (arm + emissive head) line the road
-    const poles=[]; for(let i=0;i<SAMPLES;i+=26){ const p=samplePts[i], n=sampleNorm[i], side=((i/26)%2)?1:-1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+3.4;
+    const poles=[]; for(let i=0;i<SAMPLES;i+=26){ const p=samplePts[i], n=sampleNorm[i], side=((i/26)%2)?1:-1, off=roadEdge(i)+3.4;
       const x=p.x+n.x*off*side, z=p.y+n.y*off*side; poles.push({x,z,y:terrainHeight(x,z),side}); }
     if(poles.length){
       const pg=new THREE.CylinderGeometry(0.16,0.2,7,6); pg.translate(0,3.5,0);
@@ -3487,7 +3491,7 @@ function buildRoadsideAmenities(rng, addPoles){
       pole.instanceMatrix.needsUpdate=lamp.instanceMatrix.needsUpdate=true; pole.castShadow=!isTouch; scene.add(pole); scene.add(lamp); }
   }
   // BENCHES on the sidewalk, facing the road (every track)
-  const bn=[]; for(let i=17;i<SAMPLES;i+=44){ if(rng()<0.45) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+2.6;
+  const bn=[]; for(let i=17;i<SAMPLES;i+=44){ if(rng()<0.45) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=roadEdge(i)+2.6;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+1) continue; bn.push({x,z,y:terrainHeight(x,z),ang:Math.atan2(p.x-x,p.y-z)}); }
   if(bn.length){ const wood=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
     const sg=new THREE.BoxGeometry(2.4,0.16,0.66); sg.translate(0,0.48,0);
@@ -3499,7 +3503,7 @@ function buildRoadsideAmenities(rng, addPoles){
 function buildStreetFurniture(rng){
   // streetlights along the road (glowing lamps -> bloom)
   const poles=[];
-  for(let i=0;i<SAMPLES;i+=24){ const p=samplePts[i], n=sampleNorm[i], side=((i/24)%2)?1:-1, off=CONFIG.roadHalfWidth+2.6;
+  for(let i=0;i<SAMPLES;i+=24){ const p=samplePts[i], n=sampleNorm[i], side=((i/24)%2)?1:-1, off=roadEdge(i)+2.6;
     poles.push({x:p.x+n.x*off*side, z:p.y+n.y*off*side}); }
   const _m=new THREE.Matrix4();
   const poleGeo=new THREE.CylinderGeometry(0.18,0.22,7,6); poleGeo.translate(0,3.5,0);
@@ -3518,8 +3522,8 @@ function buildStreetFurniture(rng){
   // ---- denser greenery: street trees lining the road + park clusters + bushes (all instanced for perf) ----
   const _t=new THREE.Matrix4(), _tp=new THREE.Vector3(), _tq=new THREE.Quaternion(), _ts=new THREE.Vector3();
   const treePos=[];
-  for(let i=0;i<SAMPLES;i+=18){ const p=samplePts[i], n=sampleNorm[i], side=((i/18)%2)?1:-1, off=CONFIG.roadHalfWidth+3.5+rng()*2.5;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>CONFIG.roadHalfWidth+2) treePos.push({x,z,s:0.9+rng()*0.5}); }   // line the street
+  for(let i=0;i<SAMPLES;i+=18){ const p=samplePts[i], n=sampleNorm[i], side=((i/18)%2)?1:-1, off=roadEdge(i)+3.5+rng()*2.5;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+2) treePos.push({x,z,s:0.9+rng()*0.5}); }   // line the street
   for(let c=0;c<4;c++){ const a=rng()*6.283, rad=trackRadius+30+rng()*120, cx=trackCentroid.x+Math.cos(a)*rad, cz=trackCentroid.y+Math.sin(a)*rad;
     if(distToTrackApprox(cx,cz)<30) continue;
     for(let t=0;t<7;t++){ const x=cx+(rng()-0.5)*24, z=cz+(rng()-0.5)*24; treePos.push({x,z,s:1.0+rng()*0.6}); } }   // a small park: a cluster of trees
@@ -3540,8 +3544,8 @@ function buildStreetFurniture(rng){
     trunk.instanceMatrix.needsUpdate=true; trunk.castShadow=!isTouch; scene.add(trunk);
     lobes.forEach(m=>{ m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true; scene.add(m); }); }
   const bushPos=[];
-  for(let i=0;i<SAMPLES;i+=11){ if(rng()>0.55) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+2.5+rng()*4;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>CONFIG.roadHalfWidth+1.5) bushPos.push({x,z}); }
+  for(let i=0;i<SAMPLES;i+=11){ if(rng()>0.55) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=roadEdge(i)+2.5+rng()*4;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+1.5) bushPos.push({x,z}); }
   if(bushPos.length){ const bush=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.7,0), new THREE.MeshStandardMaterial({color:0x3a7a3e,flatShading:true,roughness:1}), bushPos.length);
     bushPos.forEach((b,k)=>{ _t.compose(_tp.set(b.x,terrainHeight(b.x,b.z)+0.5,b.z),_tq,_ts.set(1,0.8,1)); bush.setMatrixAt(k,_t); });
     bush.instanceMatrix.needsUpdate=true; bush.castShadow=!isTouch; scene.add(bush); }
@@ -3642,8 +3646,8 @@ function buildVariantVeg(){
   const v=currentTheme?currentTheme.label:null; if(!v) return;
   const rng=mulberry32(6161), hasT=(typeof terrainHeight==='function');
   const spot=()=>{ for(let tr=0;tr<8;tr++){ const i=(Math.floor(rng()*SAMPLES))%SAMPLES, pt=samplePts[i], n=sampleNorm[i];
-      const side=rng()<0.5?-1:1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+5+rng()*30, x=pt.x+n.x*off*side, z=pt.y+n.y*off*side;
-      if(distToTrackApprox(x,z) > (sampleHW[i]||CONFIG.roadHalfWidth)+4 && !occHit(x,z,1.6,1.6)){ const gy=hasT?terrainHeight(x,z):0; if(gy>-3) return [x,gy,z]; } } return null; };
+      const side=rng()<0.5?-1:1, off=roadEdge(i)+5+rng()*30, x=pt.x+n.x*off*side, z=pt.y+n.y*off*side;
+      if(distToTrackApprox(x,z) > roadEdge(i)+4 && !occHit(x,z,1.6,1.6)){ const gy=hasT?terrainHeight(x,z):0; if(gy>-3) return [x,gy,z]; } } return null; };
   const instMany=(geo,mat,n,yLift,sy,shadow)=>{ const P=[]; for(let k=0;k<n;k++){ const s=spot(); if(s) P.push(s); } if(!P.length) return;
     const im=new THREE.InstancedMesh(geo,mat,P.length), q=new THREE.Quaternion(),pv=new THREE.Vector3(),sv=new THREE.Vector3(),m=new THREE.Matrix4();
     P.forEach((s,k)=>{ q.setFromAxisAngle(_UP,rng()*6.283); const sc=0.7+rng()*1.0; sv.set(sc,(sy||1)*sc,sc); pv.set(s[0],s[1]+yLift*sc,s[2]); m.compose(pv,q,sv); im.setMatrixAt(k,m); });
@@ -3671,9 +3675,9 @@ function buildGrassFill(){
   const rng=mulberry32(5150), pos=[]; const hasT=(typeof terrainHeight==='function');
   for(let k=0;k<1000;k++){
     const i=(Math.floor(rng()*SAMPLES))%SAMPLES, pt=samplePts[i], n=sampleNorm[i];
-    const side=rng()<0.5?-1:1, off=(sampleHW[i]||CONFIG.roadHalfWidth)+4 + rng()*24;
+    const side=rng()<0.5?-1:1, off=roadEdge(i)+4 + rng()*24;
     const x=pt.x+n.x*off*side, z=pt.y+n.y*off*side;
-    if(distToTrackApprox(x,z) < (sampleHW[i]||CONFIG.roadHalfWidth)+3) continue;   // never on the road/sidewalk
+    if(distToTrackApprox(x,z) < roadEdge(i)+3) continue;   // never on the road/sidewalk
     const gy=hasT?terrainHeight(x,z):0; if(overWater(x,z)) continue;                // skip water/void
     if(occHit(x,z,1,1)) continue;                                                   // never plant inside a building footprint
     pos.push([x,gy,z]);
@@ -4163,13 +4167,13 @@ function buildBarriers(){
 function buildCoast(rng){
   if(propsReady && propModels.palm){                         // real CC0 palms lining the road
     const palmXf=[];
-    for(let i=0;i<SAMPLES;i+=9){ const p=samplePts[i], n=sampleNorm[i], side=((i/9)%2)?1:-1, off=CONFIG.roadHalfWidth+2.6+rng()*2.5;
+    for(let i=0;i<SAMPLES;i+=9){ const p=samplePts[i], n=sampleNorm[i], side=((i/9)%2)?1:-1, off=roadEdge(i)+2.6+rng()*2.5;
       palmXf.push(propMat(p.x+n.x*off*side, p.y+n.y*off*side, 8.5+rng()*3.5, rng()*6.283)); }
     instProp(propModels.palm, palmXf);
   } else {                                                    // procedural fallback
     const trunkMat=new THREE.MeshStandardMaterial({color:0x6a4a2c, roughness:1});
     const leafMat=new THREE.MeshStandardMaterial({color:0x3f8a44, flatShading:true, roughness:1});
-    for(let i=0;i<SAMPLES;i+=9){ const p=samplePts[i], n=sampleNorm[i], side=((i/9)%2)?1:-1, off=CONFIG.roadHalfWidth+2.6+rng()*2.5;
+    for(let i=0;i<SAMPLES;i+=9){ const p=samplePts[i], n=sampleNorm[i], side=((i/9)%2)?1:-1, off=roadEdge(i)+2.6+rng()*2.5;
       const g=new THREE.Group(), hh=7+rng()*4;
       const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.42,hh,6), trunkMat); tr.position.y=hh/2; g.add(tr);
       for(let a=0;a<5;a++){ const lf=new THREE.Mesh(new THREE.ConeGeometry(0.5,3.2,4), leafMat); lf.position.y=hh+0.3; lf.rotation.y=a*1.256; lf.rotation.x=1.05; g.add(lf); }
