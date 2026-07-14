@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.82-->
+<!--BUILD:v10.83-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.82';
+(function(){ const BUILD='v10.83';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3374,6 +3374,7 @@ function buildWater(seaY){                                 // REAL ocean sim for
   m.renderOrder=1; scene.add(m); waterMat=mat;
 }
 function buildCity(rng){
+  if(_osmActive) return;                                         // real OSM footprints handle this track
   placeLowCityBackdrop(rng);                                     // distant low-poly skyline
   const TYPES=['brick','glass','concrete','limestone','dark','terracotta','sandstone','steel'];
   const facadeTex=TYPES.map(t=>makeFacadeTexture(rng,t));
@@ -3693,6 +3694,8 @@ function scatterProps(){ if(typeof brActive!=='undefined' && brActive) return;  
   const rng=mulberry32(7777);
   occInit();                                             // fresh shared footprint map -> nothing overlaps this build
   const th=currentTheme?currentTheme.theme:'city';
+  _osmActive=false; const _osm=currentTheme&&currentTheme.osm;
+  if(_osm&&OSM_CITIES.has(_osm)){ _osmActive=true; buildOSMCity(_osm); }   // REAL OSM city footprints replace the procedural fill on these tracks
   if(th==='coast') buildCoast(rng);
   else if(th==='beach') buildCoast(rng);                 // palms line the beach road
   else if(th==='docks') buildDocks(rng);
@@ -3848,6 +3851,7 @@ function buildTrackFurniture(rng){
 // themed districts from the LowPoly City pack: skyscrapers downtown, factories at the docks,
 // beach houses on the coast, gas stations in the desert — real buildings, not just boxes
 function buildPackDistrict(rng){
+  if(_osmActive) return;                                         // real OSM footprints handle this track's buildings
   const th=currentTheme?currentTheme.theme:'city';
   const REAL=[['bld-r0',19],['bld-r1',22],['bld-r2',24],['bld-r3',18],['bld-r4',18],['bld-r5',18],['bld-r6',14],['bld-r7',14],['bld-r8',13],['bld-r9',12]];   // realistic EU shop/apartment mid-rise (owner's Buildings pack)
   const SETS={
@@ -3907,6 +3911,7 @@ function fillCityGrid(rng, set, th){
 // pitch (roads run down the mid-lines between building rows), grounded to terrain, skips the racetrack +
 // water. Merged into 2 meshes (sidewalk, road) for perf.
 function buildStreetGrid(rng){
+  if(_osmActive) return;                      // real OSM cities have their own street layout — don't overlay a procedural grid
   const th=currentTheme?currentTheme.theme:'city';
   if(!(th==='city'||th==='docks')) return;   // flat urban themes only — flat strips can't conform to seaside terrain undulation yet (coast/beach keep their look)
   if(terrainAmp>0) return;                    // safety: never lay flat street strips on a heightfield (they fragment/float)
@@ -3935,6 +3940,59 @@ function buildStreetGrid(rng){
     const m=new THREE.Mesh(g, toonify(new THREE.MeshStandardMaterial({color, roughness:rough, metalness:0}))); m.receiveShadow=true; scene.add(m); };
   mk(wTris, 0x6a6a72, 0.96);   // concrete sidewalk (wider, lower) — mid-grey so the noon sun doesn't blow it to white
   mk(rTris, 0x26282e, 0.95);   // asphalt road (narrower, on top)
+}
+// REAL-CITY BUILDINGS from OpenStreetMap footprints (ODbL) — extruded to their real heights + placed in the
+// SAME projection as the road circuit, so the blocks match the actual city (Miami South Beach, Barcelona
+// Eixample, Tokyo Shibuya, NY Midtown). Legal to ship (OSM, attributed) — NOT Google. Async-loaded per track.
+const OSM_CITIES=new Set(['miami','barcelona','tokyo','nyc']);
+let _osmActive=false;   // when a real-city footprint set is used, skip the procedural city fill
+function buildOSMCity(dk){
+  if(!dk || !OSM_CITIES.has(dk)) return;
+  fetch('models/districts/'+dk+'-buildings.json').then(r=>r.ok?r.json():null).then(d=>{
+    if(d&&d.buildings) _renderOSMCity(d.buildings);
+  }).catch(()=>{});
+}
+function _renderOSMCity(B){
+  const cx=trackCentroid.x, cz=trackCentroid.y;
+  const wallP=[], wallUV=[], wallC=[], roofP=[], roofC=[];
+  const UWIN=13, VWIN=13;                          // facade texture tiles every ~13 units -> constant-size windows
+  const tints=[[0.60,0.58,0.54],[0.70,0.67,0.61],[0.54,0.57,0.61],[0.66,0.61,0.54],[0.57,0.58,0.60],[0.63,0.60,0.57]];
+  for(const b of B){
+    const poly=b.p; if(!poly||poly.length<3) continue;
+    let mcx=0,mcz=0; for(const p of poly){ mcx+=p[0]; mcz+=p[1]; } mcx/=poly.length; mcz/=poly.length;
+    const wx=cx+mcx, wz=cz+mcz;
+    if(distToTrackApprox(wx,wz) < CONFIG.roadHalfWidth+2) continue;   // don't stand a building on the widened game road
+    if(overWater(wx,wz)) continue;                                    // not in the sea (seaside cities)
+    const y0=terrainHeight(wx,wz), h=Math.max(7, b.h||12), yTop=y0+h;
+    const contour=poly.map(p=>new THREE.Vector2(p[0],p[1]));
+    let tris; try{ tris=THREE.ShapeUtils.triangulateShape(contour, []); }catch(e){ continue; }
+    if(!tris||!tris.length) continue;
+    const t=tints[(Math.abs(Math.round(mcx*7+mcz*13)))%tints.length];
+    for(const tr of tris){ for(const idx of tr){ const p=poly[idx]; roofP.push(cx+p[0], yTop, cz+p[1]); roofC.push(t[0]*0.42,t[1]*0.42,t[2]*0.46); } }   // flat roof: dark tar/gravel so the noon sun doesn't blow it to white
+    for(let i=0;i<poly.length;i++){ const a=poly[i], c2=poly[(i+1)%poly.length];
+      const ax=cx+a[0], az=cz+a[1], bx=cx+c2[0], bz=cz+c2[1], len=Math.hypot(bx-ax,bz-az)||1, u=len/UWIN, v=h/VWIN;
+      wallP.push(ax,y0,az, bx,y0,bz, ax,yTop,az,  bx,y0,bz, bx,yTop,bz, ax,yTop,az);   // 2 tris
+      wallUV.push(0,0, u,0, 0,v,  u,0, u,v, 0,v);
+      for(let k=0;k<6;k++) wallC.push(t[0],t[1],t[2]); }
+    if(h>16) camColliders.push({x:wx,z:wz,r:6,top:h});
+  }
+  if(!wallP.length) return;
+  const ft=makeFacadeTexture(mulberry32(313),'concrete');   // real window-facade (map + emissive windows)
+  ft.map.wrapS=ft.map.wrapT=THREE.RepeatWrapping; if(ft.emis){ ft.emis.wrapS=ft.emis.wrapT=THREE.RepeatWrapping; }
+  const wg=new THREE.BufferGeometry();
+  wg.setAttribute('position', new THREE.Float32BufferAttribute(wallP,3));
+  wg.setAttribute('uv', new THREE.Float32BufferAttribute(wallUV,2));
+  wg.setAttribute('color', new THREE.Float32BufferAttribute(wallC,3));
+  wg.computeVertexNormals();
+  const wm=toonify(new THREE.MeshStandardMaterial({map:ft.map, emissiveMap:ft.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.75:0.28, vertexColors:true, roughness:0.92, metalness:0.03, side:THREE.DoubleSide}));
+  const wmesh=new THREE.Mesh(wg,wm); wmesh.castShadow=!isTouch; wmesh.receiveShadow=true; scene.add(wmesh);
+  const rg=new THREE.BufferGeometry();
+  rg.setAttribute('position', new THREE.Float32BufferAttribute(roofP,3));
+  rg.setAttribute('color', new THREE.Float32BufferAttribute(roofC,3));
+  rg.computeVertexNormals();
+  const rmesh=new THREE.Mesh(rg, toonify(new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.95, side:THREE.DoubleSide})));
+  rmesh.castShadow=!isTouch; scene.add(rmesh);
+  console.log('[osm] real-city buildings rendered:', B.length);
 }
 let birdFlock=null, balloonGrp=null;
 // flying bird flock that circles high above the track (animated in the render loop)
