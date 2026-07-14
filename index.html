@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.62-->
+<!--BUILD:v10.63-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1192,6 +1192,7 @@
             <div class="tog setToggle" id="togAO">◑ AO</div>
             <div class="tog setToggle" id="togAnime">🎌 ANIME</div>
             <div class="tog setToggle" id="togComic">📖 COMIC</div>
+            <div class="tog setToggle" id="togVoxel">🧊 VOXEL</div>
             <div class="tog setToggle" id="togLow">⚡ LITE</div>
             <div class="tog setToggle" id="togQual">🖥 HIGH</div>
             <div class="tog setToggle" id="togFS">⛶ FULLSCREEN</div>
@@ -1339,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.62';
+(function(){ const BUILD='v10.63';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2219,8 +2220,10 @@ let aoPref = (function(){ try{ const v=localStorage.getItem('sd_ao'); return v==
 function saveAO(){ try{ localStorage.setItem('sd_ao', aoPref?'1':'0'); }catch(e){} }
 let animeMode = (function(){ try{ return localStorage.getItem('sd_anime')==='1'; }catch(e){ return false; } })();   // 🎌 ANIME: cel-shaded world + ink-lined glossy cars
 function saveAnime(){ try{ localStorage.setItem('sd_anime', animeMode?'1':'0'); }catch(e){} }
-let comicMode = (function(){ try{ return localStorage.getItem('sd_comic')==='1'; }catch(e){ return false; } })();   // 📖 COMIC: ink outlines + halftone + bold print
+let comicMode = (function(){ try{ return localStorage.getItem('sd_comic')==='1'; }catch(e){ return false; } })();   // 📖 COMIC: bold ink outlines + Ben-Day halftone + flat cel fills
 function saveComic(){ try{ localStorage.setItem('sd_comic', comicMode?'1':'0'); }catch(e){} }
+let voxelMode = (function(){ try{ return localStorage.getItem('sd_voxel')==='1'; }catch(e){ return false; } })();   // 🧊 VOXEL: pixelate the frame into shaded cube-tiles (high-detail voxel look)
+function saveVoxel(){ try{ localStorage.setItem('sd_voxel', voxelMode?'1':'0'); }catch(e){} }
 let roadMatRef = null;                                    // road material -> scrolling chevrons (sense of speed)
 let nightMode = false, rainOn = false, lowQuality = isTouch; // weather / time-of-day / perf toggles (LITE on by default on phones for smoother FPS)
 let timeTrial = false;                                     // TIME TRIAL mode: solo run, no AI, chase your ghost / best lap
@@ -6577,11 +6580,11 @@ function resolveCollisions(){
 
 // one final pass: radial speed blur (sharp centre, streaking edges) + grade + vignette + sRGB
 const CINEMATIC_SHADER = {
-  uniforms:{ tDiffuse:{value:null}, uBlur:{value:0.0}, uSpeed:{value:0.0}, uContrast:{value:1.16}, uSat:{value:0.97}, uTone:{value:1.15}, uVignette:{value:0.48}, uCel:{value:0.0}, uComic:{value:0.0}, uRes:{value:new THREE.Vector2(1280,720)} },   // FILMIC: punchier contrast, natural (de-cartooned) saturation, stronger teal-orange   // pulled toward natural (less saturated/contrasty = less cartoonish)
+  uniforms:{ tDiffuse:{value:null}, uBlur:{value:0.0}, uSpeed:{value:0.0}, uContrast:{value:1.16}, uSat:{value:0.97}, uTone:{value:1.15}, uVignette:{value:0.48}, uCel:{value:0.0}, uComic:{value:0.0}, uVoxel:{value:0.0}, uRes:{value:new THREE.Vector2(1280,720)} },   // FILMIC: punchier contrast, natural (de-cartooned) saturation, stronger teal-orange   // pulled toward natural (less saturated/contrasty = less cartoonish)
   vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader:[
     'precision highp float; varying vec2 vUv; uniform sampler2D tDiffuse;',
-    'uniform float uBlur,uSpeed,uContrast,uSat,uTone,uVignette,uCel,uComic; uniform vec2 uRes;',
+    'uniform float uBlur,uSpeed,uContrast,uSat,uTone,uVignette,uCel,uComic,uVoxel; uniform vec2 uRes;',
     'void main(){',
     '  vec2 dir=vUv-0.5; float edge=smoothstep(0.12,0.55,length(dir)); vec4 col=vec4(0.0); float tot=0.0;',
     '  for(int i=0;i<6;i++){ float t=float(i)/5.0; float w=1.0-0.5*t;',
@@ -6608,31 +6611,50 @@ const CINEMATIC_SHADER = {
     '    col.rgb=mix(vec3(l3), col.rgb, 1.0+0.45*uCel);',
     '    col.rgb=max(col.rgb, vec3(0.018)*uCel);',
     '  }',
-    '  if(uComic>0.01){',                                               // 📖 SCREEN-PRINT POSTER (riso): flat fills, warm paper palette, fine grain, thin ink
-    '    vec2 px=1.0/uRes;',
-    '    float gx=0.0, gy=0.0; vec3 LUM=vec3(0.299,0.587,0.114);',
+    '  if(uComic>0.01){',                                               // 📖 COMIC BOOK: bold black holding lines + flat saturated cel fills + Ben-Day halftone dots
+    '    vec2 px=1.4/uRes; vec3 LUM=vec3(0.299,0.587,0.114);',          // sample a touch wider -> BOLDER ink than the old thin riso line
+    '    float gx=0.0, gy=0.0;',
     '    gx += dot(texture2D(tDiffuse,vUv+vec2(-px.x,-px.y)).rgb,LUM)*-1.0;',
-    '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x,-px.y)).rgb,LUM)* 1.0;',
+    '    gx += dot(texture2D(tDiffuse,vUv+vec2(-px.x, 0.0 )).rgb,LUM)*-2.0;',
     '    gx += dot(texture2D(tDiffuse,vUv+vec2(-px.x, px.y)).rgb,LUM)*-1.0;',
+    '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x,-px.y)).rgb,LUM)* 1.0;',
+    '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x, 0.0 )).rgb,LUM)* 2.0;',
     '    gx += dot(texture2D(tDiffuse,vUv+vec2( px.x, px.y)).rgb,LUM)* 1.0;',
     '    gy += dot(texture2D(tDiffuse,vUv+vec2(-px.x,-px.y)).rgb,LUM)*-1.0;',
-    '    gy += dot(texture2D(tDiffuse,vUv+vec2(-px.x, px.y)).rgb,LUM)* 1.0;',
+    '    gy += dot(texture2D(tDiffuse,vUv+vec2( 0.0 ,-px.y)).rgb,LUM)*-2.0;',
     '    gy += dot(texture2D(tDiffuse,vUv+vec2( px.x,-px.y)).rgb,LUM)*-1.0;',
+    '    gy += dot(texture2D(tDiffuse,vUv+vec2(-px.x, px.y)).rgb,LUM)* 1.0;',
+    '    gy += dot(texture2D(tDiffuse,vUv+vec2( 0.0 , px.y)).rgb,LUM)* 2.0;',
     '    gy += dot(texture2D(tDiffuse,vUv+vec2( px.x, px.y)).rgb,LUM)* 1.0;',
-    '    float edge=smoothstep(0.10,0.34,sqrt(gx*gx+gy*gy));',            // THIN crisp linework (not a heavy black flood)
-    '    vec3 pc=col.rgb;',
-    '    float lp=dot(pc,LUM);',
-    '    pc=mix(vec3(lp),pc,1.18);',                                     // gentle ink saturation
-    '    pc=floor(pc*6.0+0.5)/6.0;',                                     // 6-level posterize -> smooth FLAT fills (screen-print)',
-    '    vec3 paper=vec3(0.96,0.93,0.85), inkw=vec3(0.14,0.05,0.06);',   // cream paper highlight + warm ink shadow (riso palette)
-    '    pc=mix(inkw*0.6+pc*0.5, pc, smoothstep(0.0,0.28,lp));',          // warm the deepest shadows toward printed ink
-    '    pc=mix(pc, paper*max(pc,vec3(0.0)), smoothstep(0.72,1.0,lp)*0.55);', // lift highlights to warm paper
-    '    pc.r*=1.05; pc.b*=0.94;',                                        // overall warm riso bias
-    '    float grain=fract(sin(dot(floor(vUv*uRes/1.5),vec2(12.9898,78.233)))*43758.5453);', // FINE stipple grain (not big dots)
-    '    float mid=1.0-abs(lp-0.45)*2.0;',                              // grain strongest in the midtones (like printed shading)
-    '    pc += (grain-0.5)*0.09*clamp(mid,0.0,1.0);',
-    '    pc=mix(pc, inkw, edge*uComic*0.9);',                           // thin warm-black ink on the outlines
+    '    float ink=smoothstep(0.12,0.42,sqrt(gx*gx+gy*gy));',           // full Sobel -> BOLD comic holding lines
+    '    vec3 pc=col.rgb; float lp=dot(pc,LUM);',
+    '    pc=mix(vec3(lp),pc,1.55); pc=clamp(pc,0.0,1.0);',              // comic inks are VIVID -> punch the saturation
+    '    pc=floor(pc*4.0+0.5)/4.0;',                                    // 4-level FLAT cel fills (no soft gradients)
+    '    pc=max(pc, vec3(0.06,0.05,0.075));',                          // keep deep shadows as dark INK, not dead black -> printed colour stays alive
+    '    float a=0.383972; mat2 rot=mat2(cos(a),-sin(a),sin(a),cos(a));',// classic ~22deg Ben-Day screen angle
+    '    float pitch=max(3.5, uRes.y/150.0);',                          // halftone dot pitch scales with screen size
+    '    vec2 hc=fract(rot*(vUv*uRes)/pitch)-0.5;',
+    '    float shade=clamp(1.0-lp,0.0,1.0);',                           // darker -> bigger dots
+    '    float rad=smoothstep(0.02,0.85,shade)*0.72;',
+    '    float dotv=smoothstep(rad+0.10, rad-0.10, length(hc)*1.9);',   // 1.0 inside a printed dot
+    '    float dotMask=smoothstep(0.95,0.5,lp);',                       // dots bite in mid/shadow; highlights stay clean
+    '    pc=mix(pc, pc*0.42, dotv*dotMask);',                           // Ben-Day ink dots darken the shading (eased so dots texture, not obliterate)
+    '    pc=mix(pc, vec3(0.98,0.96,0.90), smoothstep(0.86,1.0,lp)*0.6);',// cream newsprint paper in the highlights
+    '    pc=mix(pc, vec3(0.04,0.03,0.05), ink*uComic);',               // bold near-black holding lines on top
     '    col.rgb=mix(col.rgb, pc, uComic);',
+    '  }',
+    '  if(uVoxel>0.01){',                                              // 🧊 VOXEL: pixelate the frame into shaded cube-tiles (Crossy-Road / MagicaVoxel look)
+    '    float bs=max(4.0, floor(uRes.y/165.0));',                     // fine grid = high-detail voxels
+    '    vec2 blk=floor(vUv*uRes/bs); vec2 buv=(blk+0.5)*bs/uRes;',
+    '    vec3 vc=texture2D(tDiffuse, buv).rgb;',                        // one flat colour per cube (pixelate)
+    '    float lv=dot(vc,vec3(0.299,0.587,0.114));',
+    '    vc=mix(vec3(lv),vc,1.16); vc=clamp(floor(vc*6.0+0.5)/6.0,0.0,1.0);',  // flat quantised voxel palette
+    '    vec2 f=fract(vUv*uRes/bs); float diag=(f.x+(1.0-f.y))*0.5;',
+    '    vc*=mix(1.30,0.72,diag);',                                    // isometric cube shading: top-left face lit, bottom-right shaded (stronger -> reads as 3D cubes)
+    '    vc*=1.0+0.14*smoothstep(0.16,0.0,f.x)*smoothstep(0.84,1.0,f.y);',// bright top-left corner highlight = light hitting each cube
+    '    float grout=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y));',
+    '    vc*=mix(0.48,1.0,smoothstep(0.0,0.08,grout));',              // darker/wider seams clearly separate the cubes
+    '    col.rgb=mix(col.rgb, vc, uVoxel);',
     '  }',
     '  float dh=fract(sin(dot(vUv*vec2(1920.0,1080.0),vec2(12.9898,78.233)))*43758.5453);',
     '  col.rgb += (dh-0.5)/255.0;',                                        // dither -> kills 8-bit sky/bloom banding
@@ -6689,6 +6711,10 @@ function buildComposer(){
     composer.addPass(bloomPass);
     cinePass=new THREE.ShaderPass(CINEMATIC_SHADER);
     cinePass.uniforms.uVignette.value=isTouch?0.24:0.5;
+    cinePass.uniforms.uCel.value=(typeof animeMode!=='undefined'&&animeMode)?1:0;   // a resize/AO rebuild makes a FRESH cinePass with default uniforms -> re-apply the
+    cinePass.uniforms.uComic.value=(typeof comicMode!=='undefined'&&comicMode)?1:0; // stylised-mode state here so 📖 COMIC / 🧊 VOXEL / 🎌 ANIME don't silently drop on rebuild
+    cinePass.uniforms.uVoxel.value=(typeof voxelMode!=='undefined'&&voxelMode)?1:0;
+    cinePass.uniforms.uRes.value.set(Math.max(320,innerWidth),Math.max(240,innerHeight));
     composer.addPass(cinePass);                                            // speed blur + grade + vignette + sRGB
     if(typeof THREE.FXAAShader!=='undefined'){                             // composer targets have NO MSAA in r137 —
       fxaaPass=new THREE.ShaderPass(THREE.FXAAShader);                     // FXAA is the only AA the game gets (phones especially)
@@ -6865,6 +6891,7 @@ function buildWorld(idx){
     cinePass.uniforms.uTone.value=G[2]; cinePass.uniforms.uVignette.value=G[3];
     cinePass.uniforms.uCel.value=animeMode?1:0;
     cinePass.uniforms.uComic.value=(typeof comicMode!=='undefined'&&comicMode)?1:0;
+    cinePass.uniforms.uVoxel.value=(typeof voxelMode!=='undefined'&&voxelMode)?1:0;
     cinePass.uniforms.uRes.value.set(Math.max(320,innerWidth), Math.max(240,innerHeight)); }
   if(WORLD){ scene.remove(WORLD); disposeGroup(WORLD); }
   WORLD=new THREE.Group(); scene.add(WORLD); camColliders=[];   // reset chase-cam obstacle list for the new world
@@ -7272,6 +7299,10 @@ function init(){
     togComic.addEventListener('click', e=>{ e.stopPropagation();
       comicMode=!comicMode; saveComic(); togComic.classList.toggle('on',comicMode);
       if(cinePass){ cinePass.uniforms.uComic.value=comicMode?1:0; cinePass.uniforms.uRes.value.set(Math.max(320,innerWidth),Math.max(240,innerHeight)); } }); }   // pure post-process — no world rebuild needed
+  const togVoxel=document.getElementById('togVoxel'); if(togVoxel){ togVoxel.classList.toggle('on',voxelMode);
+    togVoxel.addEventListener('click', e=>{ e.stopPropagation();
+      voxelMode=!voxelMode; saveVoxel(); togVoxel.classList.toggle('on',voxelMode);
+      if(cinePass){ cinePass.uniforms.uVoxel.value=voxelMode?1:0; cinePass.uniforms.uRes.value.set(Math.max(320,innerWidth),Math.max(240,innerHeight)); } }); }   // pure post-process — no world rebuild needed
   const togAO=document.getElementById('togAO'); if(togAO){ togAO.classList.toggle('on',aoPref);
     togAO.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
       aoPref=!aoPref; saveAO(); togAO.classList.toggle('on',aoPref); buildComposer(); onResize(); }); }
