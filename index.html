@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.67-->
+<!--BUILD:v10.68-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.67';
+(function(){ const BUILD='v10.68';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5800,6 +5800,15 @@ function brTarget(c){ let best=null, bd=BR.range*BR.range;
 function damageCar(c, amt, by){ if(!c.alive) return;
   if(c.isPlayer && warsenal.arm) amt*=(1-0.12*warsenal.arm);                        // ARMOR upgrade reduces incoming damage
   c.hp-=amt; if(c.isPlayer) updateBRHud();
+  if(c.alive && c.hp>0 && amt>0.4){                                                 // 💥 FALL APART while being fired on (owner): chunks fly off, worse as HP drops
+    const big=amt>16, hy=(c.visY||0)+0.7;                                           // rockets/heavy hits throw the most
+    sparks.emit(c.pos.x,hy,c.pos.y,(Math.random()-.5)*6,2+Math.random()*3,(Math.random()-.5)*6,0.4, big?9:4+((Math.random()*4)|0));
+    const hpMax=c.hpMax||BR.maxHP, stg=(c.hp<hpMax*0.25?3:c.hp<hpMax*0.5?2:c.hp<hpMax*0.72?1:0);
+    let n = big ? 4+((Math.random()*3)|0) : (Math.random()<0.25?1:0);               // gatling flakes off bits; rockets tear off chunks
+    if((c._dmgStage||0)<stg){ c._dmgStage=stg; n+=3; }                              // crossing a wear threshold -> a bigger chunk visibly breaks off
+    if(n>0) spawnDebris(c.pos.x+(Math.random()-.5)*1.3, hy, c.pos.y+(Math.random()-.5)*1.3, Math.min(n,7), big?9:6, c.bodyColor, c.visY||0);
+    if(stg>=2 && typeof tireSmoke!=='undefined' && tireSmoke) tireSmoke.emit(c.pos.x,(c.visY||0)+0.5,c.pos.y,0,1.0,0,0.5,3);   // badly hurt -> trailing smoke
+  }
   if(by===player && c!==player) hitMarker();                                        // confirm the player's hits
   if(c.hp<=0){ c.hp=0; c.alive=false; brAlive--;
     for(let i=0;i<22;i++) sparks.emit(c.pos.x,(c.visY||0)+1,c.pos.y,(Math.random()-.5)*11,3+Math.random()*5,(Math.random()-.5)*11,0.55,11+Math.random()*7);
@@ -6291,7 +6300,7 @@ function startBattle(){ if(!isOwned(selectedCar)){ renderShop(); return; }
   pickups.forEach(p=>{scene.remove(p.m); disposeGroup(p.m);}); pickups=[]; pickupTimer=0;
   cars.forEach((c,i)=>{ c.rig.group.visible=true;
     c.hpMax = c.isPlayer ? Math.round(BR.maxHP*(1+0.14*(warsenal.arm||0))) : BR.maxHP;   // ARMOR upgrade raises the player's max HP
-    c.hp=c.hpMax; c.alive=true; c._gunT=Math.random()*0.4; c._brTarget=null; c._rkT=0; c._dmgT=0; c._burnT=0;
+    c.hp=c.hpMax; c.alive=true; c._gunT=Math.random()*0.4; c._brTarget=null; c._rkT=0; c._dmgT=0; c._burnT=0; c._dmgStage=0;
     c.boost = c.isPlayer ? 0 : CONFIG.boostMax*0.6;                                       // AI carries nitro for intercept bursts
     c._hunter = !c.isPlayer && (i%2===1);                                                 // every other AI actively hunts the player
     c.rkAmmo = c.isPlayer ? (BR.rkAmmo + (warsenal.rkt||0)) : 0;                          // ROCKETS upgrade grants extra starting ammo
