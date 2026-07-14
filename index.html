@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.81-->
+<!--BUILD:v10.82-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.81';
+(function(){ const BUILD='v10.82';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3701,6 +3701,7 @@ function scatterProps(){ if(typeof brActive!=='undefined' && brActive) return;  
   else buildCity(rng);
   buildTrackFurniture(rng);             // build the roadside district + block-grid city FIRST so the shared
                                         // occupancy map is full before ANY trees/props scatter -> nothing lands inside a building
+  buildStreetGrid(rng);                 // asphalt streets + sidewalks BETWEEN the building blocks (no more bare grass)
   if(th==='city'||th==='docks') buildStreetFurniture(rng);   // streetlights + STREET TREES: run AFTER buildings so trees skip occupied lots (was in the dispatch = before buildings existed -> trees inside walls)
   buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it)
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
@@ -3900,6 +3901,40 @@ function fillCityGrid(rng, set, th){
     if(hgt>16) camColliders.push({x,z,r:hw+1, top:hgt});
   }
   for(const k in xf) instProp(propModels[k], xf[k]);
+}
+// REAL CITY STREET GRID: asphalt streets + concrete sidewalks laid BETWEEN the building blocks so the
+// buildings front actual roads instead of floating on bare grass (owner). Grid matches the building block
+// pitch (roads run down the mid-lines between building rows), grounded to terrain, skips the racetrack +
+// water. Merged into 2 meshes (sidewalk, road) for perf.
+function buildStreetGrid(rng){
+  const th=currentTheme?currentTheme.theme:'city';
+  if(!(th==='city'||th==='docks')) return;   // flat urban themes only — flat strips can't conform to seaside terrain undulation yet (coast/beach keep their look)
+  if(terrainAmp>0) return;                    // safety: never lay flat street strips on a heightfield (they fragment/float)
+  const cx=trackCentroid.x, cz=trackCentroid.y;
+  const tR=(typeof trackRadius!=='undefined'?trackRadius:200);
+  const R=tR+(beachSea!=null?30:150);
+  const BLOCK=(th==='city')?58:(isTouch?56:46), HALF=BLOCK/2;   // MUST match the building grid (buildCity 58 / fillCityGrid 46-56)
+  const ROADW=7, WALK=3.4;                                      // road half-width + sidewalk width each side
+  const rTris=[], wTris=[];
+  const push=(arr,X,Z,y)=>{ arr.push(X, terrainHeight(X,Z)+y, Z); };
+  function strip(x0,z0,x1,z1,halfW,arr,yOff){                  // grounded strip from A->B, tessellated to follow terrain, skips track+water
+    const dx=x1-x0, dz=z1-z0, len=Math.hypot(dx,dz)||1, ux=dx/len, uz=dz/len, nx=-uz, nz=ux;
+    const N=Math.max(1, Math.ceil(len/14));
+    for(let s=0;s<N;s++){ const t0=s/N,t1=(s+1)/N, ax=x0+dx*t0, az=z0+dz*t0, bx=x0+dx*t1, bz=z0+dz*t1;
+      const mx=(ax+bx)/2, mz=(az+bz)/2;
+      if(distToTrackApprox(mx,mz)<CONFIG.roadHalfWidth+6 || overWater(mx,mz)) continue;
+      push(arr,ax+nx*halfW,az+nz*halfW,yOff); push(arr,bx+nx*halfW,bz+nz*halfW,yOff); push(arr,ax-nx*halfW,az-nz*halfW,yOff);
+      push(arr,bx+nx*halfW,bz+nz*halfW,yOff); push(arr,bx-nx*halfW,bz-nz*halfW,yOff); push(arr,ax-nx*halfW,az-nz*halfW,yOff); }
+  }
+  for(let g=-R; g<=R; g+=BLOCK){
+    const L=cx+g+HALF; strip(L,cz-R,L,cz+R, ROADW+WALK, wTris,0.055); strip(L,cz-R,L,cz+R, ROADW, rTris,0.08);   // road running in Z
+    const M=cz+g+HALF; strip(cx-R,M,cx+R,M, ROADW+WALK, wTris,0.055); strip(cx-R,M,cx+R,M, ROADW, rTris,0.08);   // road running in X
+  }
+  const mk=(tris,color,rough)=>{ if(!tris.length) return; const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(tris,3)); g.computeVertexNormals();
+    const m=new THREE.Mesh(g, toonify(new THREE.MeshStandardMaterial({color, roughness:rough, metalness:0}))); m.receiveShadow=true; scene.add(m); };
+  mk(wTris, 0x6a6a72, 0.96);   // concrete sidewalk (wider, lower) — mid-grey so the noon sun doesn't blow it to white
+  mk(rTris, 0x26282e, 0.95);   // asphalt road (narrower, on top)
 }
 let birdFlock=null, balloonGrp=null;
 // flying bird flock that circles high above the track (animated in the render loop)
