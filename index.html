@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.64-->
+<!--BUILD:v10.65-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.64';
+(function(){ const BUILD='v10.65';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -6580,11 +6580,11 @@ function resolveCollisions(){
 
 // one final pass: radial speed blur (sharp centre, streaking edges) + grade + vignette + sRGB
 const CINEMATIC_SHADER = {
-  uniforms:{ tDiffuse:{value:null}, uBlur:{value:0.0}, uSpeed:{value:0.0}, uContrast:{value:1.16}, uSat:{value:0.97}, uTone:{value:1.15}, uVignette:{value:0.48}, uCel:{value:0.0}, uComic:{value:0.0}, uVoxel:{value:0.0}, uRes:{value:new THREE.Vector2(1280,720)} },   // FILMIC: punchier contrast, natural (de-cartooned) saturation, stronger teal-orange   // pulled toward natural (less saturated/contrasty = less cartoonish)
+  uniforms:{ tDiffuse:{value:null}, uBlur:{value:0.0}, uSpeed:{value:0.0}, uContrast:{value:1.16}, uSat:{value:0.97}, uTone:{value:1.15}, uVignette:{value:0.48}, uCel:{value:0.0}, uComic:{value:0.0}, uVoxel:{value:0.0}, uMask:{value:null}, uMaskOn:{value:0.0}, uRes:{value:new THREE.Vector2(1280,720)} },   // FILMIC: punchier contrast, natural (de-cartooned) saturation, stronger teal-orange   // pulled toward natural (less saturated/contrasty = less cartoonish)
   vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader:[
     'precision highp float; varying vec2 vUv; uniform sampler2D tDiffuse;',
-    'uniform float uBlur,uSpeed,uContrast,uSat,uTone,uVignette,uCel,uComic,uVoxel; uniform vec2 uRes;',
+    'uniform float uBlur,uSpeed,uContrast,uSat,uTone,uVignette,uCel,uComic,uVoxel,uMaskOn; uniform vec2 uRes; uniform sampler2D uMask;',
     'void main(){',
     '  vec2 dir=vUv-0.5; float edge=smoothstep(0.12,0.55,length(dir)); vec4 col=vec4(0.0); float tot=0.0;',
     '  for(int i=0;i<6;i++){ float t=float(i)/5.0; float w=1.0-0.5*t;',
@@ -6604,6 +6604,7 @@ const CINEMATIC_SHADER = {
     '  float v=smoothstep(0.95,0.30,length(vUv-0.5));',
     '  col.rgb*=mix(1.0,v,uVignette);',                                    // vignette
     '  col.rgb=pow(max(col.rgb,0.0), vec3(0.4545));',                      // linear -> sRGB BEFORE the stylized modes: they band/ink in PERCEPTUAL space (linear-space posterize crushed all the darks = the old muddy look)
+    '  vec3 styBase=col.rgb;',                                          // remember the un-stylized frame -> so the filters can be masked to the CARS only (owner: filters on cars, world stays normal)
     '  if(uCel+uComic>0.05){',                                          // shared ink-line gradient: Sobel on perceptual luma, wide taps low-pass texture noise
     '    vec2 e=1.6/uRes; vec3 LM=vec3(0.299,0.587,0.114);',
     '    float tl=pow(dot(texture2D(tDiffuse,vUv+vec2(-e.x,-e.y)).rgb,LM),0.4545);',
@@ -6666,6 +6667,14 @@ const CINEMATIC_SHADER = {
     '    vc*=1.0+0.08*smoothstep(0.14,0.5,ed);',                          // flat face centre slightly lit
     '    vc+=vec3(0.16)*smoothstep(0.34,0.06,length(f-vec2(0.32,0.70)));',// small glossy glint top-left of each cube face
     '    col.rgb=mix(col.rgb,vc,uVoxel);',
+    '  }',
+    '  if(uMaskOn>0.5){',                                                // 🎯 CARS ONLY: gate all the stylized filters by the car mask (dilated a few px so the bold outline rings the car); world keeps its normal look
+    '    vec2 mp=1.0/uRes; float mk=texture2D(uMask,vUv).r;',
+    '    mk=max(mk,texture2D(uMask,vUv+vec2(mp.x,0.0)).r); mk=max(mk,texture2D(uMask,vUv-vec2(mp.x,0.0)).r);',
+    '    mk=max(mk,texture2D(uMask,vUv+vec2(0.0,mp.y)).r); mk=max(mk,texture2D(uMask,vUv-vec2(0.0,mp.y)).r);',
+    '    mk=max(mk,texture2D(uMask,vUv+mp*1.7).r); mk=max(mk,texture2D(uMask,vUv-mp*1.7).r);',
+    '    mk=max(mk,texture2D(uMask,vUv+vec2(mp.x,-mp.y)*1.7).r); mk=max(mk,texture2D(uMask,vUv+vec2(-mp.x,mp.y)*1.7).r);',
+    '    col.rgb=mix(styBase, col.rgb, clamp(mk,0.0,1.0));',
     '  }',
     '  float dh=fract(sin(dot(vUv*vec2(1920.0,1080.0),vec2(12.9898,78.233)))*43758.5453);',
     '  col.rgb += (dh-0.5)/255.0;',                                        // dither -> kills 8-bit sky/bloom banding
@@ -6772,6 +6781,26 @@ function dynRes(dt){ if(typeof state!=='undefined' && state==='menu'){ if(render
   if(ns!==renderScale){ renderScale=ns; applyRenderScale(); _scaleCd=2.2; } // longer settle -> far fewer visible res changes
 }
 
+// 🎯 CAR MASK — render ONLY the cars (flat white on black) into a target, so the post-process filters
+// (comic/anime/voxel) can be confined to the cars while the world renders normally. Layer 2 = cars.
+const CAR_LAYER=2; let maskRT=null, maskMat=null; const _mkClr=new THREE.Color();
+function renderCarMask(){
+  if(!cars || !cars.length || !camera || !renderer) return false;
+  const w=renderer.domElement.width|0, h=renderer.domElement.height|0; if(w<2||h<2) return false;
+  if(!maskRT) maskRT=new THREE.WebGLRenderTarget(w,h);
+  else if(maskRT.width!==w||maskRT.height!==h) maskRT.setSize(w,h);
+  if(!maskMat) maskMat=new THREE.MeshBasicMaterial({color:0xffffff, fog:false});
+  let any=false;
+  for(const c of cars){ if(c&&c.rig&&c.rig.group&&c.rig.group.visible){ any=true; c.rig.group.traverse(o=>{ if(o.isMesh) o.layers.enable(CAR_LAYER); }); } }
+  if(!any) return false;
+  const sMask=camera.layers.mask, sOv=scene.overrideMaterial, sBg=scene.background, sAuto=renderer.autoClear, sAlpha=renderer.getClearAlpha();
+  renderer.getClearColor(_mkClr);
+  camera.layers.set(CAR_LAYER); scene.overrideMaterial=maskMat; scene.background=null; renderer.autoClear=true;
+  renderer.setClearColor(0x000000,1); renderer.setRenderTarget(maskRT); renderer.clear(); renderer.render(scene,camera);
+  renderer.setRenderTarget(null);
+  camera.layers.mask=sMask; scene.overrideMaterial=sOv; scene.background=sBg; renderer.setClearColor(_mkClr,sAlpha); renderer.autoClear=sAuto;
+  return true;
+}
 function animate(){ requestAnimationFrame(animate);
   if(state==='menu'){ const gm=document.getElementById('globeModal');
     if(gm && gm.classList.contains('show')) return;                 // globe main-menu covers the scene -> skip the wasted game render
@@ -6793,6 +6822,10 @@ function animate(){ requestAnimationFrame(animate);
   if(ferrisWheel&&ferrisWheel.userData.wheel) ferrisWheel.userData.wheel.rotation.z += dt*0.18;   // slow-turning Ferris wheel landmark
   if(rainOn) updateRain(dt);
   if(window.DEVCAM && window.DEVCAM.on) window.DEVCAM.update(dt);   // dev/marketing camera rig overrides the game cam LAST (console-only; no player-facing UI)
+  if(cinePass){                                                        // confine the stylized filters to the cars (owner: filters on cars, world normal)
+    const _sty=(typeof comicMode!=='undefined'&&comicMode)||(typeof animeMode!=='undefined'&&animeMode)||(typeof voxelMode!=='undefined'&&voxelMode);
+    if(_sty && renderCarMask()){ cinePass.uniforms.uMask.value=maskRT.texture; cinePass.uniforms.uMaskOn.value=1.0; }
+    else cinePass.uniforms.uMaskOn.value=0.0; }
   if(composer && !window.__composerDead){ composer.render();
     // SELF-CHECK: on some machines the whole post chain outputs BLACK while a plain render works
     // (owner hit this live — black world under a working HUD). Probe a pixel for the first seconds;
