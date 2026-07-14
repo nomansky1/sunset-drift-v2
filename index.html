@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.73-->
+<!--BUILD:v10.74-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.73';
+(function(){ const BUILD='v10.74';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -2794,13 +2794,13 @@ function buildTrackMeshes(){
     const curbMat=new THREE.MeshStandardMaterial({color:0x9a9da3, roughness:0.85, side:THREE.DoubleSide});
     const walkMat=toonify(new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95, side:THREE.DoubleSide}));
     buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
-    buildSideStrips(0, 4.5, 0.28, walkMat);             // sidewalk = road edge .. edge+4.5 (never inverts at corners)
+    buildSideStrips(0, 8.0, 0.28, walkMat);             // WIDE city sidewalk = road edge .. edge+8 -> the buildings front a real pavement, not grass (owner)
     { const th=currentTheme?currentTheme.theme:'city';   // GRASS VERGE: a planted strip just past the sidewalk (REAL grass on city/docks, dune on coast/beach)
       const sandy=(th==='coast'||th==='beach');
       const vm=new THREE.MeshStandardMaterial({color:sandy?0xcdb98a:0xbfd0b8, roughness:1, metalness:0, side:THREE.DoubleSide});
       if(!sandy){ const gt=new THREE.TextureLoader().load('textures/grass.jpg');
         gt.wrapS=gt.wrapT=THREE.RepeatWrapping; gt.colorSpace=THREE.SRGBColorSpace; gt.repeat.set(3,180); vm.map=gt; }
-      buildSideStrips(4.5, 9.5, 0.11, vm); }
+      buildSideStrips(8.0, 11.0, 0.11, vm); }   // thin planter strip just beyond the wide sidewalk
     buildCitySideStreets(mulberry32(4242));             // perpendicular cross-streets + crosswalks -> track blends into a city grid
   }
   buildBarriers();                                       // continuous visible barrier on EVERY track
@@ -3790,7 +3790,7 @@ function buildPackDistrict(rng){
     const pick=set[Math.floor(rng()*set.length)], key=pick[0], hgt=pick[1];
     const rReal=key.indexOf('bld-r')===0;                                                        // realistic buildings are WIDE facades -> clear by ~their half-width, not a fixed margin
     const wHalf=rReal? hgt*0.85 : (hgt>14?16:8);
-    const off=(sampleHW[i]||CONFIG.roadHalfWidth)+wHalf+6+rng()*8;
+    const off=(sampleHW[i]||CONFIG.roadHalfWidth)+wHalf+11.5+rng()*3;   // sit right behind the widened sidewalk+planter -> buildings FACE the pavement (no grass gap)
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
     if(!propModels[key]) continue;
     if(terrainAmp>0 && typeof terrainSlope==='function' && terrainSlope(x,z)>0.14) continue;      // no buildings on steep hills
