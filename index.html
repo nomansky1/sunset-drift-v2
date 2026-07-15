@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.9-->
+<!--BUILD:v11.10-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1402,7 +1402,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.9';
+(function(){ const BUILD='v11.10';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -1529,7 +1529,7 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'MUSCLE',      kind:'glb', raw:'muscle',   yaw:0, spd:94, grip:66, price:1100},
              {name:'INTERCEPTOR', kind:'glb', raw:'police',   yaw:0, spd:86, grip:84, price:1300},
              {name:'GT',          kind:'glb', raw:'racecar',  yaw:0, spd:98, grip:70, price:1600},
-             {name:'KART',        kind:'glb', raw:'kart',     yaw:0, spd:80, grip:95, price:1500},
+             {name:'STINGER',     kind:'glb', raw:'coupe',    yaw:0, spd:80, grip:95, price:1500},   // gen8 GT coupe via convert_car.py (owner: the Kenney kart didn't fit — kart-oobi retired)
              {name:'CANALERO',    kind:'glb', raw:'timeattack', yaw:0, spd:95, grip:70, price:1900},   // Panama's ride — Time Attack build (replaced the retired box truck; truck raw stays as a world NPC prop)
              {name:'FIRETRUCK',   kind:'glb', raw:'firetruck',yaw:0, spd:86, grip:66, price:2200},
              {name:'AMBULANCE',   kind:'glb', raw:'ambulance',yaw:0, spd:90, grip:64, price:2400},
@@ -4897,7 +4897,7 @@ function loadCarModels(){
    ['hatch','models/gen2/hatch.glb'],['suv','models/gen2/suv.glb'],['pickup','models/gen2/pickup.glb'],
    ['racer','models/gen3/drifttuner3.glb?r5'],['racecar','models/gen3/supergt3.glb?r5'],['muscle','models/gen3/v8supercar3.glb?r5'],
    ['roadster','models/gen3/vintagegp3.glb'],['police','models/gen2/police.glb'],['taxi','models/gen2/taxi.glb'],   // roadster = Vintage GP (Classic LeMans clamshell retired)
-   ['kart','models/cc0/kenney/kart-oobi.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],
+   ['coupe','models/gen8/coupe.glb'],['truck','models/gen2/truck.glb'],['firetruck','models/cc0/kenney/firetruck.glb'],['ambulance','models/cc0/kenney/ambulance.glb'],   // gen8 coupe replaces the kart-oobi KART (STINGER)
    ['kartB','models/gen3/f13.glb'],['timeattack','models/gen3/supergt3.glb?r5'],
    ['skyline','models/gen4/skyline.glb'],['gt3p','models/gen4/gt3p.glb'],['mcl35m','models/gen4/mcl35m.glb'],
    ['ferrari','models/gen4/ferrari.glb?r2'],   // gen4 Ferrari 458 -> replaces the low-poly electric-hypercar in the EXOTIC slot (owner: higher-poly cars); r2 = wheel-role materials (GD_Tire/GD_Rim/GD_Brake)
