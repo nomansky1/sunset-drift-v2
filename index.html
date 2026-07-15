@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.3-->
+<!--BUILD:v11.4-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1384,7 +1384,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.3';
+(function(){ const BUILD='v11.4';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -4025,32 +4025,80 @@ OSM_CITIES.forEach(function(c){
   fetch('models/districts/'+c+'-roads.json').then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.roads) _osmRoadData[c]=d.roads; }).catch(function(){});
 });
 // pave the REAL street network (OSM ways) between the buildings so the city isn't bare ground (owner)
+function _osmLaneTex(){ if(_osmLaneTex.t) return _osmLaneTex.t;   // asphalt w/ painted edge lines + centre dashes (tiles along the way)
+  const c=document.createElement('canvas'); c.width=64; c.height=256; const x=c.getContext('2d');
+  x.fillStyle='#33363d'; x.fillRect(0,0,64,256);
+  for(let i=0;i<900;i++){ const v=26+(Math.random()*34|0); x.fillStyle='rgba('+v+','+(v+2)+','+(v+6)+',.30)'; x.fillRect(Math.random()*64|0,Math.random()*256|0,1,1); }
+  x.fillStyle='rgba(232,235,240,.80)'; x.fillRect(2,0,2,256); x.fillRect(60,0,2,256);
+  for(let yv=6; yv<256; yv+=42) x.fillRect(31,yv,2,22);
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4;
+  if(THREE.SRGBColorSpace) t.colorSpace=THREE.SRGBColorSpace;
+  _osmLaneTex.t=t; return t; }
 function _renderOSMRoads(R){
-  const cx=trackCentroid.x, cz=trackCentroid.y, rPos=[], sPos=[];
+  // real street network v2: lane-marked PBR asphalt + BRIDGES (elevated deck, guardrails, piers),
+  // OVERPASSES (OSM layer stacking), TUNNEL portals, wider motorways. (owner: highways/bridges/
+  // overpass/tunnels with textures — streets should look realistic)
+  const cx=trackCentroid.x, cz=trackCentroid.y, rPos=[], rUV=[], sPos=[], cPos=[], dPos=[];
+  const seaBase=(X,Z)=>Math.max(terrainHeight(X,Z), (beachSea!=null?beachSea:-1e9));
   const emit=(arr,X,Z,y)=>{ arr.push(X, terrainHeight(X,Z)+y, Z); };
-  const strip=(arr,ax,az,bx,bz,nx,nz,w,y)=>{                              // one grounded quad of the given half-width
+  const strip=(arr,ax,az,bx,bz,nx,nz,w,y,uv,v0,v1)=>{                     // grounded quad; optional UVs (u across, v along)
     emit(arr,cx+ax+nx*w,cz+az+nz*w,y); emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y);
-    emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+bx-nx*w,cz+bz-nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y); };
-  for(const road of R){ const p=road.p, w=road.w||3;
+    emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+bx-nx*w,cz+bz-nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y);
+    if(uv) uv.push(1,v0, 1,v1, 0,v0, 1,v1, 0,v1, 0,v0); };
+  const quadAbs=(arr,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4)=>{              // absolute-Y quad (decks, rails, piers, portals)
+    arr.push(x1,y1,z1, x2,y2,z2, x4,y4,z4, x2,y2,z2, x3,y3,z3, x4,y4,z4); };
+  for(const road of R){ const isB=!!road.b||(road.l|0)>0, isT=!!road.t||(road.l|0)<0, isM=road.c==='m';
+    const p=road.p, w=(road.w||3)*(isM?1.3:1), lift=4.8*Math.max(1,road.l|0);
+    if(isT){                                                              // TUNNEL: no surface — concrete portal + dark mouth at each end
+      for(const end of [0,p.length-1]){ const q=p[end], q2=p[end?p.length-2:1]||q;
+        const ex=cx+q[0], ez=cz+q[1]; if(overWater(ex,ez) || distToTrackApprox(ex,ez)<CONFIG.roadHalfWidth+2) continue;
+        let dx=q2[0]-q[0], dz2=q2[1]-q[1]; const L=Math.hypot(dx,dz2)||1; dx/=L; dz2/=L;
+        const nx=-dz2, nz=dx, gy=terrainHeight(ex,ez), hw=w+0.6, H=4.4;
+        quadAbs(cPos, ex+nx*hw,gy,ez+nz*hw, ex+nx*hw,gy+H,ez+nz*hw, ex+nx*(hw-1.1),gy+H,ez+nz*(hw-1.1), ex+nx*(hw-1.1),gy,ez+nz*(hw-1.1));
+        quadAbs(cPos, ex-nx*(hw-1.1),gy,ez-nz*(hw-1.1), ex-nx*(hw-1.1),gy+H,ez-nz*(hw-1.1), ex-nx*hw,gy+H,ez-nz*hw, ex-nx*hw,gy,ez-nz*hw);
+        quadAbs(cPos, ex+nx*hw,gy+H,ez+nz*hw, ex+nx*hw,gy+H+1.1,ez+nz*hw, ex-nx*hw,gy+H+1.1,ez-nz*hw, ex-nx*hw,gy+H,ez-nz*hw);
+        quadAbs(dPos, ex+nx*(hw-1.1),gy+0.05,ez+nz*(hw-1.1), ex+nx*(hw-1.1),gy+H,ez+nz*(hw-1.1), ex-nx*(hw-1.1),gy+H,ez-nz*(hw-1.1), ex-nx*(hw-1.1),gy+0.05,ez-nz*(hw-1.1)); }
+      continue; }
+    let vAcc=0, pierAcc=18;
     for(let i=0;i<p.length-1;i++){ const a=p[i], b=p[i+1];
       const dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz)||1, nx=-dz/len, nz=dx/len;
       const N=Math.max(1, Math.ceil(len/16));
       for(let s=0;s<N;s++){ const t0=s/N,t1=(s+1)/N, ax=a[0]+dx*t0, az=a[1]+dz*t0, bx=a[0]+dx*t1, bz=a[1]+dz*t1;
+        const segL=len/N, v0=vAcc/7, v1=(vAcc+segL)/7; vAcc+=segL;
         const mx=cx+(ax+bx)*0.5, mz=cz+(az+bz)*0.5;
-        if(distToTrackApprox(mx,mz) < CONFIG.roadHalfWidth || overWater(mx,mz)) continue;   // don't z-fight the race road / pave the sea
+        if(isB){                                                          // BRIDGE/OVERPASS: level deck rides above ground/water — allowed over water AND over the circuit
+          const Ax=cx+ax, Az=cz+az, Bx=cx+bx, Bz=cz+bz;
+          const yA=seaBase(Ax,Az)+lift, yB=seaBase(Bx,Bz)+lift;
+          quadAbs(rPos, Ax+nx*w,yA,Az+nz*w, Bx+nx*w,yB,Bz+nz*w, Bx-nx*w,yB,Bz-nz*w, Ax-nx*w,yA,Az-nz*w);
+          rUV.push(1,v0, 1,v1, 0,v0, 1,v1, 0,v1, 0,v0);
+          for(const sd of [1,-1]){                                        // guardrails
+            quadAbs(cPos, Ax+nx*w*sd,yA,Az+nz*w*sd, Ax+nx*w*sd,yA+0.85,Az+nz*w*sd, Bx+nx*w*sd,yB+0.85,Bz+nz*w*sd, Bx+nx*w*sd,yB,Bz+nz*w*sd); }
+          pierAcc+=segL;
+          if(pierAcc>=24){ pierAcc=0;                                     // support pier (crossed quads) down to the ground/seabed — never on the race road
+            if(distToTrackApprox(mx,mz)>CONFIG.roadHalfWidth+2){ const gy=terrainHeight(mx,mz)-0.5, ty=(yA+yB)/2-0.15, pw=Math.min(1.4,w*0.3);
+              quadAbs(cPos, mx-nx*pw,gy,mz-nz*pw, mx-nx*pw,ty,mz-nz*pw, mx+nx*pw,ty,mz+nz*pw, mx+nx*pw,gy,mz+nz*pw);
+              quadAbs(cPos, mx-dx/len*pw,gy,mz-dz/len*pw, mx-dx/len*pw,ty,mz-dz/len*pw, mx+dx/len*pw,ty,mz+dz/len*pw, mx+dx/len*pw,gy,mz+dz/len*pw); } }
+          continue; }
+        if(distToTrackApprox(mx,mz) < CONFIG.roadHalfWidth || overWater(mx,mz)) continue;   // ground roads: don't z-fight the race road / pave the sea
         strip(sPos, ax,az,bx,bz, nx,nz, w+2.6, 0.045);                    // concrete SIDEWALK (wider, lower) fills road->building gap
-        strip(rPos, ax,az,bx,bz, nx,nz, w, 0.075); } } }                  // asphalt ROAD on top
-  const mk=(arr,color,nm,sh)=>{ if(!arr.length) return; const g=new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(arr,3)); g.computeVertexNormals();
-    const m=new THREE.Mesh(g, toonify(new THREE.MeshStandardMaterial({color, roughness:0.95, metalness:0})));
+        strip(rPos, ax,az,bx,bz, nx,nz, w, 0.075, rUV, v0, v1); } } }     // lane-marked asphalt on top
+  const mk=(arr,color,nm,uv,tex)=>{ if(!arr.length) return; const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr,3));
+    if(uv&&uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+    g.computeVertexNormals();
+    const mat=new THREE.MeshStandardMaterial(tex?{color:0xffffff, map:_osmLaneTex(), roughness:0.93, metalness:0}:{color, roughness:0.95, metalness:0});
+    if(tex) mat.side=THREE.DoubleSide;                                    // bridge decks visible from below
+    const m=new THREE.Mesh(g, toonify(mat));
     m.name=nm; m.receiveShadow=true; scene.add(m); _osmMeshes.push(m); };
-  mk(sPos, 0x6d6d74, 'osmSidewalk');   // concrete sidewalk
-  mk(rPos, 0x2e3138, 'osmRoads');      // asphalt road
+  mk(sPos, 0x6d6d74, 'osmSidewalk');            // concrete sidewalk
+  mk(rPos, 0xffffff, 'osmRoads', rUV, true);    // lane-marked asphalt (roads + bridge decks)
+  mk(cPos, 0x8a8d94, 'osmStructure');           // guardrails / piers / portal concrete
+  mk(dPos, 0x14161c, 'osmPortalDark');          // tunnel mouths
 }
 // STREET LAMPS down the real streets (owner: street lights/lamps) — instanced pole+lamp on the sidewalk edge
 function _renderOSMLamps(R){
   const cx=trackCentroid.x, cz=trackCentroid.y, poles=[], cap=isTouch?160:420;
-  for(const road of R){ if((road.w||3)<4 || poles.length>=cap) continue; const p=road.p, w=(road.w||3)+2.0; let acc=999;
+  for(const road of R){ if((road.w||3)<4 || road.t || road.b || (road.l|0)!==0 || poles.length>=cap) continue; const p=road.p, w=(road.w||3)+2.0; let acc=999;   // no ground lamps on tunnels/bridges
     for(let i=0;i<p.length && poles.length<cap;i++){
       if(i>0) acc+=Math.hypot(p[i][0]-p[i-1][0], p[i][1]-p[i-1][1]);
       if(acc<42) continue; acc=0;

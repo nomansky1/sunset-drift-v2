@@ -26,7 +26,8 @@ def run(key):
     out=[]
     for e in roads['elements']:
         if e.get('type')!='way' or 'nodes' not in e: continue
-        hw=e.get('tags',{}).get('highway'); w=HW.get(hw)
+        tags=e.get('tags',{})
+        hw=tags.get('highway'); w=HW.get(hw)
         if not w: continue
         pts=[]
         for n in e['nodes']:
@@ -34,7 +35,16 @@ def run(key):
             lon,lat=nodes[n]
             pts.append([round((lon-pj['cLon'])*pj['mx']*pj['s'],1), round((pj['cLat']-lat)*pj['my']*pj['s'],1)])
         if len(pts)<2: continue
-        out.append({'p':pts,'w':w})
+        rec={'p':pts,'w':w}
+        # structures: bridges/overpasses (elevated deck + piers in-game), tunnels (portals), stacking layer
+        if tags.get('bridge') and tags['bridge']!='no': rec['b']=1
+        if tags.get('tunnel') and tags['tunnel']!='no': rec['t']=1
+        try:
+            ly=int(tags.get('layer','0'))
+            if ly: rec['l']=ly
+        except ValueError: pass
+        if hw in ('motorway','trunk','motorway_link','trunk_link'): rec['c']='m'
+        out.append(rec)
     fn=os.path.join(HERE,'..','models','districts',f'{key}-roads.json')
     json.dump({'city':key,'roads':out,'attribution':'(c) OpenStreetMap contributors, ODbL 1.0'},open(fn,'w'),separators=(',',':'))
     print('[road] %-10s %4d ways -> %s' % (key, len(out), os.path.relpath(fn)))
