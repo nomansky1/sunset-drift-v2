@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.7-->
+<!--BUILD:v11.8-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1394,7 +1394,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.7';
+(function(){ const BUILD='v11.8';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -5130,6 +5130,53 @@ const CAR_WHEELS=[
   {x:-0.855, y:0.287, z:-1.264, front:false},   // rear-left
   {x: 0.949, y:0.287, z:-1.264, front:false},   // rear-right
 ];
+// TRUE CEL-SHADED CARS (owner: real cartoon/anime/comic car versions, not just the screen filter).
+// Reference: Auto Modellista — few SOLID shade bands + hard ink contours (+ the speed lines we already
+// have). Cars swap to MeshToonMaterial on a shared 3-step gradient and grow inverted-hull ink shells
+// (BackSide, pushed out along normals in the vertex stage — offset scaled per-mesh so every model gets
+// the same world-space line weight). Environment keeps its own grade. Fully reversible.
+function _carToonGrad(){ if(_carToonGrad.t) return _carToonGrad.t;
+  const t=new THREE.DataTexture(new Uint8Array([90,170,255]), 3, 1, THREE.RedFormat);
+  t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true;
+  _carToonGrad.t=t; return t; }
+const _inkMats={};
+function _inkHull(off){ const key=off.toFixed(4);
+  if(_inkMats[key]) return _inkMats[key];
+  const m=new THREE.MeshBasicMaterial({color:0x07070d, side:THREE.BackSide});
+  m.onBeforeCompile=sh=>{ sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>',
+    '#include <begin_vertex>\n\ttransformed += normal * '+off.toFixed(6)+';'); };
+  _inkMats[key]=m; return m; }
+function carToonize(rig){
+  if(!rig||!rig.group) return;
+  const S=new THREE.Vector3(), targets=[];
+  rig.group.traverse(o=>{ if(o.isMesh && !o.userData._inkShell) targets.push(o); });
+  for(const o of targets){
+    const src=o.userData._preToon || o.material; if(!src || (o.material&&o.material.isMeshToonMaterial)) continue;
+    if(!o.userData._preToon) o.userData._preToon=o.material;
+    const tm=new THREE.MeshToonMaterial({
+      color:(src.color?src.color.clone():new THREE.Color(0xffffff)),
+      map:src.map||null, gradientMap:_carToonGrad(),
+      transparent:!!src.transparent, opacity:(src.opacity!=null?src.opacity:1) });
+    if(src.emissive){ tm.emissive=src.emissive.clone(); tm.emissiveIntensity=(src.emissiveIntensity!=null?src.emissiveIntensity:1); if(src.emissiveMap) tm.emissiveMap=src.emissiveMap; }
+    o.material=tm;
+    const glassy=src.transparent && src.opacity!=null && src.opacity<0.95;
+    if(!glassy && !o.userData._hasInk){ o.userData._hasInk=true;
+      o.getWorldScale(S); const shell=new THREE.Mesh(o.geometry, _inkHull(0.02/Math.max(S.x,0.0001)));
+      shell.userData._inkShell=true; shell.raycast=function(){};
+      shell.castShadow=false; shell.receiveShadow=false;
+      o.add(shell); }
+  }
+}
+function carToonRestore(rig){
+  if(!rig||!rig.group) return;
+  const kill=[];
+  rig.group.traverse(o=>{ if(o.isMesh&&o.userData._inkShell){ kill.push(o); return; }
+    if(o.isMesh&&o.userData._preToon){ o.material=o.userData._preToon; o.userData._preToon=null; o.userData._hasInk=false; } });
+  kill.forEach(s=>{ if(s.parent) s.parent.remove(s); });
+}
+function carToonSync(){ const on=(typeof animeMode!=='undefined'&&animeMode)||(typeof comicMode!=='undefined'&&comicMode);
+  cars.forEach(c=>{ if(!c.rig) return;
+    if(on && !(typeof voxelMode!=='undefined'&&voxelMode)) carToonize(c.rig); else carToonRestore(c.rig); }); }
 function upgradeCars(){
   if(!carBodyRaw) return;
   cars.forEach((c,ci)=>{
@@ -5148,6 +5195,7 @@ function upgradeCars(){
     paintCar(rig, paintJobs[liveryIdx], CARS[liveryIdx].raw||'doge');        // custom paint job (recolours the body, keeps glass)
     if(paintStyles[liveryIdx]) finishCar(rig, paintStyles[liveryIdx]);       // custom finish/style (matte/metallic/chrome/pearl)
     applyWrap(rig, paintWraps[liveryIdx]);                                    // livery wrap decals (stripes / JDM rising-sun / rally #)
+    if(((typeof animeMode!=='undefined'&&animeMode)||(typeof comicMode!=='undefined'&&comicMode)) && !(typeof voxelMode!=='undefined'&&voxelMode)) carToonize(rig);   // TRUE cel cars while ANIME/COMIC is on (after paint so bands snapshot the final colours)
     if(rig.flames) rig.flames.forEach((f,fi)=>{ rig.group.add(f);   // re-attach exhaust flames (group was wiped above)
       if(rig.exhaustPts && rig.exhaustPts[fi]) f.position.copy(rig.exhaustPts[fi]); });   // fire comes out of THIS model's pipes
     if(c.isPlayer && !rig.headSpot){                                    // night driving beam (player only - cheap)
@@ -8099,11 +8147,12 @@ function init(){
   const togComic=document.getElementById('togComic'); if(togComic){ togComic.classList.toggle('on',comicMode);
     togComic.addEventListener('click', e=>{ e.stopPropagation();
       comicMode=!comicMode; saveComic(); togComic.classList.toggle('on',comicMode);
-      if(cinePass){ cinePass.uniforms.uComic.value=comicMode?1:0; cinePass.uniforms.uRes.value.set(Math.max(320,innerWidth),Math.max(240,innerHeight)); } }); }   // pure post-process — no world rebuild needed
+      if(cinePass){ cinePass.uniforms.uComic.value=comicMode?1:0; cinePass.uniforms.uRes.value.set(Math.max(320,innerWidth),Math.max(240,innerHeight)); }
+      carToonSync(); }); }   // post-process + TRUE cel car materials/ink hulls
   const togVoxel=document.getElementById('togVoxel'); if(togVoxel){ togVoxel.classList.toggle('on',voxelMode);
     togVoxel.addEventListener('click', e=>{ e.stopPropagation();
       voxelMode=!voxelMode; saveVoxel(); togVoxel.classList.toggle('on',voxelMode);
-      voxelizeAllCars(voxelMode); }); }   // 🧊 real cube geometry on the cars (built once here, not per frame)
+      voxelizeAllCars(voxelMode); carToonSync(); }); }   // 🧊 real cube geometry on the cars (built once here, not per frame); toon yields to voxel
   const togAO=document.getElementById('togAO'); if(togAO){ togAO.classList.toggle('on',aoPref);
     togAO.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
       aoPref=!aoPref; saveAO(); togAO.classList.toggle('on',aoPref); buildComposer(); onResize(); }); }
