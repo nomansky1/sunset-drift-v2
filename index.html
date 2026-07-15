@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.2-->
+<!--BUILD:v11.3-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1384,7 +1384,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.2';
+(function(){ const BUILD='v11.3';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -4799,14 +4799,25 @@ function loadCarModels(){
       let ax=0; rig.wheels.forEach(w=>{ w.parent.getWorldQuaternion(Q); X.set(1,0,0).applyQuaternion(Q);
         ax=Math.max(ax, Math.acos(Math.min(1,Math.abs(X.x)))*180/Math.PI); });
       let low=1e9; rig.wheels.forEach(w=>{ BB.setFromObject(w); low=Math.min(low,BB.min.y); }); if(!rig.wheels.length) low=0;
+      // tire uniformity: radius spread within the car + fleet band; disc orientation (a wheel wider on the
+      // axle than ~90% of its diameter is lying flat = wrong plane)
+      let rMed=0, rSpread=0, flat=0;
+      if(rig.wheels.length){ const rads=rig.wheels.map(w=>{ BB.setFromObject(w);
+          const dia=Math.max(BB.max.y-BB.min.y, BB.max.z-BB.min.z), wid=BB.max.x-BB.min.x;
+          if(wid>dia*0.92) flat++; return Math.max(0.001,(BB.max.y-BB.min.y)/2); });
+        const s=rads.slice().sort((a,b)=>a-b); rMed=(s[(s.length-1)>>1]+s[s.length>>1])/2;
+        rSpread=Math.max(...rads.map(r=>Math.abs(r-rMed)/rMed)); }
       const bad=[];
       if(rig.wheels.length<4) bad.push('wheels<4');
       if(rig.front.length<2) bad.push('no steerable fronts');
       if(rig.front.length&&fz<=0) bad.push('nose flipped (frontZ '+fz.toFixed(2)+')');
       if(ax>1) bad.push('spin axis off '+ax.toFixed(0)+'°');
       if(Math.abs(low)>0.5) bad.push('wheels not grounded (y '+low.toFixed(2)+')');
+      if(rMed&&(rMed<0.22||rMed>0.52)) bad.push('tire radius out of band ('+rMed.toFixed(2)+')');
+      if(rSpread>0.12) bad.push('mismatched tire sizes (spread '+(rSpread*100).toFixed(0)+'%)');
+      if(flat) bad.push(flat+' wheel(s) lying flat');
       rows.push({slot:i, name:def.name, raw:def.raw, wheels:rig.wheels.length, fronts:rig.front.length,
-        frontZ:+fz.toFixed(2), axDev:+ax.toFixed(1), wheelY:+low.toFixed(2), status:bad.length?'FAIL':'ok'});
+        frontZ:+fz.toFixed(2), axDev:+ax.toFixed(1), wheelY:+low.toFixed(2), tireR:+rMed.toFixed(3), rSpr:+(rSpread*100).toFixed(0), status:bad.length?'FAIL':'ok'});
       if(bad.length) errs.push(def.name+' ('+def.raw+'): '+bad.join(', '));
     }
     console.table(rows);
@@ -5158,6 +5169,20 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     const zs=wheels.map(g=>{ const p=new THREE.Vector3(); g.getWorldPosition(p); return {g, z:chassis.worldToLocal(p).z}; });
     const mid=(Math.min(...zs.map(a=>a.z))+Math.max(...zs.map(a=>a.z)))/2;
     zs.forEach(a=>{ if(a.z>mid) front.push(a.g); }); }
+  // TIRE UNIFORMITY (owner: same radius + orientation no matter which model): wheels here are already in
+  // normalized game units (scaleG applied, group detached-identity). A wheel >10% off the car's own median
+  // is a bad import scale -> snap it to the median; then clamp the whole set into the fleet band so no
+  // model ships comically small/large tires. Scaling happens about the pivot (geometry centre) so the
+  // wheel stays seated; rigRideBase re-levels ride height afterwards. Applies to any FUTURE model too.
+  if(wheels.length>=4){
+    const _twb=new THREE.Box3(), rad=wheels.map(g2=>{ _twb.setFromObject(g2); return Math.max(0.001,(_twb.max.y-_twb.min.y)/2); });
+    const srt=rad.slice().sort((a,b)=>a-b), med=(srt[(srt.length-1)>>1]+srt[srt.length>>1])/2;
+    wheels.forEach((g2,i2)=>{ if(Math.abs(rad[i2]-med)/med>0.10){ g2.scale.multiplyScalar(med/rad[i2]);
+      console.warn('[fleet] wheel radius normalized: '+(g2.userData._wkey||('#'+i2))+' '+rad[i2].toFixed(3)+' -> '+med.toFixed(3)); } });
+    const tgt=Math.min(0.50, Math.max(0.24, med));
+    if(Math.abs(tgt-med)/med>0.02){ wheels.forEach(g2=>g2.scale.multiplyScalar(tgt/med));
+      console.warn('[fleet] tire set rescaled into fleet band: '+med.toFixed(3)+' -> '+tgt.toFixed(3)); }
+    rig._wheelRad=Math.min(0.50, Math.max(0.24, med)); }                     // canonical radius for checks/kit parts
   _tm.forEach(o=>{ const key=(o.name||'').replace(/^tire_/,'');            // marry tire_front_L into wheel_front_L's pivot
     const g=wheels.find(w=>w.userData._wkey===key); if(g) g.attach(o); });
   rig.chassis=chassis; rig.wheels=wheels; rig.front=front; rig.spinAcc=0; rig._rideBase=null;   // force rigRideBase to re-level the fresh wheels (was caching a stale value across rebuilds)
