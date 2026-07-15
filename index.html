@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.4-->
+<!--BUILD:v11.5-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1384,7 +1384,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.4';
+(function(){ const BUILD='v11.5';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -3170,7 +3170,7 @@ function makeFacadeTexture(rng, type){
   const S=isTouch?256:512, K=S/256, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
   const e=document.createElement('canvas'); e.width=e.height=S; const xe=e.getContext('2d');
   xe.fillStyle='#000'; xe.fillRect(0,0,S,S);
-  const PAL={brick:'#8a4a38', glass:'#3e525f', concrete:'#8f887c', limestone:'#c3b396', dark:'#2c2f38', terracotta:'#a5683f', sandstone:'#b49572', steel:'#6f7a86'};
+  const PAL={brick:'#7d574a', glass:'#3e525f', concrete:'#8f887c', limestone:'#c3b396', dark:'#2c2f38', terracotta:'#9a6b4c', sandstone:'#b49572', steel:'#6f7a86'};   // brick/terracotta muted toward aged masonry — the saturated crimson read toy-like against the asphalt (owner: PBR should look natural)
   const base=PAL[type]||'#8a8478'; x.fillStyle=base; x.fillRect(0,0,S,S);
   const glassy=(type==='glass'), masonry=(type==='brick'||type==='terracotta'||type==='sandstone');
   // material ground layer
@@ -4040,13 +4040,28 @@ function _renderOSMRoads(R){
   // overpass/tunnels with textures — streets should look realistic)
   const cx=trackCentroid.x, cz=trackCentroid.y, rPos=[], rUV=[], sPos=[], cPos=[], dPos=[];
   const seaBase=(X,Z)=>Math.max(terrainHeight(X,Z), (beachSea!=null?beachSea:-1e9));
-  const emit=(arr,X,Z,y)=>{ arr.push(X, terrainHeight(X,Z)+y, Z); };
-  const strip=(arr,ax,az,bx,bz,nx,nz,w,y,uv,v0,v1)=>{                     // grounded quad; optional UVs (u across, v along)
-    emit(arr,cx+ax+nx*w,cz+az+nz*w,y); emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y);
-    emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+bx-nx*w,cz+bz-nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y);
-    if(uv) uv.push(1,v0, 1,v1, 0,v0, 1,v1, 0,v1, 0,v0); };
   const quadAbs=(arr,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4)=>{              // absolute-Y quad (decks, rails, piers, portals)
     arr.push(x1,y1,z1, x2,y2,z2, x4,y4,z4, x2,y2,z2, x3,y3,z3, x4,y4,z4); };
+  // CONTINUOUS MITERED RIBBON per way (owner: road texture was getting cut off) — the old emitter drew
+  // every sub-segment as an independent quad with its own normal, so bends left wedge gaps/overlaps and
+  // the lane texture restarted at each joint. Now: resample the way, give every point ONE mitered normal
+  // shared by both adjacent quads (edges meet exactly), and carry the accumulated distance so the dash
+  // phase flows continuously around curves.
+  const mitered=p=>{ const q=[]; let acc=0;
+    q.push({x:p[0][0], z:p[0][1], d:0});
+    for(let i=0;i<p.length-1;i++){ const ax=p[i][0],az=p[i][1],bx=p[i+1][0],bz=p[i+1][1];
+      const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz); if(len<0.01) continue;
+      const N=Math.max(1,Math.ceil(len/14));
+      for(let s=1;s<=N;s++){ acc+=len/N; q.push({x:ax+dx*s/N, z:az+dz*s/N, d:acc}); } }
+    if(q.length<2) return null;
+    for(let i=0;i<q.length;i++){ const a=q[Math.max(0,i-1)], b=q[Math.min(q.length-1,i+1)];
+      let dx=b.x-a.x, dz=b.z-a.z; const L=Math.hypot(dx,dz)||1; dx/=L; dz/=L;
+      q[i].nx=-dz; q[i].nz=dx;
+      if(i>0&&i<q.length-1){ const sx=q[i].x-q[i-1].x, sz=q[i].z-q[i-1].z, sl=Math.hypot(sx,sz)||1;
+        const dot=q[i].nx*(-sz/sl)+q[i].nz*(sx/sl);                        // mitered normal vs prev-segment normal
+        const m=1/Math.max(0.55, Math.abs(dot));                           // clamp -> miter never blows out on sharp turns
+        q[i].nx*=m; q[i].nz*=m; } }
+    return q; };
   for(const road of R){ const isB=!!road.b||(road.l|0)>0, isT=!!road.t||(road.l|0)<0, isM=road.c==='m';
     const p=road.p, w=(road.w||3)*(isM?1.3:1), lift=4.8*Math.max(1,road.l|0);
     if(isT){                                                              // TUNNEL: no surface — concrete portal + dark mouth at each end
@@ -4059,29 +4074,34 @@ function _renderOSMRoads(R){
         quadAbs(cPos, ex+nx*hw,gy+H,ez+nz*hw, ex+nx*hw,gy+H+1.1,ez+nz*hw, ex-nx*hw,gy+H+1.1,ez-nz*hw, ex-nx*hw,gy+H,ez-nz*hw);
         quadAbs(dPos, ex+nx*(hw-1.1),gy+0.05,ez+nz*(hw-1.1), ex+nx*(hw-1.1),gy+H,ez+nz*(hw-1.1), ex-nx*(hw-1.1),gy+H,ez-nz*(hw-1.1), ex-nx*(hw-1.1),gy+0.05,ez-nz*(hw-1.1)); }
       continue; }
-    let vAcc=0, pierAcc=18;
-    for(let i=0;i<p.length-1;i++){ const a=p[i], b=p[i+1];
-      const dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz)||1, nx=-dz/len, nz=dx/len;
-      const N=Math.max(1, Math.ceil(len/16));
-      for(let s=0;s<N;s++){ const t0=s/N,t1=(s+1)/N, ax=a[0]+dx*t0, az=a[1]+dz*t0, bx=a[0]+dx*t1, bz=a[1]+dz*t1;
-        const segL=len/N, v0=vAcc/7, v1=(vAcc+segL)/7; vAcc+=segL;
-        const mx=cx+(ax+bx)*0.5, mz=cz+(az+bz)*0.5;
-        if(isB){                                                          // BRIDGE/OVERPASS: level deck rides above ground/water — allowed over water AND over the circuit
-          const Ax=cx+ax, Az=cz+az, Bx=cx+bx, Bz=cz+bz;
-          const yA=seaBase(Ax,Az)+lift, yB=seaBase(Bx,Bz)+lift;
-          quadAbs(rPos, Ax+nx*w,yA,Az+nz*w, Bx+nx*w,yB,Bz+nz*w, Bx-nx*w,yB,Bz-nz*w, Ax-nx*w,yA,Az-nz*w);
-          rUV.push(1,v0, 1,v1, 0,v0, 1,v1, 0,v1, 0,v0);
-          for(const sd of [1,-1]){                                        // guardrails
-            quadAbs(cPos, Ax+nx*w*sd,yA,Az+nz*w*sd, Ax+nx*w*sd,yA+0.85,Az+nz*w*sd, Bx+nx*w*sd,yB+0.85,Bz+nz*w*sd, Bx+nx*w*sd,yB,Bz+nz*w*sd); }
-          pierAcc+=segL;
-          if(pierAcc>=24){ pierAcc=0;                                     // support pier (crossed quads) down to the ground/seabed — never on the race road
-            if(distToTrackApprox(mx,mz)>CONFIG.roadHalfWidth+2){ const gy=terrainHeight(mx,mz)-0.5, ty=(yA+yB)/2-0.15, pw=Math.min(1.4,w*0.3);
-              quadAbs(cPos, mx-nx*pw,gy,mz-nz*pw, mx-nx*pw,ty,mz-nz*pw, mx+nx*pw,ty,mz+nz*pw, mx+nx*pw,gy,mz+nz*pw);
-              quadAbs(cPos, mx-dx/len*pw,gy,mz-dz/len*pw, mx-dx/len*pw,ty,mz-dz/len*pw, mx+dx/len*pw,ty,mz+dz/len*pw, mx+dx/len*pw,gy,mz+dz/len*pw); } }
-          continue; }
-        if(distToTrackApprox(mx,mz) < CONFIG.roadHalfWidth || overWater(mx,mz)) continue;   // ground roads: don't z-fight the race road / pave the sea
-        strip(sPos, ax,az,bx,bz, nx,nz, w+2.6, 0.045);                    // concrete SIDEWALK (wider, lower) fills road->building gap
-        strip(rPos, ax,az,bx,bz, nx,nz, w, 0.075, rUV, v0, v1); } } }     // lane-marked asphalt on top
+    const q=mitered(p); if(!q) continue;
+    let pierAcc=18;
+    for(let i=0;i<q.length-1;i++){ const A=q[i], B=q[i+1];
+      const v0=A.d/7, v1=B.d/7, segL=B.d-A.d;
+      const mx=cx+(A.x+B.x)*0.5, mz=cz+(A.z+B.z)*0.5;
+      if(isB){                                                            // BRIDGE/OVERPASS: level deck rides above ground/water — allowed over water AND over the circuit
+        const Ax=cx+A.x, Az=cz+A.z, Bx=cx+B.x, Bz=cz+B.z;
+        const yA=seaBase(Ax,Az)+lift, yB=seaBase(Bx,Bz)+lift;
+        quadAbs(rPos, Ax+A.nx*w,yA,Az+A.nz*w, Bx+B.nx*w,yB,Bz+B.nz*w, Bx-B.nx*w,yB,Bz-B.nz*w, Ax-A.nx*w,yA,Az-A.nz*w);
+        rUV.push(1,v0, 1,v1, 0,v0, 1,v1, 0,v1, 0,v0);
+        for(const sd of [1,-1]){                                          // guardrails follow the mitered edges
+          quadAbs(cPos, Ax+A.nx*w*sd,yA,Az+A.nz*w*sd, Ax+A.nx*w*sd,yA+0.85,Az+A.nz*w*sd, Bx+B.nx*w*sd,yB+0.85,Bz+B.nz*w*sd, Bx+B.nx*w*sd,yB,Bz+B.nz*w*sd); }
+        pierAcc+=segL;
+        if(pierAcc>=24){ pierAcc=0;                                       // support pier (crossed quads) down to the ground/seabed — never on the race road
+          if(distToTrackApprox(mx,mz)>CONFIG.roadHalfWidth+2){ const gy=terrainHeight(mx,mz)-0.5, ty=(yA+yB)/2-0.15, pw=Math.min(1.4,w*0.3);
+            const dxn=(B.x-A.x)/(segL||1), dzn=(B.z-A.z)/(segL||1), nxm=(A.nx+B.nx)/2, nzm=(A.nz+B.nz)/2;
+            quadAbs(cPos, mx-nxm*pw,gy,mz-nzm*pw, mx-nxm*pw,ty,mz-nzm*pw, mx+nxm*pw,ty,mz+nzm*pw, mx+nxm*pw,gy,mz+nzm*pw);
+            quadAbs(cPos, mx-dxn*pw,gy,mz-dzn*pw, mx-dxn*pw,ty,mz-dzn*pw, mx+dxn*pw,ty,mz+dzn*pw, mx+dxn*pw,gy,mz+dzn*pw); } }
+        continue; }
+      if(distToTrackApprox(mx,mz) < CONFIG.roadHalfWidth || overWater(mx,mz)) continue;   // ground roads: don't z-fight the race road / pave the sea
+      const gq=(arr,wid,y,uvArr)=>{                                        // terrain-conforming ribbon quad on the shared mitered edges
+        const ax1=cx+A.x+A.nx*wid, az1=cz+A.z+A.nz*wid, ax2=cx+A.x-A.nx*wid, az2=cz+A.z-A.nz*wid;
+        const bx1=cx+B.x+B.nx*wid, bz1=cz+B.z+B.nz*wid, bx2=cx+B.x-B.nx*wid, bz2=cz+B.z-B.nz*wid;
+        const ya1=terrainHeight(ax1,az1)+y, ya2=terrainHeight(ax2,az2)+y, yb1=terrainHeight(bx1,bz1)+y, yb2=terrainHeight(bx2,bz2)+y;
+        arr.push(ax1,ya1,az1, bx1,yb1,bz1, ax2,ya2,az2, bx1,yb1,bz1, bx2,yb2,bz2, ax2,ya2,az2);
+        if(uvArr) uvArr.push(1,v0, 1,v1, 0,v0, 1,v1, 0,v1, 0,v0); };
+      gq(sPos, w+2.6, 0.045);                                              // concrete SIDEWALK (wider, lower) fills road->building gap
+      gq(rPos, w, 0.075, rUV); } }                                         // lane-marked asphalt on top
   const mk=(arr,color,nm,uv,tex)=>{ if(!arr.length) return; const g=new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(arr,3));
     if(uv&&uv.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
