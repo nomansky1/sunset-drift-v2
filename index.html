@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.93-->
+<!--BUILD:v10.94-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -63,6 +63,10 @@
              display:none; font-size:min(5.2vw,22px); font-weight:900; letter-spacing:1px; color:#fff;
              text-shadow:0 2px 8px rgba(0,0,0,.6); }
   #scoreBox .cx{ color:#ffd23b; font-size:.8em; }
+  #driftMeter{ position:absolute; top:calc(env(safe-area-inset-top,10px) + 92px); left:50%; transform:translateX(-50%) scale(.9);
+               display:none; font-size:min(4.8vw,20px); font-weight:900; letter-spacing:1px; color:#e6d5ff; white-space:nowrap;
+               text-shadow:0 2px 10px rgba(120,60,240,.75), 0 0 16px rgba(150,100,255,.55); transition:transform .1s cubic-bezier(.2,1.5,.4,1); }
+  #driftMeter .dm{ color:#c79bff; } #driftMeter .dx{ color:#ffd23b; font-size:1.12em; }
   /* ---------- HUD animations (owner) ---------- */
   #posBox.posPop{ animation:hudPop .42s cubic-bezier(.2,1.6,.4,1); }
   @keyframes hudPop{ 0%{ transform:translateX(-50%) scale(1.5); } 60%{ transform:translateX(-50%) scale(.93); } 100%{ transform:translateX(-50%) scale(1); } }
@@ -1011,6 +1015,7 @@
        <div id="speedNum">0</div><div id="speedUnit">KM / H</div>
        <div id="boostWrap"><div id="boostBar"></div></div></div>
   <div id="scoreBox"></div>
+  <div id="driftMeter"></div>
   <div id="trackPreview" class="hidden"><canvas id="tpMap" width="150" height="110"></canvas>
     <div id="tpTxt"><b id="tpName"></b><span id="tpSub"></span></div></div>
   <div id="transition"><div class="tStreaks"></div><div class="tGlow"></div></div>
@@ -1340,7 +1345,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.93';
+(function(){ const BUILD='v10.94';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5537,9 +5542,9 @@ const elLapNow=document.getElementById('lapNow'), elCurTime=document.getElementB
   elBestTime=document.getElementById('bestTime'), elPosNow=document.getElementById('posNow'),
   elPosOf=document.getElementById('posOf'), elSpeedNum=document.getElementById('speedNum'),
   elBoostBar=document.getElementById('boostBar'), elBoostWrap=document.getElementById('boostWrap'),
-  elScore=document.getElementById('scoreBox'), elRival=document.getElementById('rivalTag'),
+  elScore=document.getElementById('scoreBox'), elDrift=document.getElementById('driftMeter'), elRival=document.getElementById('rivalTag'),
   elPosBox=document.getElementById('posBox'), elLapBox=document.getElementById('lapBox');
-let _rivalTxt='', _scoreTxt='';                                  // cache HUD strings -> skip per-frame re-parse
+let _rivalTxt='', _scoreTxt='', _driftTxt='';                    // cache HUD strings -> skip per-frame re-parse
 function fmt(t){ if(t==null) return '--'; const m=Math.floor(t/60), s=(t%60); return m+':'+(s<10?'0':'')+s.toFixed(1); }
 function ordinal(n){ return n+(['th','st','nd','rd'][(n%100>>3^1&&n%10)||0]||'th'); }
 function prog(c){ let i=c.trackIdx;                       // monotonic progress: a post-line backward snap (idx near end, lap already ticked) counts as start-of-lap
@@ -5608,6 +5613,12 @@ function updateHUD(){
       const txt=Math.round(runScore).toLocaleString()+(combo>1?' <span class="cx">x'+combo+'</span>':'');
       if(txt!==_scoreTxt){ elScore.innerHTML=txt; _scoreTxt=txt; } }
     else elScore.style.display='none'; }
+  // LIVE DRIFT METER: builds while you hold a slide, banks into the score on exit
+  if(elDrift){ if(player._driftActive && player._driftLive>0){ const mul=player._driftMulLive||1;
+      const dt2='<span class="dm">DRIFT</span> '+player._driftLive+(mul>1?' <span class="dx">x'+mul+'</span>':'');
+      elDrift.style.display='block'; if(dt2!==_driftTxt){ elDrift.innerHTML=dt2; _driftTxt=dt2; }
+      elDrift.style.transform='translateX(-50%) scale('+(0.9+Math.min(mul,5)*0.055)+')'; }
+    else if(elDrift.style.display!=='none'){ elDrift.style.display='none'; _driftTxt=''; } }
   const kmh=Math.round(Math.abs(player.vel.dot(_r.set(Math.sin(player.heading),Math.cos(player.heading))))*3.1);
   elSpeedNum.textContent=kmh; drawSpeedo(kmh, 250);
   // COCKPIT interior overlay — live gauge cluster + steering wheel that tracks input

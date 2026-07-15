@@ -115,10 +115,26 @@ function updateCar(c, inp, dt){
   _f.set(Math.sin(c.heading), Math.cos(c.heading));
   const fd=c.vel.dot(_f);
   _l.copy(c.vel).addScaledVector(_f, -fd);          // lateral component
+  const _slip = c.isPlayer ? _l.length() : 0;        // sideways speed = drift intensity (player only)
   const gripMul = c.isPlayer ? (c.gripMul||1) : (1.30+(aiAccel-1)*1.1);   // AI grip RAISED: they were physically sliding wide in corners (read as constant drifting + slow exits); planted grip = fast clean curves
   const grip=(c.drifting?CONFIG.gripDrift*(1+0.18*tire):CONFIG.gripNormal)*gripMul;   // TIRES: snappier drift exit
   _l.multiplyScalar(Math.exp(-grip*dt));            // frame-rate independent
   c.vel.copy(_f).multiplyScalar(fd).add(_l);
+  // ---- DRIFT SCORING (player): style points while sliding sideways at speed; combo mult grows the longer
+  //      you hold one clean slide; BANKED into the run score when you straighten out (arcade drift hook) ----
+  if(c.isPlayer){
+    if(c.drifting && _slip>3.2 && fwdSpeed>13){
+      c._driftT=(c._driftT||0)+dt;
+      c._driftMul=Math.min(1+((c._driftT/1.3)|0), 5);            // x1..x5, +1 every 1.3s of continuous drift
+      c._driftPts=(c._driftPts||0) + _slip*fwdSpeed*0.26*dt;
+      c._driftLive=Math.round(c._driftPts); c._driftMulLive=c._driftMul; c._driftActive=true;
+    } else if((c._driftPts||0)>0){                               // slide ended -> bank it
+      if((c._driftPts||0)>35 && typeof addScore==='function'){ const bank=Math.round(c._driftPts*(c._driftMul||1));
+        addScore(bank, '🌀 DRIFT'+((c._driftMul>1)?' x'+c._driftMul:''), '#c79bff');
+        if(typeof camShake!=='undefined') camShake=Math.min(camShake+0.1,1); }
+      c._driftPts=0; c._driftMul=1; c._driftT=0; c._driftLive=0; c._driftActive=false;
+    }
+  }
 
   // rolling drag (frame-rate independent)
   c.vel.multiplyScalar(Math.exp(-CONFIG.drag*dt));
