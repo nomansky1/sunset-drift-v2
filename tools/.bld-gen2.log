@@ -1,0 +1,17 @@
+[bld] moscow cached
+[bld] moscow     1155 buildings  x[-239,251] z[-308,196]  m/unit 3.45 -> models\districts\moscow-buildings.json
+[bld] mumbai cached
+[bld] mumbai      771 buildings  x[-229,338] z[-401,223]  m/unit 3.08 -> models\districts\mumbai-buildings.json
+[bld] paris cached
+[bld] paris      2013 buildings  x[-366,227] z[-222,152]  m/unit 3.47 -> models\districts\paris-buildings.json
+[bld] rio        1678 buildings  x[-370,264] z[-290,220]  m/unit 3.23 -> models\districts\rio-buildings.json
+[bld] rome       1788 buildings  x[-282,195] z[-195,154]  m/unit 3.76 -> models\districts\rome-buildings.json
+[bld] sanjuan retry HTTP Error 429: Too Many Requests
+[bld] sanjuan retry HTTP Error 429: Too Many Requests
+[bld] sanjuan retry HTTP Error 504: Gateway Timeout
+[bld] sanjuan    1507 buildings  x[-1577,230] z[-463,410]  m/unit 1.77 -> models\districts\sanjuan-buildings.json
+[bld] seoul      2771 buildings  x[-766,247] z[-385,327]  m/unit 1.85 -> models\districts\seoul-buildings.json
+[bld] shanghai   1255 buildings  x[-412,525] z[-368,312]  m/unit 2.23 -> models\districts\shanghai-buildings.json
+[bld] sydney retry HTTP Error 429: Too Many Requests
+[bld] sydney      923 buildings  x[-327,185] z[-263,318]  m/unit 3.08 -> models\districts\sydney-buildings.json
+[bld] toronto     538 buildings  x[-499,297] z[-563,288]  m/unit 1.71 -> models\districts\toronto-buildings.json

@@ -1,0 +1,47 @@
+[bld] berlin      999 buildings  x[-410,352] z[-277,249]  m/unit 3.13 -> models\districts\berlin-buildings.json
+[bld] buenosaires 1290 buildings  x[-308,271] z[-200,240]  m/unit 3.22 -> models\districts\buenosaires-buildings.json
+[bld] cairo retry HTTP Error 429: Too Many Requests
+[bld] cairo       714 buildings  x[-353,270] z[-156,408]  m/unit 2.57 -> models\districts\cairo-buildings.json
+[bld] dubai       753 buildings  x[-354,241] z[-312,216]  m/unit 3.88 -> models\districts\dubai-buildings.json
+[bld] havana retry HTTP Error 429: Too Many Requests
+[bld] havana     3005 buildings  x[-295,252] z[-210,282]  m/unit 2.93 -> models\districts\havana-buildings.json
+[bld] johannesburg  462 buildings  x[-342,417] z[-462,299]  m/unit 2.20 -> models\districts\johannesburg-buildings.json
+[bld] london     3017 buildings  x[-322,345] z[-315,227]  m/unit 3.28 -> models\districts\london-buildings.json
+[bld] mexicocity 2419 buildings  x[-424,848] z[-277,499]  m/unit 1.72 -> models\districts\mexicocity-buildings.json
+[bld] moscow retry HTTP Error 429: Too Many Requests
+[bld] moscow retry HTTP Error 429: Too Many Requests
+[bld] moscow retry The read operation timed out
+[bld] moscow     1155 buildings  x[-239,251] z[-308,196]  m/unit 3.45 -> models\districts\moscow-buildings.json
+[bld] mumbai      771 buildings  x[-229,338] z[-401,223]  m/unit 3.08 -> models\districts\mumbai-buildings.json
+[bld] paris      2013 buildings  x[-366,227] z[-222,152]  m/unit 3.47 -> models\districts\paris-buildings.json
+[bld] rio retry HTTP Error 504: Gateway Timeout
+[bld] rio retry HTTP Error 504: Gateway Timeout
+[bld] rio retry HTTP Error 504: Gateway Timeout
+[bld] rio retry HTTP Error 504: Gateway Timeout
+Traceback (most recent call last):
+  File "C:\Users\defaultuser0\Downloads\sunset-drift-v2\tools\osm-buildings.py", line 77, in <module>
+    run(k); time.sleep(1)
+    ~~~^^^
+  File "C:\Users\defaultuser0\Downloads\sunset-drift-v2\tools\osm-buildings.py", line 52, in run
+    osm=fetch_buildings(c['bbox'],key)
+  File "C:\Users\defaultuser0\Downloads\sunset-drift-v2\tools\osm-buildings.py", line 38, in fetch_buildings
+    raise last
+  File "C:\Users\defaultuser0\Downloads\sunset-drift-v2\tools\osm-buildings.py", line 35, in fetch_buildings
+    with urllib.request.urlopen(req,timeout=150) as r: data=json.load(r)
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\defaultuser0\scoop\apps\miniconda3\current\Lib\urllib\request.py", line 189, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\defaultuser0\scoop\apps\miniconda3\current\Lib\urllib\request.py", line 495, in open
+    response = meth(req, response)
+  File "C:\Users\defaultuser0\scoop\apps\miniconda3\current\Lib\urllib\request.py", line 604, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "C:\Users\defaultuser0\scoop\apps\miniconda3\current\Lib\urllib\request.py", line 533, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\defaultuser0\scoop\apps\miniconda3\current\Lib\urllib\request.py", line 466, in _call_chain
+    result = func(*args)
+  File "C:\Users\defaultuser0\scoop\apps\miniconda3\current\Lib\urllib\request.py", line 613, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 504: Gateway Timeout
