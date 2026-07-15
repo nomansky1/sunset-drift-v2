@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.92-->
+<!--BUILD:v10.93-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.92';
+(function(){ const BUILD='v10.93';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3995,6 +3995,26 @@ function _renderOSMRoads(R){
   mk(sPos, 0x6d6d74, 'osmSidewalk');   // concrete sidewalk
   mk(rPos, 0x2e3138, 'osmRoads');      // asphalt road
 }
+// STREET LAMPS down the real streets (owner: street lights/lamps) — instanced pole+lamp on the sidewalk edge
+function _renderOSMLamps(R){
+  const cx=trackCentroid.x, cz=trackCentroid.y, poles=[], cap=isTouch?160:420;
+  for(const road of R){ if((road.w||3)<4 || poles.length>=cap) continue; const p=road.p, w=(road.w||3)+2.0; let acc=999;
+    for(let i=0;i<p.length && poles.length<cap;i++){
+      if(i>0) acc+=Math.hypot(p[i][0]-p[i-1][0], p[i][1]-p[i-1][1]);
+      if(acc<42) continue; acc=0;
+      const j=Math.min(i,p.length-2), dx=p[j+1][0]-p[j][0], dz=p[j+1][1]-p[j][1], len=Math.hypot(dx,dz)||1, nx=-dz/len, nz=dx/len;
+      const side=(poles.length&1)?1:-1, wx=cx+p[i][0]+nx*w*side, wz=cz+p[i][1]+nz*w*side;
+      if(distToTrackApprox(wx,wz)<CONFIG.roadHalfWidth+1 || overWater(wx,wz)) continue;
+      poles.push([wx, terrainHeight(wx,wz), wz]); } }
+  if(!poles.length) return;
+  const _m=new THREE.Matrix4();
+  const pg=new THREE.CylinderGeometry(0.16,0.2,7,6); pg.translate(0,3.5,0);
+  const pole=new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({color:0x2a2a30,roughness:0.7,metalness:0.45}), poles.length);
+  const lamp=new THREE.InstancedMesh(new THREE.SphereGeometry(0.42,8,6), new THREE.MeshStandardMaterial({color:0xfff2c0,emissive:0xffe08a,emissiveIntensity:nightMode?2.4:0.6}), poles.length);
+  poles.forEach((q,k)=>{ _m.makeTranslation(q[0],q[1],q[2]); pole.setMatrixAt(k,_m); _m.makeTranslation(q[0],q[1]+7,q[2]); lamp.setMatrixAt(k,_m); });
+  pole.instanceMatrix.needsUpdate=lamp.instanceMatrix.needsUpdate=true; pole.castShadow=!isTouch;
+  pole.name='osmLamps'; scene.add(pole); scene.add(lamp); _osmMeshes.push(pole,lamp);
+}
 // mark every OSM building's footprint into the shared occupancy grid so trees/grass/props NEVER spawn inside a building (owner: nothing clipping inside anything)
 function _osmMarkOcc(B){ if(!occ) return; const cx=trackCentroid.x, cz=trackCentroid.y;
   for(const b of B){ const poly=b.p; if(!poly||poly.length<3) continue;
@@ -4003,7 +4023,7 @@ function _osmMarkOcc(B){ if(!occ) return; const cx=trackCentroid.x, cz=trackCent
     occMark(cx+(x0+x1)*0.5, cz+(z0+z1)*0.5, (x1-x0)*0.5+1, (z1-z0)*0.5+1); } }
 function buildOSMCity(dk){
   if(!dk || !OSM_CITIES.has(dk)) return;
-  if(_osmRoadData[dk]) _renderOSMRoads(_osmRoadData[dk]);   // pave the real streets (under the buildings)
+  if(_osmRoadData[dk]){ _renderOSMRoads(_osmRoadData[dk]); _renderOSMLamps(_osmRoadData[dk]); }   // pave the real streets + street lamps
   const cached=_osmData[dk];
   if(cached){ _osmMarkOcc(cached); _renderOSMCity(cached); return; }   // preloaded -> occupancy is set BEFORE the prop scatterers run this same build
   const tok=_osmToken;
