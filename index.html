@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.91-->
+<!--BUILD:v10.92-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.91';
+(function(){ const BUILD='v10.92';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3974,8 +3974,11 @@ OSM_CITIES.forEach(function(c){
 });
 // pave the REAL street network (OSM ways) between the buildings so the city isn't bare ground (owner)
 function _renderOSMRoads(R){
-  const cx=trackCentroid.x, cz=trackCentroid.y, pos=[];
-  const push=(X,Z)=>{ pos.push(X, terrainHeight(X,Z)+0.06, Z); };
+  const cx=trackCentroid.x, cz=trackCentroid.y, rPos=[], sPos=[];
+  const emit=(arr,X,Z,y)=>{ arr.push(X, terrainHeight(X,Z)+y, Z); };
+  const strip=(arr,ax,az,bx,bz,nx,nz,w,y)=>{                              // one grounded quad of the given half-width
+    emit(arr,cx+ax+nx*w,cz+az+nz*w,y); emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y);
+    emit(arr,cx+bx+nx*w,cz+bz+nz*w,y); emit(arr,cx+bx-nx*w,cz+bz-nz*w,y); emit(arr,cx+ax-nx*w,cz+az-nz*w,y); };
   for(const road of R){ const p=road.p, w=road.w||3;
     for(let i=0;i<p.length-1;i++){ const a=p[i], b=p[i+1];
       const dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz)||1, nx=-dz/len, nz=dx/len;
@@ -3983,12 +3986,14 @@ function _renderOSMRoads(R){
       for(let s=0;s<N;s++){ const t0=s/N,t1=(s+1)/N, ax=a[0]+dx*t0, az=a[1]+dz*t0, bx=a[0]+dx*t1, bz=a[1]+dz*t1;
         const mx=cx+(ax+bx)*0.5, mz=cz+(az+bz)*0.5;
         if(distToTrackApprox(mx,mz) < CONFIG.roadHalfWidth || overWater(mx,mz)) continue;   // don't z-fight the race road / pave the sea
-        push(cx+ax+nx*w, cz+az+nz*w); push(cx+bx+nx*w, cz+bz+nz*w); push(cx+ax-nx*w, cz+az-nz*w);
-        push(cx+bx+nx*w, cz+bz+nz*w); push(cx+bx-nx*w, cz+bz-nz*w); push(cx+ax-nx*w, cz+az-nz*w); } } }
-  if(!pos.length) return;
-  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals();
-  const mesh=new THREE.Mesh(g, toonify(new THREE.MeshStandardMaterial({color:0x2e3138, roughness:0.95, metalness:0})));
-  mesh.name='osmRoads'; mesh.receiveShadow=true; scene.add(mesh); _osmMeshes.push(mesh);
+        strip(sPos, ax,az,bx,bz, nx,nz, w+2.6, 0.045);                    // concrete SIDEWALK (wider, lower) fills road->building gap
+        strip(rPos, ax,az,bx,bz, nx,nz, w, 0.075); } } }                  // asphalt ROAD on top
+  const mk=(arr,color,nm,sh)=>{ if(!arr.length) return; const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr,3)); g.computeVertexNormals();
+    const m=new THREE.Mesh(g, toonify(new THREE.MeshStandardMaterial({color, roughness:0.95, metalness:0})));
+    m.name=nm; m.receiveShadow=true; scene.add(m); _osmMeshes.push(m); };
+  mk(sPos, 0x6d6d74, 'osmSidewalk');   // concrete sidewalk
+  mk(rPos, 0x2e3138, 'osmRoads');      // asphalt road
 }
 // mark every OSM building's footprint into the shared occupancy grid so trees/grass/props NEVER spawn inside a building (owner: nothing clipping inside anything)
 function _osmMarkOcc(B){ if(!occ) return; const cx=trackCentroid.x, cz=trackCentroid.y;
