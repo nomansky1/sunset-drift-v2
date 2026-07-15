@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.1-->
+<!--BUILD:v11.2-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -623,6 +623,27 @@
   .brCard .brDots i{ width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.18); }
   .brCard .brDots i.on{ background:#ff7a3c; box-shadow:0 0 5px #ff7a3c; }
   .brCard .brReal{ position:absolute; top:6px; right:7px; font-size:9px; letter-spacing:.5px; color:#ffce8a; background:rgba(40,20,10,.7); padding:1px 5px; border-radius:6px; border:1px solid rgba(255,180,90,.3); }
+  /* ARENA CHOOSER polish (owner: "amazing like the main UI / track selection") — per-city accent, shine sweep,
+     staggered entrance, selected ring, gradient branding. Pure CSS + tiny JS hooks; zero per-frame cost. */
+  #brPickHead span{ background:linear-gradient(92deg,#ffd9a0,#ff5a2c 48%,#c76bff); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 0 26px rgba(255,110,60,.25); }
+  .brCard{ --acc:#ff7a3c; overflow:hidden; transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+  .brCard::after{ content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.13) 47%, transparent 62%);
+    transform:translateX(-135%); transition:transform .55s ease; }
+  .brCard:hover::after{ transform:translateX(135%); }
+  .brCard:hover{ transform:translateY(-4px) scale(1.02); border-color:var(--acc); box-shadow:0 10px 28px -10px var(--acc), 0 3px 14px rgba(0,0,0,.5); }
+  .brCard:hover canvas{ filter:brightness(1.28) saturate(1.18); }
+  .brCard canvas{ transition:filter .18s ease; }
+  .brCard.sel{ border-color:var(--acc); box-shadow:0 0 0 1.5px var(--acc), 0 7px 24px -9px var(--acc); }
+  .brCard.sel::before{ content:'▶'; position:absolute; top:6px; left:7px; z-index:2; font-size:9px; color:#fff;
+    background:linear-gradient(140deg,#ff5a2c,#a13bff); padding:2px 6px; border-radius:6px; letter-spacing:.5px; }
+  .brCard .brIc{ font-style:normal; margin-right:4px; font-size:12px; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .brCard .brDots i.on{ background:var(--acc); box-shadow:0 0 5px var(--acc); }
+  #brPickGrid.anim .brCard{ animation:brIn .45s cubic-bezier(.2,.85,.3,1) both; animation-delay:var(--d,0ms); }
+  @keyframes brIn{ from{ opacity:0; transform:translateY(16px) scale(.955); } to{ opacity:1; transform:none; } }
+  #brPickRandom{ background:linear-gradient(95deg,#ff5a2c,#a13bff); border:none; color:#fff; font-weight:800; letter-spacing:1px;
+    box-shadow:0 6px 22px -6px rgba(255,90,44,.55); }
+  #brPickRandom:hover{ transform:translateY(-2px); box-shadow:0 10px 28px -8px rgba(161,59,255,.65); }
   /* ---- ARENA DETAIL POPUP (globe-card style, battle-red holographic) ---- */
   #brDetail{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(92vw,420px); z-index:6;
     display:flex; flex-direction:column; gap:8px; border:1px solid rgba(255,120,90,.4); border-radius:18px; padding:11px 13px;
@@ -1363,7 +1384,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.1';
+(function(){ const BUILD='v11.2';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -7694,6 +7715,10 @@ function init(){
   function brCityLabel(ti){ const t=TRACKS[ti]||{};
     if(t.osm) return (t.sub||'').split('·')[0].trim() || t.name;
     return t.name||('ARENA '+ti); }
+  // card icons: the trackBtn .ic emojis are swapped for mini-map SVGs at runtime, so map city/theme directly
+  const BR_CITY_ICO={newyork:'🗽',miami:'🌴',puertorico:'🏝️',london:'🎡',paris:'🗼',tokyo:'🗾',berlin:'🐻',dubai:'🏙️',rio:'⛰️',moscow:'🏰',mumbai:'🕌',seoul:'🏯',shanghai:'🌃',rome:'🏛️',barcelona:'⛪',mexicocity:'🌵',buenosaires:'💃',sydney:'🎭',cairo:'🔺',havana:'🚗',toronto:'🌆',johannesburg:'🦁'};
+  const BR_THEME_ICO={city:'🌇',coast:'🌅',docks:'🏗️',beach:'🏖️',forest:'🌲',alpine:'🏔️',desert:'🏜️',neon:'🌃',canyon:'🧱',bayou:'🌿'};
+  function brCardIco(ti){ const t=TRACKS[ti]||{}; return BR_CITY_ICO[t.osm]||BR_THEME_ICO[t.theme]||'🏁'; }
   let _brPickBuilt=false, _brSelTi=0; const _brMeta={};
   function brDetailTags(ti){ const t=TRACKS[ti]||{}, p=[];
     if(t.theme) p.push(t.theme.toUpperCase());
@@ -7716,10 +7741,14 @@ function init(){
       const grid=document.getElementById('brPickGrid'); let DIFFS=[]; try{ DIFFS=trackDifficulties(); }catch(e){}
       for(let ti=0;ti<TRACKS.length;ti++){ if(!TRACKS[ti]||!TRACKS[ti].ctrl) continue;
         const th=brArenaThumb(ti); _brMeta[ti]=th.meta;
-        const card=document.createElement('div'); card.className='brCard';
+        const card=document.createElement('div'); card.className='brCard'; card.dataset.ti=ti;
+        card.style.setProperty('--acc', (typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[TRACKS[ti].theme])||'#ff7a3c');   // per-city accent drives hover glow + dots
+        card.style.setProperty('--d', (grid.children.length*26)+'ms');                                                     // entrance stagger
         if(TRACKS[ti].osm){ const rb=document.createElement('div'); rb.className='brReal'; rb.textContent='REAL'; card.appendChild(rb); }
         card.appendChild(th.cv);
-        const b3=document.createElement('b'); b3.textContent=brCityLabel(ti); card.appendChild(b3);
+        const b3=document.createElement('b');
+        { const e2=document.createElement('em'); e2.className='brIc'; e2.textContent=brCardIco(ti); b3.appendChild(e2); }   // city landmark / theme emoji
+        b3.appendChild(document.createTextNode(brCityLabel(ti))); card.appendChild(b3);
         const sp=document.createElement('span'); sp.textContent=th.meta; card.appendChild(sp);
         const d=DIFFS[ti]||3, dots=document.createElement('div'); dots.className='brDots';
         for(let k=0;k<5;k++){ const i2=document.createElement('i'); if(k<d) i2.className='on'; dots.appendChild(i2); }
@@ -7738,6 +7767,9 @@ function init(){
       window.addEventListener('keydown', ev=>{ if(ev.key==='Escape'&&bp.classList.contains('show')){ if(bp.classList.contains('detailOpen')) closeBRDetail(); else bp.classList.remove('show'); } });
     }
     closeBRDetail(); bp.classList.add('show');
+    { const grid=document.getElementById('brPickGrid');                                        // main-UI feel: selected ring + re-run the entrance stagger on every open
+      Array.prototype.forEach.call(grid.children, c=>c.classList.toggle('sel', +c.dataset.ti===currentTrack));
+      grid.classList.remove('anim'); void grid.offsetWidth; grid.classList.add('anim'); }
   }
   document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return; openBRPick(); });
   { const dc=document.getElementById('dailyCard'); if(dc) dc.addEventListener('click', e=>{ e.stopPropagation(); startDaily(); }); }
