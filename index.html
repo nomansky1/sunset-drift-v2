@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.88-->
+<!--BUILD:v10.89-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.88';
+(function(){ const BUILD='v10.89';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4008,20 +4008,22 @@ function buildOSMCity(dk){
 }
 function _renderOSMCity(B){
   const cx=trackCentroid.x, cz=trackCentroid.y;
-  const wallP=[], wallUV=[], wallC=[], roofP=[], roofC=[];
   const UWIN=13, VWIN=13;                          // facade texture tiles every ~13 units -> constant-size windows
   const tints=[[0.60,0.58,0.54],[0.70,0.67,0.61],[0.54,0.57,0.61],[0.66,0.61,0.54],[0.57,0.58,0.60],[0.63,0.60,0.57]];
-  const seen=new Set();                            // OSM sometimes has duplicate/stacked footprints -> dedup so no building sits inside another
+  // FACADE FAMILIES w/ PBR: glass towers reflect the sky (low roughness + metal + envmap), masonry is matte (owner: PBR + texture)
+  const FAM={ glass:{tex:makeFacadeTexture(mulberry32(11),'glass'),rough:0.16,metal:0.42,env:1.7,emi:0.36},
+    concrete:{tex:makeFacadeTexture(mulberry32(22),'concrete'),rough:0.92,metal:0.03,env:0.35,emi:0.26},
+    brick:{tex:makeFacadeTexture(mulberry32(33),'brick'),rough:0.95,metal:0.0,env:0.2,emi:0.24},
+    limestone:{tex:makeFacadeTexture(mulberry32(44),'limestone'),rough:0.88,metal:0.03,env:0.4,emi:0.26} };
+  for(const k in FAM){ const tx=FAM[k].tex; tx.map.wrapS=tx.map.wrapT=THREE.RepeatWrapping; if(tx.emis){tx.emis.wrapS=tx.emis.wrapT=THREE.RepeatWrapping;} FAM[k].P=[]; FAM[k].UV=[]; FAM[k].C=[]; }
+  const masonry=['brick','concrete','limestone'], roofP=[], roofC=[], seen=new Set();
   for(const b of B){
     const poly=b.p; if(!poly||poly.length<3) continue;
     let mcx=0,mcz=0; for(const p of poly){ mcx+=p[0]; mcz+=p[1]; } mcx/=poly.length; mcz/=poly.length;
-    const ck=Math.round(mcx*0.5)+'_'+Math.round(mcz*0.5); if(seen.has(ck)) continue; seen.add(ck);   // skip a footprint whose centre coincides with one already drawn (2u cell)
+    const ck=Math.round(mcx*0.5)+'_'+Math.round(mcz*0.5); if(seen.has(ck)) continue; seen.add(ck);   // dedup coincident footprints
     const wx=cx+mcx, wz=cz+mcz;
-    if(overWater(wx,wz)) continue;                                    // not in the sea (seaside cities)
-    // THE ROAD GOES AROUND EVERY BUILDING: skip a building if ANY part of its footprint (vertex OR edge
-    // midpoint) enters the widened game road corridor — real streets are narrower than the 26u game road,
-    // so real buildings can otherwise sit on the racing surface (owner: no obstructions on the road).
-    const CLR=CONFIG.roadHalfWidth+3; let onRoad=false;
+    if(overWater(wx,wz)) continue;
+    const CLR=CONFIG.roadHalfWidth+3; let onRoad=false;                                              // THE ROAD GOES AROUND EVERY BUILDING (whole footprint tested)
     for(let i=0;i<poly.length && !onRoad;i++){ const a=poly[i], b2=poly[(i+1)%poly.length];
       if(distToTrackApprox(cx+a[0], cz+a[1]) < CLR) onRoad=true;
       else if(distToTrackApprox(cx+(a[0]+b2[0])*0.5, cz+(a[1]+b2[1])*0.5) < CLR) onRoad=true; }
@@ -4030,33 +4032,27 @@ function _renderOSMCity(B){
     const contour=poly.map(p=>new THREE.Vector2(p[0],p[1]));
     let tris; try{ tris=THREE.ShapeUtils.triangulateShape(contour, []); }catch(e){ continue; }
     if(!tris||!tris.length) continue;
-    const t=tints[(Math.abs(Math.round(mcx*7+mcz*13)))%tints.length];
-    for(const tr of tris){ for(const idx of tr){ const p=poly[idx]; roofP.push(cx+p[0], yTop, cz+p[1]); roofC.push(t[0]*0.42,t[1]*0.42,t[2]*0.46); } }   // flat roof: dark tar/gravel so the noon sun doesn't blow it to white
+    const hsh=Math.abs(Math.round(mcx*7+mcz*13)), t=tints[hsh%tints.length];
+    for(const tr of tris){ for(const idx of tr){ const p=poly[idx]; roofP.push(cx+p[0], yTop, cz+p[1]); roofC.push(t[0]*0.42,t[1]*0.42,t[2]*0.46); } }   // dark-tar roof
+    const F=FAM[(h>24 && hsh%3!==0) ? 'glass' : masonry[hsh%3]];   // tall -> glass tower (downtown), else masonry variety
     for(let i=0;i<poly.length;i++){ const a=poly[i], c2=poly[(i+1)%poly.length];
       const ax=cx+a[0], az=cz+a[1], bx=cx+c2[0], bz=cz+c2[1], len=Math.hypot(bx-ax,bz-az)||1, u=len/UWIN, v=h/VWIN;
-      wallP.push(ax,y0,az, bx,y0,bz, ax,yTop,az,  bx,y0,bz, bx,yTop,bz, ax,yTop,az);   // 2 tris
-      wallUV.push(0,0, u,0, 0,v,  u,0, u,v, 0,v);
-      for(let k=0;k<6;k++) wallC.push(t[0],t[1],t[2]); }
+      F.P.push(ax,y0,az, bx,y0,bz, ax,yTop,az,  bx,y0,bz, bx,yTop,bz, ax,yTop,az);
+      F.UV.push(0,0, u,0, 0,v,  u,0, u,v, 0,v);
+      for(let k=0;k<6;k++) F.C.push(t[0],t[1],t[2]); }
     if(h>16) camColliders.push({x:wx,z:wz,r:6,top:h});
   }
-  if(!wallP.length) return;
-  const ft=makeFacadeTexture(mulberry32(313),'concrete');   // real window-facade (map + emissive windows)
-  ft.map.wrapS=ft.map.wrapT=THREE.RepeatWrapping; if(ft.emis){ ft.emis.wrapS=ft.emis.wrapT=THREE.RepeatWrapping; }
-  const wg=new THREE.BufferGeometry();
-  wg.setAttribute('position', new THREE.Float32BufferAttribute(wallP,3));
-  wg.setAttribute('uv', new THREE.Float32BufferAttribute(wallUV,2));
-  wg.setAttribute('color', new THREE.Float32BufferAttribute(wallC,3));
-  wg.computeVertexNormals();
-  const wm=toonify(new THREE.MeshStandardMaterial({map:ft.map, emissiveMap:ft.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.75:0.28, vertexColors:true, roughness:0.92, metalness:0.03, side:THREE.DoubleSide}));
-  const wmesh=new THREE.Mesh(wg,wm); wmesh.name='osmWalls'; wmesh.castShadow=!isTouch; wmesh.receiveShadow=true; scene.add(wmesh);
-  const rg=new THREE.BufferGeometry();
-  rg.setAttribute('position', new THREE.Float32BufferAttribute(roofP,3));
-  rg.setAttribute('color', new THREE.Float32BufferAttribute(roofC,3));
-  rg.computeVertexNormals();
-  const rmesh=new THREE.Mesh(rg, toonify(new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.95, side:THREE.DoubleSide})));
-  rmesh.name='osmRoofs'; rmesh.castShadow=!isTouch; scene.add(rmesh);
-  _osmMeshes.push(wmesh, rmesh);   // register for cleanup on the next track build
-  console.log('[osm] real-city buildings rendered:', B.length);
+  if(roofP.length){ const rg=new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(roofP,3)); rg.setAttribute('color', new THREE.Float32BufferAttribute(roofC,3)); rg.computeVertexNormals();
+    const rmesh=new THREE.Mesh(rg, toonify(new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.95, side:THREE.DoubleSide})));
+    rmesh.name='osmRoofs'; rmesh.castShadow=!isTouch; scene.add(rmesh); _osmMeshes.push(rmesh); }
+  let total=0;
+  for(const k in FAM){ const F=FAM[k]; if(!F.P.length) continue; total+=F.P.length;
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(F.P,3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(F.UV,2)); g.setAttribute('color', new THREE.Float32BufferAttribute(F.C,3)); g.computeVertexNormals();
+    const m=toonify(new THREE.MeshStandardMaterial({map:F.tex.map, emissiveMap:F.tex.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.8:F.emi, vertexColors:true, roughness:F.rough, metalness:F.metal, envMapIntensity:F.env, side:THREE.DoubleSide}));
+    const mesh=new THREE.Mesh(g,m); mesh.name='osmWalls'; mesh.castShadow=!isTouch; mesh.receiveShadow=true; scene.add(mesh); _osmMeshes.push(mesh); }
+  if(total) console.log('[osm] real-city buildings rendered:', B.length);
 }
 let birdFlock=null, balloonGrp=null;
 // flying bird flock that circles high above the track (animated in the render loop)
