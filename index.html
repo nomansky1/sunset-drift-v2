@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.5-->
+<!--BUILD:v11.6-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -795,6 +795,10 @@
   .abScroll{ max-height:130px; overflow-y:auto; font-size:10px; line-height:1.55; color:#b9b2cc;
     background:rgba(14,10,22,.55); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:8px 10px; }
   .abScroll b{ color:#d8d2ea; }
+  /* SQUARED BUTTONS + electric accent (owner: different button color, no rounded buttons) */
+  .cta,.cta2,.cta.champ,.tog,.gaBtn,.csChip,#brPickRandom,#brPickClose,#nextCarBtn{ border-radius:2px; }
+  .cta{ background:linear-gradient(100deg,#12c6f2,#2a7bff 52%,#5b4bff); color:#eaf6ff;
+    box-shadow:0 10px 30px rgba(40,130,255,.42), inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(12,40,120,.4); }
 
   /* LANDSCAPE PHONE: pack the menu so RACE/CUP always fit on a short screen (they were off-screen below the fold) */
   @media (max-height:440px){
@@ -1384,7 +1388,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.5';
+(function(){ const BUILD='v11.6';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -4094,6 +4098,7 @@ function _renderOSMRoads(R){
             quadAbs(cPos, mx-dxn*pw,gy,mz-dzn*pw, mx-dxn*pw,ty,mz-dzn*pw, mx+dxn*pw,ty,mz+dzn*pw, mx+dxn*pw,gy,mz+dzn*pw); } }
         continue; }
       if(distToTrackApprox(mx,mz) < CONFIG.roadHalfWidth || overWater(mx,mz)) continue;   // ground roads: don't z-fight the race road / pave the sea
+      if(typeof occMark==='function') occMark(mx, mz, w+2.6, w+2.6);       // streets claim the occupancy grid: no trees/clutter/parks ON the road, parks fill only true gaps
       const gq=(arr,wid,y,uvArr)=>{                                        // terrain-conforming ribbon quad on the shared mitered edges
         const ax1=cx+A.x+A.nx*wid, az1=cz+A.z+A.nz*wid, ax2=cx+A.x-A.nx*wid, az2=cz+A.z-A.nz*wid;
         const bx1=cx+B.x+B.nx*wid, bz1=cz+B.z+B.nz*wid, bx2=cx+B.x-B.nx*wid, bz2=cz+B.z-B.nz*wid;
@@ -4135,17 +4140,62 @@ function _renderOSMLamps(R){
   pole.instanceMatrix.needsUpdate=lamp.instanceMatrix.needsUpdate=true; pole.castShadow=!isTouch;
   pole.name='osmLamps'; scene.add(pole); scene.add(lamp); _osmMeshes.push(pole,lamp);
 }
+// POCKET PARKS + green fill (owner: proper grass/parks/assets that fit the scene) — after buildings AND
+// streets have claimed the occupancy grid, whatever's left inside the city is true dead ground: fill the
+// larger gaps with grass patches + simple trees so no bare-dirt holes read as unfinished world.
+function _renderOSMParks(){
+  const cx=trackCentroid.x, cz=trackCentroid.y, rng=mulberry32(4242+(currentTrack|0));
+  const EXT=Math.min(trackRadius+240, 430), STEP=13, gPos=[], gCol=[], trees=[], cap=isTouch?120:260;
+  for(let gx=-EXT; gx<=EXT; gx+=STEP){ for(let gz=-EXT; gz<=EXT; gz+=STEP){
+    if(trees.length>=cap) break;
+    const wx=cx+gx+(rng()-0.5)*6, wz=cz+gz+(rng()-0.5)*6;
+    if(rng()>0.30) continue;
+    if(typeof occHit==='function' && occHit(wx,wz,7,7)) continue;                       // touches a building/street -> not a park spot
+    { let nearBld=false; const bc=window._osmBldCells, kx=Math.round(wx/24), kz=Math.round(wz/24);   // a BUILDING must be within ~a block: parks fill gaps inside the city, never the outer wasteland (roads alone don't qualify)
+      if(bc) for(let ox=-1;ox<=1&&!nearBld;ox++) for(let oz=-1;oz<=1&&!nearBld;oz++) if(bc.has((kx+ox)+'_'+(kz+oz))) nearBld=true;
+      if(!nearBld) continue; }
+    if(distToTrackApprox(wx,wz)<CONFIG.roadHalfWidth+9 || overWater(wx,wz)) continue;
+    const gy=terrainHeight(wx,wz)+0.12;
+    { const R=6+rng()*5, seg=10, g1=0.30+rng()*0.07;                                    // irregular grass patch — muted park green, soft blob (not a neon star)
+      const rr=[]; for(let s=0;s<seg;s++) rr.push(R*(0.85+rng()*0.3));
+      for(let s=0;s<seg;s++){ const a0=s/seg*6.283, a1=(s+1)/seg*6.283, r0=rr[s], r1=rr[(s+1)%seg];
+        const x0=wx+Math.cos(a0)*r0, z0=wz+Math.sin(a0)*r0, x1=wx+Math.cos(a1)*r1, z1=wz+Math.sin(a1)*r1;
+        gPos.push(wx,gy+0.04,wz, x0,terrainHeight(x0,z0)+0.12,z0, x1,terrainHeight(x1,z1)+0.12,z1);
+        for(let k=0;k<3;k++) gCol.push(0.15, g1, 0.12); } }
+    const nT=1+((rng()*3)|0);
+    for(let t2=0;t2<nT && trees.length<cap;t2++){ const tx=wx+(rng()-0.5)*7, tz=wz+(rng()-0.5)*7;
+      if(typeof occHit==='function' && occHit(tx,tz,1.5,1.5)) continue;
+      trees.push([tx, terrainHeight(tx,tz), tz, 0.8+rng()*0.7]); }
+    if(typeof occMark==='function') occMark(wx,wz,6,6); } }
+  if(gPos.length){ const g=new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(gPos,3)); g.setAttribute('color', new THREE.Float32BufferAttribute(gCol,3));
+    g.computeVertexNormals();
+    const m=new THREE.Mesh(g, toonify(new THREE.MeshStandardMaterial({vertexColors:true, roughness:1, metalness:0, side:THREE.DoubleSide})));   // fan winds CW seen from above -> DoubleSide or the patch is invisible
+    m.name='osmParkGrass'; m.receiveShadow=true; scene.add(m); _osmMeshes.push(m); }
+  if(trees.length){ const _m=new THREE.Matrix4(), _q=new THREE.Quaternion(), _s=new THREE.Vector3(), _p=new THREE.Vector3();
+    const tg=new THREE.CylinderGeometry(0.14,0.2,1.6,5); tg.translate(0,0.8,0);
+    const cg=new THREE.ConeGeometry(1.5,3.4,7); cg.translate(0,3.2,0);
+    const trunk=new THREE.InstancedMesh(tg, new THREE.MeshStandardMaterial({color:0x5a4632, roughness:0.95}), trees.length);
+    const crown=new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({color:0x3f7d3a, roughness:0.95, flatShading:true}), trees.length);
+    trees.forEach((t2,k)=>{ _q.setFromAxisAngle(new THREE.Vector3(0,1,0), k*2.4); _s.setScalar(t2[3]); _p.set(t2[0],t2[1],t2[2]);
+      _m.compose(_p,_q,_s); trunk.setMatrixAt(k,_m); crown.setMatrixAt(k,_m); });
+    trunk.instanceMatrix.needsUpdate=crown.instanceMatrix.needsUpdate=true;
+    crown.castShadow=!isTouch; trunk.name='osmParkTrees'; scene.add(trunk); scene.add(crown); _osmMeshes.push(trunk,crown); }
+}
 // mark every OSM building's footprint into the shared occupancy grid so trees/grass/props NEVER spawn inside a building (owner: nothing clipping inside anything)
 function _osmMarkOcc(B){ if(!occ) return; const cx=trackCentroid.x, cz=trackCentroid.y;
+  window._osmBldCells=new Set();                                            // coarse 24u building map — parks only spawn in gaps NEAR buildings (roads alone don't make a neighbourhood)
   for(const b of B){ const poly=b.p; if(!poly||poly.length<3) continue;
     let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
     for(const p of poly){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<z0)z0=p[1]; if(p[1]>z1)z1=p[1]; }
-    occMark(cx+(x0+x1)*0.5, cz+(z0+z1)*0.5, (x1-x0)*0.5+1, (z1-z0)*0.5+1); } }
+    const bx=cx+(x0+x1)*0.5, bz=cz+(z0+z1)*0.5;
+    window._osmBldCells.add(Math.round(bx/24)+'_'+Math.round(bz/24));
+    occMark(bx, bz, (x1-x0)*0.5+1, (z1-z0)*0.5+1); } }
 function buildOSMCity(dk){
   if(!dk || !OSM_CITIES.has(dk)) return;
-  if(_osmRoadData[dk]){ _renderOSMRoads(_osmRoadData[dk]); _renderOSMLamps(_osmRoadData[dk]); }   // pave the real streets + street lamps
+  if(_osmRoadData[dk]){ _renderOSMRoads(_osmRoadData[dk]); _renderOSMLamps(_osmRoadData[dk]); }   // pave the real streets + street lamps (streets claim occ)
   const cached=_osmData[dk];
-  if(cached){ _osmMarkOcc(cached); _renderOSMCity(cached); return; }   // preloaded -> occupancy is set BEFORE the prop scatterers run this same build
+  if(cached){ _osmMarkOcc(cached); _renderOSMCity(cached); _renderOSMParks(); return; }   // preloaded -> occupancy is set BEFORE the prop scatterers run this same build; parks fill what's left
   const tok=_osmToken;
   fetch('models/districts/'+dk+'-buildings.json').then(r=>r.ok?r.json():null).then(d=>{
     if(d&&d.buildings){ _osmData[dk]=d.buildings; if(tok===_osmToken) _renderOSMCity(d.buildings); }   // cache + ignore a stale fetch
@@ -4181,7 +4231,7 @@ function _renderOSMCity(B){
     for(const tr of tris){ for(const idx of tr){ const p=poly[idx]; roofP.push(cx+p[0], yTop, cz+p[1]); roofC.push(t[0]*0.42,t[1]*0.42,t[2]*0.46); } }   // dark-tar roof
     const F=FAM[(h>24 && hsh%3!==0) ? 'glass' : masonry[hsh%3]];   // tall -> glass tower (downtown), else masonry variety
     for(let i=0;i<poly.length;i++){ const a=poly[i], c2=poly[(i+1)%poly.length];
-      const ax=cx+a[0], az=cz+a[1], bx=cx+c2[0], bz=cz+c2[1], len=Math.hypot(bx-ax,bz-az)||1, u=len/UWIN, v=h/VWIN;
+      const ax=cx+a[0], az=cz+a[1], bx=cx+c2[0], bz=cz+c2[1], len=Math.hypot(bx-ax,bz-az)||1, u=Math.max(1,Math.round(len/UWIN)), v=Math.max(1,Math.round(h/VWIN));   // snap tiling to WHOLE windows — fractional v sliced the top row mid-window (owner: no sudden texture cut-offs)
       F.P.push(ax,y0,az, bx,y0,bz, ax,yTop,az,  bx,y0,bz, bx,yTop,bz, ax,yTop,az);
       F.UV.push(0,0, u,0, 0,v,  u,0, u,v, 0,v);
       for(let k=0;k<6;k++) F.C.push(t[0],t[1],t[2]); }
@@ -8759,8 +8809,26 @@ window.NETRACE=false;
     const em=new THREE.MeshStandardMaterial({map:earthTex(), roughness:1, metalness:0, emissive:0x0b1526, emissiveIntensity:0.5});
     const earth=new THREE.Mesh(new THREE.SphereGeometry(1.7,64,64), em);
     grp.add(earth);
+    // ANIMATED OCEANS (owner: animate water on the globe) — a shimmer shell just above the surface, masked
+    // to water by the earth texture itself (blue-dominant = ocean), scrolling interference glints + a soft
+    // fresnel rim. Additive + depthWrite:false so land/pins/borders stay crisp.
+    { const waterU={ uMap:{value:em.map}, uTime:{value:0} };
+      const waterMat=new THREE.ShaderMaterial({ uniforms:waterU, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+        vertexShader:'varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+        fragmentShader:'uniform sampler2D uMap; uniform float uTime; varying vec2 vUv; varying vec3 vN;\n'+
+          'void main(){ vec3 t=texture2D(uMap,vUv).rgb;\n'+
+          '  float ocean=smoothstep(0.015,0.12,t.b-t.r)*(1.0-smoothstep(0.35,0.6,t.g));\n'+
+          '  float w1=sin(vUv.x*160.0+uTime*0.7+sin(vUv.y*95.0-uTime*0.45)*1.6);\n'+
+          '  float w2=sin(vUv.y*130.0-uTime*0.55+sin(vUv.x*85.0+uTime*0.35)*1.3);\n'+
+          '  float g2=pow(max(0.0,w1*w2),6.0);\n'+
+          '  float fr=pow(1.0-abs(vN.z),2.5);\n'+
+          '  float a=ocean*(g2*0.45+fr*0.10+0.03*sin(uTime*0.8+vUv.x*40.0));\n'+
+          '  gl_FragColor=vec4(vec3(0.45,0.75,1.0), max(0.0,a)); }' });
+      const water=new THREE.Mesh(new THREE.SphereGeometry(1.703,64,64), waterMat);
+      grp.add(water); grp.userData._waterU=waterU; }
     try{ new THREE.TextureLoader().load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
-      t=>{ t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; em.map=t; em.emissiveIntensity=0.4; em.emissive.setHex(0x223a5e); em.needsUpdate=true; }, undefined, ()=>{}); }catch(e){}
+      t=>{ t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; em.map=t; em.emissiveIntensity=0.4; em.emissive.setHex(0x223a5e); em.needsUpdate=true;
+        if(grp&&grp.userData._waterU) grp.userData._waterU.uMap.value=t; }, undefined, ()=>{}); }catch(e){}
     grp.add(new THREE.Mesh(new THREE.SphereGeometry(1.9,32,32), new THREE.MeshBasicMaterial({color:0x3f83ff,transparent:true,opacity:0.14,side:THREE.BackSide})));
     const sp=[]; let ss=7; const sr=()=>{ ss=(ss*16807)%2147483647; return ss/2147483647-0.5; };
     for(let i=0;i<650;i++){ const v=new THREE.Vector3(sr(),sr(),sr()); if(v.length()<0.05) continue; v.normalize().multiplyScalar(34+sr()*24); sp.push(v.x,v.y,v.z); }
@@ -8788,6 +8856,7 @@ window.NETRACE=false;
   function resize(){ const cv=document.getElementById('globeCanvas'); const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
     if(ren){ ren.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); } }
   function loop(){ raf=requestAnimationFrame(loop);
+    if(grp&&grp.userData._waterU) grp.userData._waterU.uTime.value=performance.now()*0.001;   // animated oceans
     if(spinT!=null){ const d=Math.atan2(Math.sin(spinT-rot),Math.cos(spinT-rot)); rot+=d*0.12; tilt+=(tiltT-tilt)*0.12;
       if(Math.abs(d)<0.01){ spinT=null; } }
     else if(drag===null && picked<0) rot+=0.0024;                        // globe HOLDS STILL while the track card is open
