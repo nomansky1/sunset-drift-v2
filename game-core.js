@@ -203,8 +203,8 @@ function updateCar(c, inp, dt){
   const _burn = c.drifting || (inp.throttle && Math.abs(c.vel.dot(_r.set(Math.cos(c.heading),-Math.sin(c.heading))))>2.2 && fwdSpeed<24);
   c.rig._spinX = (c.rig._spinX||0) + (_burn ? 22*dt : 0);          // WHEELSPIN: rear tyres over-rotate when traction breaks
   const _rw = c.rig.roadWheels||c.rig.wheels;
-  _rw.forEach(w=>{ const oz=(w.userData._oz!==undefined ? w.userData._oz : w.position.z);
-    const isRear = oz < 0;                                          // +Z = front (post-normalization); rear tyres slip-spin
+  _rw.forEach(w=>{ const oz=(w.userData._nz!==undefined ? w.userData._nz : (w.userData._oz!==undefined ? w.userData._oz : w.position.z));
+    const isRear = oz < 0;                                          // +Z = front (normalized car space; align-pivot wheels sit at local 0,0,0 so _nz is authoritative)
     w.rotation.x = c.rig.spinAcc + (isRear ? c.rig._spinX : 0); });   // fronts roll true
   const vSteer=clamp(inp.steer,-1,1)*0.5;
   c.rig.front.forEach(w=> w.rotation.y=vSteer);
@@ -228,16 +228,24 @@ function updateCar(c, inp, dt){
     const szr=Math.sin(c._leanZ||0), sxr=Math.sin(c._leanX||0);
     for(let wi=0; wi<c.rig.wheels.length; wi++){ const w=c.rig.wheels[wi];
       if(w.userData._py===undefined){ w.userData._py=w.position.y;
-        // TRUE pre-scale offset from the roll pivot: sum .position up the chain to just under the scale node
-        // (chassis centring + pivot). Local w.position.x alone misses chassis centring -> residual float.
+        // legacy fallback (doge/old rigs without build-time normalized coords): sum .position up the chain
         let ox=0, oz=0, node=w;
         while(node && node!==c.rig.group){ if(node.scale && (node.scale.x!==1)) break; ox+=node.position.x; oz+=node.position.z; node=node.parent; }
         w.userData._ox=ox; w.userData._oz=oz; }
-      const off=clamp(-w.userData._ox*szr + w.userData._oz*sxr, -0.08, 0.035);   // ground-stick, but CAP the upward travel so a hard-lean wheel can't punch through the fender arch (owner: no fender glitching)
-      const target=w.userData._py + off;
+      // NORMALIZED car-space coords when the rig provides them (align-pivot wheels): raw-frame sums gave
+      // metre-scale models radians of camber + saturated travel = every wheel wobbled (owner report)
+      const nx=(w.userData._nx!==undefined ? w.userData._nx : w.userData._ox);
+      const nz=(w.userData._nz!==undefined ? w.userData._nz : w.userData._oz);
+      const wS=w.userData._wS||1;                                           // local units per normalized unit
+      const off=clamp(-nx*szr + nz*sxr, -0.08, 0.035);                      // ground-stick in CAR units — same cm of travel on every model
+      const target=w.userData._py + off/wS;
       w.position.y += (target-w.position.y)*0.5;                            // smoothed = damped suspension travel
-      // CAMBER: the loaded (outboard) wheels lean into the corner a hair — plants the tyre, reads sporty
-      w.rotation.z = -w.userData._ox*szr*0.9; }
+      // CAMBER: outboard wheels lean into the corner a hair. Applied on the ALIGN group (OUTSIDE the
+      // spinning pivot) — rotation.z on the YXZ pivot itself is innermost, so the tilt PRECESSED with
+      // rotation.x and every wheel wobbled like a bent axle.
+      const cam=clamp(-nx*szr*0.9, -0.10, 0.10);
+      if(w.parent && w.parent.userData && w.parent.userData._wheelAlign){ w.parent.rotation.z=cam; w.rotation.z=0; }
+      else w.rotation.z=cam; }
   }
   if(c.rig.chassis){ c.rig.chassis.rotation.z=0; c.rig.chassis.rotation.x=0;
     if(c.rig._cx0!=null) c.rig.chassis.position.x=c.rig._cx0; }       // retire the old chassis-level lean on existing rigs
