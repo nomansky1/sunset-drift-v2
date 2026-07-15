@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.98-->
+<!--BUILD:v10.99-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1345,7 +1345,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.98';
+(function(){ const BUILD='v10.99';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -5062,12 +5062,20 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
       else if(_isWheelName(n2)) _wm.push(o); }
     else if(_isWheelName(n2) && o.children.length) _wm.push(o); });        // wheel GROUPS (glTF splits multi-material wheels into child meshes)
   rig.group.updateWorldMatrix(true,true);
-  _wm.forEach(o=>{ const g=new THREE.Group(); g.rotation.order='YXZ';
+  _wm.forEach(o=>{
     // pivot at the wheel's GEOMETRY centre, not the node origin — some GLBs (aventador) bake wheel verts in
     // world space with the node origin at (0,0,0); a pivot there makes the wheel orbit the car when it rolls.
     const wb=new THREE.Box3().setFromObject(o), wc=wb.getCenter(new THREE.Vector3());
     o.parent.updateWorldMatrix(true,false); o.parent.worldToLocal(wc);
-    g.position.copy(wc); o.parent.add(g); g.updateWorldMatrix(true,false); g.attach(o);
+    // ALIGN group cancels any baked parent rotation (ae86 wheel parents are rotated 90° -> pivot X pointed
+    // VERTICAL, so rotation.x=spinAcc spun its wheels flat like turntables). The game-facing pivot lives
+    // inside with identity axes = CAR axes: rotation.x always rolls, rotation.y always steers.
+    const align=new THREE.Group();
+    align.position.copy(wc);
+    align.quaternion.copy(o.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    o.parent.add(align);
+    const g=new THREE.Group(); g.rotation.order='YXZ'; align.add(g);
+    align.updateWorldMatrix(true,false); g.updateWorldMatrix(true,false); g.attach(o);
     g.userData._wkey=(o.name||'').replace(/^wheel_/,'');
     wheels.push(g); if(/front|(^|_)f[lr](_|$)|(^|_)[lr]f(_|$)/i.test(o.name||'')) front.push(g); });
   if(!front.length && wheels.length>=4){                                   // no front NAMES (Wheel1..4 / wheels018 / Cylinder): the pivots ahead of the axle midpoint ARE the fronts (car is nose +Z)
