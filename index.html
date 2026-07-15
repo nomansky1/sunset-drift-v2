@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.99-->
+<!--BUILD:v11.0-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1345,7 +1345,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.99';
+(function(){ const BUILD='v11.0';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1481,18 +1481,18 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'PHANTOM',     kind:'glb', raw:'kartE',    yaw:0, spd:88, grip:90, price:3200},
              {name:'MOUNTIE',  kind:'glb', raw:'wrx',     yaw:0, spd:82, grip:86, price:3400},
              {name:'SPITFIRE', kind:'glb', raw:'rwb',   yaw:0, spd:92, grip:76, price:3700},   // orientation baked in (integrate_gen4 flip=True) -> faces fwd at yaw=0
-             {name:'BOLIDE',   kind:'glb', raw:'racer',   yaw:0, spd:94, grip:74, price:4000},
+             {name:'BOLIDE',   kind:'glb', raw:'jdm1',    yaw:0, spd:94, grip:74, price:4000},   // gen7 JDM (was a RACER dupe)
              {name:'AUTOBAHN', kind:'glb', raw:'gt3p',    yaw:0, spd:100,grip:72, price:4400},   // gen4: real Porsche 911 GT3 (CC-BY)
              {name:'ROSSO',    kind:'glb', raw:'super',   yaw:0, spd:102,grip:66, price:4800},
              {name:'TORO',     kind:'glb', raw:'nascar',  yaw:0, spd:96, grip:68, price:5000},
              {name:'SAMURAI',  kind:'glb', raw:'skyline', yaw:0, spd:99, grip:78, price:5200},   // gen4: real Nissan Skyline R34 GT-R (CC-BY)
-             {name:'TIGER',    kind:'glb', raw:'racer',   yaw:0, spd:93, grip:80, price:5400},
-             {name:'DRAGON',   kind:'glb', raw:'super',   yaw:0, spd:104,grip:66, price:5600},
+             {name:'TIGER',    kind:'glb', raw:'jdm2',    yaw:0, spd:93, grip:80, price:5400},   // gen7 JDM (was a RACER dupe)
+             {name:'DRAGON',   kind:'glb', raw:'jdm3',    yaw:0, spd:104,grip:66, price:5600},   // gen7 JDM (was a SUPER dupe)
              {name:'MAHARAJA', kind:'glb', raw:'suv',     yaw:0, spd:86, grip:84, price:5700},
              {name:'OUTBACK',  kind:'glb', raw:'pickup',  yaw:0, spd:88, grip:82, price:5800},
              {name:'SAVANNA',  kind:'glb', raw:'suv',     yaw:0, spd:87, grip:83, price:5900},
-             {name:'PHARAOH',  kind:'glb', raw:'muscle',  yaw:0, spd:95, grip:67, price:6000},
-             {name:'FALCON',   kind:'glb', raw:'super',   yaw:0, spd:106,grip:64, price:6500},
+             {name:'PHARAOH',  kind:'glb', raw:'jdm5',    yaw:0, spd:95, grip:67, price:6000},   // gen7 JDM (was a MUSCLE dupe)
+             {name:'FALCON',   kind:'glb', raw:'jdm4',    yaw:0, spd:106,grip:64, price:6500},   // gen7 JDM (was a SUPER dupe)
              {name:'RX-SEVEN', kind:'glb', raw:'rx7',       yaw:0, spd:98, grip:84, price:7200},
              {name:'CAMARO SS',kind:'glb', raw:'camaro',    yaw:0, spd:101,grip:74, price:7400},
              {name:'HACHIROKU',kind:'glb', raw:'ae86',      yaw:0, spd:90, grip:90, price:7600},
@@ -4731,7 +4731,8 @@ function loadCarModels(){
    ['ferrari','models/gen4/ferrari.glb?r2'],   // gen4 Ferrari 458 -> replaces the low-poly electric-hypercar in the EXOTIC slot (owner: higher-poly cars); r2 = wheel-role materials (GD_Tire/GD_Rim/GD_Brake)
    ['rwb','models/gen4/rwb.glb?r2'],['wrx','models/gen4/wrx.glb'],['nascar','models/gen4/nascar.glb'],   // rwb ?r2 = rounded rear wheels (source model had OVAL rears, ratio 1.32 -> the mangled tire owner flagged)   // gen4 = downloaded high-fidelity CC-BY cars (ATTRIBUTIONS in Downloads/3D_Racing_Assets)   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
    ['camaro','models/gen5/camaro.glb'],['rx7','models/gen5/rx7.glb'],['ae86','models/gen5/ae86.glb'],['aventador','models/gen5/aventador.glb'],   // gen5 = cloud-drive real cars (named wheels, per ASSET_GUIDELINE)
-   ['rally','models/gen6/rally.glb'],['jeep','models/gen6/jeep.glb'],['van','models/gen6/van.glb'],   // gen6 = lowpoly pack new body-types (X-length -> yaw PI/2)
+   ['rally','models/gen6/rally.glb'],['jeep','models/gen6/jeep.glb'],['van','models/gen6/van.glb'],   // gen6 = lowpoly pack new body-types
+   ['jdm1','models/gen7/jdm1.glb'],['jdm2','models/gen7/jdm2.glb'],['jdm3','models/gen7/jdm3.glb'],['jdm4','models/gen7/jdm4.glb'],['jdm5','models/gen7/jdm5.glb'],   // gen7 = JDM pack via gd-blender/convert_car.py (spec wheels, GlassMaterial)
    ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
     // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
     const sel=(CARS[selectedCar]&&CARS[selectedCar].raw)===k, critical=sel||qi<4;
