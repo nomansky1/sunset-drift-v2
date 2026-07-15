@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.94-->
+<!--BUILD:v10.95-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1345,7 +1345,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.94';
+(function(){ const BUILD='v10.95';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -4595,8 +4595,12 @@ function buildLights(sunDir){
     scene.add(new THREE.HemisphereLight(0x2c3a66, 0x04050a, 0.34*Math.PI));   // realistic night: darker base, light comes from LAMPS (pools/windows/headlights)
     scene.add(new THREE.AmbientLight(0x232c4e, 0.09*Math.PI));
   } else {
-    scene.add(new THREE.HemisphereLight(0xcdd9ec, 0x4a3a28, 0.74*Math.PI));   // cool sky + warm ground bounce; lowered fill = deeper form shadows (cinematic, not flat)
-    scene.add(new THREE.AmbientLight(0xffffff, 0.07*Math.PI));                 // just a sliver of flat lift (was 0.18 — it was washing out the form shadows)
+    // BIOME-MATCHED GI FILL: the hemisphere bounces the track's REAL sky + ground colours, so light bleeds
+    // the right hue (warm sand on a beach, green off forest, grey concrete in a city) -> natural colour GI.
+    const _skyC=new THREE.Color((currentTheme&&currentTheme.sky&&currentTheme.sky.top!=null)?currentTheme.sky.top:0x9fc0e6).lerp(new THREE.Color(0xffffff),0.5);   // soft sky-tinted fill, not a dark saturated ceiling
+    const _gndC=new THREE.Color((currentTheme&&currentTheme.groundHex)?currentTheme.groundHex:0x6a5238).lerp(new THREE.Color(0xffffff),0.12);                     // real ground colour (a touch lifted) = the bounced light
+    scene.add(new THREE.HemisphereLight(_skyC, _gndC, 0.82*Math.PI));          // sky + REAL ground bounce -> natural colour bleed instead of a fixed brown
+    scene.add(new THREE.AmbientLight(0xffffff, 0.06*Math.PI));                 // just a sliver of flat lift
   }
   const sun=new THREE.DirectionalLight(nightMode?0x9fb4ff:0xffd6a0, (nightMode?0.42:1.4)*Math.PI);   // golden-hour key (~3800K); 2.5PI clipped every sun-facing wall to white (owner: overexposed)
   // raise the SHADOW-casting light to a healthy elevation (grounded shadows) while the visual sun disc stays low/dramatic
@@ -4608,9 +4612,9 @@ function buildLights(sunDir){
   sun.shadow.camera.left=-s; sun.shadow.camera.right=s; sun.shadow.camera.top=s; sun.shadow.camera.bottom=-s;
   sun.shadow.camera.near=1; sun.shadow.camera.far=240; sun.shadow.camera.updateProjectionMatrix();
   sun.shadow.mapSize.set(isTouch?1024:4096, isTouch?1024:4096);
-  sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.03; sun.shadow.radius=isTouch?3:4;   // normalBias 0.45->0.03: shadows REATTACH to the wheels/cars (kills peter-panning)
+  sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.03; sun.shadow.radius=isTouch?4:7;   // softer PCF penumbra (was 4) -> gentler, more natural shadow edges; normalBias keeps them attached
   scene.add(sun); sunLight=sun;
-  if(!nightMode){ const fill=new THREE.DirectionalLight(0x9db4d6, 0.22*Math.PI);                 // cool shadowless fill OPPOSITE the sun -> shaded sides read as real daylight, not dead-flat
+  if(!nightMode){ const fill=new THREE.DirectionalLight(0x9db4d6, 0.27*Math.PI);                 // cool shadowless fill OPPOSITE the sun -> shaded sides read as real daylight, not dead-flat (lifted a touch for softer shadow cores)
     fill.position.set(trackCentroid.x-ld.x*120, 60, trackCentroid.y-ld.z*120); fill.castShadow=false; scene.add(fill); }
 }
 
