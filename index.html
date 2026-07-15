@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.85-->
+<!--BUILD:v10.86-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.85';
+(function(){ const BUILD='v10.86';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3707,6 +3707,7 @@ function scatterProps(){ if(typeof brActive!=='undefined' && brActive) return;  
                                         // occupancy map is full before ANY trees/props scatter -> nothing lands inside a building
   buildStreetGrid(rng);                 // asphalt streets + sidewalks BETWEEN the building blocks (no more bare grass)
   if(th==='city'||th==='docks') buildStreetFurniture(rng);   // streetlights + STREET TREES: run AFTER buildings so trees skip occupied lots (was in the dispatch = before buildings existed -> trees inside walls)
+  buildRoadsideClutter(rng);            // downloaded Street-Props clutter (cones/bags/boxes/bollards) on the verge — street life, occupancy-gated
   buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it)
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
@@ -3945,6 +3946,26 @@ function buildStreetGrid(rng){
 // REAL-CITY BUILDINGS from OpenStreetMap footprints (ODbL) — extruded to their real heights + placed in the
 // SAME projection as the road circuit, so the blocks match the actual city (Miami South Beach, Barcelona
 // Eixample, Tokyo Shibuya, NY Midtown). Legal to ship (OSM, attributed) — NOT Google. Async-loaded per track.
+// ROADSIDE CLUTTER: real downloaded Street-Props items (cones, bags, boxes, bollards) scattered on the
+// verge for street life (owner: add benches / random outside items). Instanced, occupancy-gated so nothing
+// lands on the road, in the sea, or inside a building/another prop.
+function buildRoadsideClutter(rng){
+  if(!propsReady) return;
+  const items=[['p-cone',0.9],['p-bag',1.1],['p-box1',0.9],['p-box3',1.0],['p-bollard',1.25],['p-delin',1.35]];
+  const xf={}, step=Math.max(5, Math.floor(SAMPLES/(isTouch?40:80)));
+  for(let i=9;i<SAMPLES;i+=step){
+    if(rng()<0.45) continue;
+    const p=samplePts[i], n=sampleNorm[i], side=rng()<0.5?-1:1, off=roadEdge(i)+2.2+rng()*4.5;
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
+    if(distToTrackApprox(x,z) < roadEdge(i)+1.4) continue;        // off the racing surface
+    if(overWater(x,z)) continue;
+    if(occHit(x,z,0.9,0.9)) continue;                             // not inside a building / another claimed spot
+    const pick=items[(rng()*items.length)|0], key=pick[0]; if(!propModels[key]) continue;
+    (xf[key]=xf[key]||[]).push(propMat(x, z, pick[1]*(0.85+rng()*0.4), rng()*6.283, 0));
+    occMark(x,z,0.8,0.8);
+  }
+  for(const k in xf) instProp(propModels[k], xf[k]);
+}
 const OSM_CITIES=new Set(['miami','barcelona','tokyo','nyc']);
 let _osmActive=false, _osmMeshes=[], _osmToken=0, _osmData={};   // real-city footprints: preloaded so occupancy is set before props scatter; meshes cleared on next track build
 OSM_CITIES.forEach(function(c){ fetch('models/districts/'+c+'-buildings.json').then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.buildings) _osmData[c]=d.buildings; }).catch(function(){}); });   // PRELOAD all real-city footprints at startup
@@ -5184,6 +5205,10 @@ const PROP_SPECS={
   'bld-r4':{file:'models/city/realistic/building-04.glb', fit:'height'}, 'bld-r5':{file:'models/city/realistic/building-05.glb', fit:'height'},
   'bld-r6':{file:'models/city/realistic/building-06.glb', fit:'height'}, 'bld-r7':{file:'models/city/realistic/building-07.glb', fit:'height'},
   'bld-r8':{file:'models/city/realistic/building-08.glb', fit:'height'}, 'bld-r9':{file:'models/city/realistic/building-09.glb', fit:'height'},
+  // downloaded Street Props Pack: roadside "random outside items" (owner) -> real textured clutter
+  'p-cone':{file:'models/props/cone.glb', fit:'height'}, 'p-bag':{file:'models/props/bag-1.glb', fit:'height'},
+  'p-box1':{file:'models/props/box-1.glb', fit:'height'}, 'p-box3':{file:'models/props/box-3.glb', fit:'height'},
+  'p-bollard':{file:'models/props/cement-bolard.glb', fit:'height'}, 'p-delin':{file:'models/props/delineator-post.glb', fit:'height'},
 };
 function prepProp(root, fit){           // bake -> normalize (base y=0, centred XZ, ref dim = 1); returns [{geometry,material}]
   root.updateMatrixWorld(true);
