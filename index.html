@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.8-->
+<!--BUILD:v11.9-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -869,7 +869,15 @@
     font-weight:800; font-size:11px; letter-spacing:.4px; color:#cfc8dd; transition:transform .15s, background .15s; }
   .csChip.sel{ background:linear-gradient(140deg,#ff5a2c,#a13bff); color:#fff; transform:scale(1.12);
     box-shadow:0 4px 16px rgba(255,90,44,.45); }
-  .csChip img{ height:11px; vertical-align:-1px; margin-right:4px; border-radius:2px; }
+  .csChip em.ci{ font-style:normal; margin-right:5px; font-size:11px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+  /* CLASS TABS above the car strip (owner: no flags on the top bar — class icons + filter instead) */
+  #carCats{ display:none; position:fixed; left:6%; right:6%; z-index:6; gap:6px; justify-content:center; flex-wrap:wrap; pointer-events:auto; }
+  body:has(#panel-garage.on) #menu:not(.hidden) #carCats{ display:flex; }
+  .catChip{ cursor:pointer; padding:4px 10px; border-radius:2px; font-size:10px; font-weight:800; letter-spacing:.8px;
+    background:rgba(22,18,34,.78); border:1px solid rgba(255,255,255,.14); color:#b9b2cc; transition:all .15s; }
+  .catChip:hover{ border-color:rgba(120,180,255,.5); color:#e8f2ff; }
+  .catChip.on{ background:linear-gradient(95deg,#12c6f2,#2a6bff); color:#fff; border-color:transparent;
+    box-shadow:0 3px 12px -3px rgba(42,140,255,.6); }
 
   /* ---------- v3.8 LANDSCAPE RE-LAYOUT: strict rows, everything on screen, car visible ---------- */
   @media (orientation:landscape) and (max-height:700px){
@@ -1394,7 +1402,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.8';
+(function(){ const BUILD='v11.9';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -1528,7 +1536,7 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'PATRIOT',     kind:'glb', raw:'mcl35m',   yaw:0, spd:82, grip:93, price:2600},   // gen4: real F1 McLaren MCL35M (CC-BY, see credits)
              {name:'BOLT',        kind:'glb', raw:'kartC',    yaw:0, spd:84, grip:94, price:2800},
              {name:'VORTEX',      kind:'glb', raw:'kartD',    yaw:0, spd:86, grip:92, price:3000},
-             {name:'PHANTOM',     kind:'glb', raw:'kartE',    yaw:0, spd:88, grip:90, price:3200},
+             {name:'PHANTOM',     kind:'glb', raw:'fenyr',    yaw:0, spd:88, grip:90, price:3200},   // gen8 hypercar via convert_car.py (owner: the kart didn't fit — kartE raw retired)
              {name:'MOUNTIE',  kind:'glb', raw:'wrx',     yaw:0, spd:82, grip:86, price:3400},
              {name:'SPITFIRE', kind:'glb', raw:'rwb',   yaw:0, spd:92, grip:76, price:3700},   // orientation baked in (integrate_gen4 flip=True) -> faces fwd at yaw=0
              {name:'BOLIDE',   kind:'glb', raw:'jdm1',    yaw:0, spd:94, grip:74, price:4000},   // gen7 JDM (was a RACER dupe)
@@ -4897,7 +4905,7 @@ function loadCarModels(){
    ['camaro','models/gen5/camaro.glb'],['rx7','models/gen5/rx7.glb'],['ae86','models/gen5/ae86.glb'],['aventador','models/gen5/aventador.glb'],   // gen5 = cloud-drive real cars (named wheels, per ASSET_GUIDELINE)
    ['rally','models/gen6/rally.glb'],['jeep','models/gen6/jeep.glb'],['van','models/gen6/van.glb'],   // gen6 = lowpoly pack new body-types
    ['jdm1','models/gen7/jdm1.glb'],['jdm2','models/gen7/jdm2.glb'],['jdm3','models/gen7/jdm3.glb'],['jdm4','models/gen7/jdm4.glb'],['jdm5','models/gen7/jdm5.glb'],   // gen7 = JDM pack via gd-blender/convert_car.py (spec wheels, GlassMaterial)
-   ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
+   ['kartC','models/gen3/indycar3.glb?w2'],['kartD','models/gen3/formulae3.glb?r2'],['fenyr','models/gen8/fenyr.glb']].forEach(([k,f],qi)=>{   // kartC ?w2 = wheels rebuilt clean (source right-side wheels were mangled + livery-textured); gen8 fenyr replaces the kart-oozi PHANTOM
     // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
     const sel=(CARS[selectedCar]&&CARS[selectedCar].raw)===k, critical=sel||qi<4;
     const go=()=>{ try{ L.load(f, g=>{ fleetRaw[k]=g.scene; if(cars&&cars.length) upgradeCars();
@@ -5313,7 +5321,7 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
   // wheel-node matchers: GLTFLoader strips dots from Blender names ("wheels.018"->"wheels018", "wheel1.001"->"wheel1001"),
   // other packs use FL_WHEEL / Wheel_FL — match them all, but never a steering wheel.
   const _isWheelName=n=>/wheel|tyre|tire/i.test(n) && !/steer/i.test(n);
-  const _inWheelGrp=o2=>{ let p2=o2.parent; while(p2){ if(!p2.isMesh && _isWheelName(p2.name||'')) return true; p2=p2.parent; } return false; };
+  const _inWheelGrp=o2=>{ let p2=o2.parent; while(p2){ if(_isWheelName(p2.name||'')) return true; p2=p2.parent; } return false; };   // ANY wheel-named ancestor (mesh or group) — rim/hub children of a wheel MESH ride its pivot, never their own
   body.traverse(o=>{ const n2=o.name||'';
     if(o.isMesh){
       if(_inWheelGrp(o)) return;                                           // children of a wheel GROUP ride with the group pivot — don't double-pivot them
@@ -7812,8 +7820,8 @@ function init(){
       if(e.key==='Escape'){ e.preventDefault(); if(!globeOpen) window.openGlobe(); return; }
       if(globeOpen) return;                                             // globe has its own input
       if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); const dir=e.key==='ArrowRight'?1:-1;
-        if(tab==='garage'){ const chips=[...document.querySelectorAll('#carSlider .csChip')];
-          const cur=chips.findIndex(ch=>ch.classList.contains('on'));
+        if(tab==='garage'){ const chips=[...document.querySelectorAll('#carSlider .csChip')].filter(ch=>ch.style.display!=='none');   // respect the class filter
+          const cur=chips.findIndex(ch=>ch.classList.contains('sel'));
           const nx=chips[(cur+dir+chips.length)%chips.length]; if(nx){ nx.click(); nx.scrollIntoView({inline:'center',block:'nearest'}); } }
         else { const tbs=[...document.querySelectorAll('.trackBtn')].filter(b2=>!b2.classList.contains('locked'));
           const cur=tbs.findIndex(b2=>b2.classList.contains('sel'));
@@ -8490,36 +8498,67 @@ const Rewarded=(function(){
   rebuild(); requestAnimationFrame(frame);
 })();
 
-// car slider: swipe + snap picks the car; stays in sync with the arrows
+// car slider: swipe + snap picks the car; stays in sync with the arrows.
+// v11.9 (owner: "don't want flags on the top bar, make a better category menu"): flags dropped from the
+// chips (country identity stays on the spec panel + the car's own flag), each chip gets its CLASS icon,
+// and a CLASS TAB row (ALL/STREET/JDM/EXOTIC/RACE/HEAVY) filters the strip. Selection logic skips
+// hidden chips so scroll-snap and arrows never land on a filtered-out car.
 (function(){
   const row=document.getElementById('carSlider'); if(!row) return;
   const menuEl=document.getElementById('menu'); if(menuEl && row.parentNode!==menuEl) menuEl.appendChild(row);   // escape transformed ancestors (fixed-positioning trap)
+  const CATS=[['ALL',null,'🏁'],['STREET','street','🏙️'],['JDM','jdm','⛩️'],['EXOTIC','exotic','💎'],['RACE','race','🏎️'],['HEAVY','heavy','🚚']];
+  function carClass(i){ const d=CARS[i]||{}; if(d.kind==='doge') return 'street';
+    const r=d.raw||'';
+    if(/^(kart|mcl35m|nascar|racecar|timeattack)/.test(r)) return 'race';
+    if(/^(jdm|skyline|rx7|ae86|wrx|rwb)/.test(r)) return 'jdm';
+    if(/^(ferrari|aventador|fenyr|super|gt3p)/.test(r)) return 'exotic';
+    if(/^(firetruck|ambulance|van|jeep|pickup|suv|truck)/.test(r)) return 'heavy';
+    return 'street'; }
+  const catIco={}; CATS.forEach(c=>{ if(c[1]) catIco[c[1]]=c[2]; });
+  let catFilter=null;
+  let cats=document.getElementById('carCats');
+  if(!cats){ cats=document.createElement('div'); cats.id='carCats'; (menuEl||document.body).appendChild(cats); }
+  function buildCats(){
+    cats.innerHTML='';
+    CATS.forEach(c=>{ const b=document.createElement('div'); b.className='catChip'+((catFilter||null)===(c[1])?' on':'');
+      b.textContent=c[2]+' '+c[0];
+      b.onclick=()=>{ catFilter=c[1]; buildCats(); applyCat();
+        const vis=visChips(); if(vis.length && !vis.some(ch=>+ch.dataset.i===selectedCar)){   // selection left outside the filter -> hop to the first car in it
+          selectedCar=+vis[0].dataset.i; renderShop(); saveSelCar(); upgradeCars(); }
+        sync(); };
+      cats.appendChild(b); });
+  }
+  const visChips=()=>Array.prototype.filter.call(row.children, ch=>ch.style.display!=='none');
+  function applyCat(){ Array.prototype.forEach.call(row.children, ch=>{
+    ch.style.display=(!catFilter || carClass(+ch.dataset.i)===catFilter)?'':'none'; }); }
   function build(){
     row.innerHTML='';
-    CARS.forEach((c,i)=>{ const co=COUNTRIES[i%COUNTRIES.length];
+    CARS.forEach((c,i)=>{
       const d=document.createElement('div'); d.className='csChip'+(i===selectedCar?' sel':''); d.dataset.i=i;
-      d.innerHTML='<img src="'+flagURL(co.key)+'">'+c.name;
+      const em=document.createElement('em'); em.className='ci'; em.textContent=catIco[carClass(i)]||'🏁'; d.appendChild(em);
+      d.appendChild(document.createTextNode(c.name));
       d.onclick=()=>{ selectedCar=i; sync(); renderShop(); saveSelCar(); upgradeCars(); };
       row.appendChild(d); });
+    applyCat();
     requestAnimationFrame(()=>sync(true));
   }
   function sync(instant){
-    Array.prototype.forEach.call(row.children, ch=>ch.classList.toggle('sel', +ch.dataset.i===selectedCar));
-    const el=row.children[selectedCar];
+    let el=null;
+    Array.prototype.forEach.call(row.children, ch=>{ const on=+ch.dataset.i===selectedCar; ch.classList.toggle('sel', on); if(on) el=ch; });
     if(el) el.scrollIntoView({behavior:instant?'auto':'smooth', inline:'center', block:'nearest'});
   }
   let deb=null;
   row.addEventListener('scroll',()=>{ clearTimeout(deb); deb=setTimeout(()=>{
-    const mid=row.scrollLeft+row.clientWidth/2; let best=0,bd=1e9;
-    Array.prototype.forEach.call(row.children, ch=>{ const c=ch.offsetLeft+ch.offsetWidth/2, d=Math.abs(c-mid); if(d<bd){bd=d;best=+ch.dataset.i;} });
+    const mid=row.scrollLeft+row.clientWidth/2; let best=selectedCar,bd=1e9;
+    visChips().forEach(ch=>{ const c=ch.offsetLeft+ch.offsetWidth/2, d=Math.abs(c-mid); if(d<bd){bd=d;best=+ch.dataset.i;} });
     if(best!==selectedCar){ selectedCar=best; sync(); renderShop(); saveSelCar(); upgradeCars(); }
   },140); },{passive:true});
-  // position the car-chip strip DIRECTLY below the RACE/GARAGE/SETTINGS tabs at ANY viewport size
-  // (a hardcoded top overlapped the tabs on taller screens) — inline top overrides the CSS top
+  // position the strip + its category row DIRECTLY below the RACE/GARAGE/SETTINGS tabs at ANY viewport size
   function placeCarSlider(){ const tabs=document.getElementById('tabStrip'); if(!tabs) return;
-    const tb=tabs.getBoundingClientRect(); row.style.top=Math.max(tb.bottom+6, 30)+'px'; }
+    const tb=tabs.getBoundingClientRect(); cats.style.top=Math.max(tb.bottom+4, 26)+'px';
+    row.style.top=Math.max(tb.bottom+4, 26)+cats.offsetHeight+6+'px'; }
   window.rebuildCarSlider=build; window.syncCarSlider=sync; window.placeCarSlider=placeCarSlider;
-  build(); placeCarSlider();
+  buildCats(); build(); placeCarSlider();
 })();
 </script>
 
