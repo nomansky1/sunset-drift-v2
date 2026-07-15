@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.95-->
+<!--BUILD:v10.96-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -824,7 +824,7 @@
     background:rgba(10,7,16,.55); border:1px solid rgba(255,255,255,.12);
     box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 0 26px rgba(255,120,50,.08); }
   #carSlider{ display:none; position:fixed; top:88px; left:6%; right:6%; z-index:6; gap:8px; overflow-x:auto;
-    scroll-snap-type:x proximity; padding:6px 12px; box-sizing:border-box; -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity; padding:6px 45%; scroll-padding-inline:50%; box-sizing:border-box; -webkit-overflow-scrolling:touch;   /* 45% inline pad so the LAST cars can reach centre (else scroll-snap strands them -> unselectable) */
     scrollbar-width:none; margin:0; pointer-events:auto; justify-content:flex-start; }
   body:has(#panel-garage.on) #menu:not(.hidden) #carSlider{ display:flex; }
   #carSlider::-webkit-scrollbar{ display:none; }
@@ -1345,7 +1345,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.95';
+(function(){ const BUILD='v10.96';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -1492,7 +1492,11 @@ const CARS=[ {name:'DRIFTER', kind:'doge',                spd:70,  grip:88, pric
              {name:'OUTBACK',  kind:'glb', raw:'pickup',  yaw:0, spd:88, grip:82, price:5800},
              {name:'SAVANNA',  kind:'glb', raw:'suv',     yaw:0, spd:87, grip:83, price:5900},
              {name:'PHARAOH',  kind:'glb', raw:'muscle',  yaw:0, spd:95, grip:67, price:6000},
-             {name:'FALCON',   kind:'glb', raw:'super',   yaw:0, spd:106,grip:64, price:6500} ];
+             {name:'FALCON',   kind:'glb', raw:'super',   yaw:0, spd:106,grip:64, price:6500},
+             {name:'RX-SEVEN', kind:'glb', raw:'rx7',       yaw:0, spd:98, grip:84, price:7200},
+             {name:'CAMARO SS',kind:'glb', raw:'camaro',    yaw:0, spd:101,grip:74, price:7400},
+             {name:'HACHIROKU',kind:'glb', raw:'ae86',      yaw:0, spd:90, grip:90, price:7600},
+             {name:'AVENTADOR',kind:'glb', raw:'aventador', yaw:0, spd:113,grip:70, price:9200} ];
 // Latin-American nationality theme: each car flies a country flag + the flag's colour resonates on the car (Puerto Rico first)
 const COUNTRIES=[
   {name:'PUERTO RICO', key:'pr', col:0xed1c24}, {name:'DOMINICAN REP.', key:'do', col:0x002d62}, {name:'BRAZIL', key:'br', col:0x009b3a},
@@ -4723,6 +4727,7 @@ function loadCarModels(){
    ['skyline','models/gen4/skyline.glb'],['gt3p','models/gen4/gt3p.glb'],['mcl35m','models/gen4/mcl35m.glb'],
    ['ferrari','models/gen4/ferrari.glb?r2'],   // gen4 Ferrari 458 -> replaces the low-poly electric-hypercar in the EXOTIC slot (owner: higher-poly cars); r2 = wheel-role materials (GD_Tire/GD_Rim/GD_Brake)
    ['rwb','models/gen4/rwb.glb?r2'],['wrx','models/gen4/wrx.glb'],['nascar','models/gen4/nascar.glb'],   // rwb ?r2 = rounded rear wheels (source model had OVAL rears, ratio 1.32 -> the mangled tire owner flagged)   // gen4 = downloaded high-fidelity CC-BY cars (ATTRIBUTIONS in Downloads/3D_Racing_Assets)   // Time_Attack/Exotic/Stock_Car sources all mis-cluster wheels in extract_v3 (floating tires) — CANALERO rides the PROVEN Super GT until the extractor is recalibrated
+   ['camaro','models/gen5/camaro.glb'],['rx7','models/gen5/rx7.glb'],['ae86','models/gen5/ae86.glb'],['aventador','models/gen5/aventador.glb'],   // gen5 = cloud-drive real cars (named wheels, per ASSET_GUIDELINE)
    ['kartC','models/gen3/indycar3.glb'],['kartD','models/gen3/formulae3.glb?r2'],['kartE','models/cc0/kenney/kart-oozi.glb']].forEach(([k,f],qi)=>{   // CC0 Kenney Car Kit (modular, named wheels)
     // MOBILE LOAD TIME: only the selected car + first NPCs download immediately; the rest trickle in on idle
     const sel=(CARS[selectedCar]&&CARS[selectedCar].raw)===k, critical=sel||qi<4;
@@ -5018,7 +5023,8 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
   const chassis=new THREE.Group();
   const body=raw.clone();
   rig.bodyColor=null; rig.paintMats=null; rig.packCar=false; rig.brakeMats=[]; rig._brakeMat=null;   // Kenney cars paint via texture-swatch, not material colour; brakeMats = glowing rotors (animated on braking)
-  body.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=false; const src=o.material; if(src){
+  body.traverse(o=>{ if(o.isMesh){ if(o.geometry&&o.geometry.attributes&&!o.geometry.attributes.normal) o.geometry.computeVertexNormals();   // some GLBs (aventador) export with NO vertex normals -> zero diffuse term -> car renders pure black. Rebuild them.
+    o.castShadow=true; o.receiveShadow=false; const src=o.material; if(src){
     { const _gn=(src.name||'')+' '+(o.name||'');
       if(/glass|glazing/i.test(_gn) && /light|lamp|headl|taill|blink|indicator/i.test(_gn)){ return; }   // light-LENS glass (gen4 EXT_Glass_light): keep the GLB's own lens, just don't paint it
       if(/^GD_Glass/.test(src.name||'') || GLASS_NAME_RE.test(_gn) || (src.opacity!==undefined && src.opacity<0.95)){ o.material=glassCarMat(); return; } }   // REAL auto glass: GD_Glass split models + gen4 authored names (EXT_Glass_Windows/INT_Glass/DAMAGE_GLASS) or a see-through material (skyline op<1) that /^GD_Glass/ missed -> windshield was painted body-colour (owner)
