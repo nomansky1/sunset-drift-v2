@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v10.84-->
+<!--BUILD:v10.85-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1340,7 +1340,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v10.84';
+(function(){ const BUILD='v10.85';
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
   async function check(){ try{ const r=await fetch(location.pathname+'?uc='+Date.now(), {method:'GET', headers:{'Range':'bytes=0-256'}, cache:'no-store'});
@@ -3946,12 +3946,21 @@ function buildStreetGrid(rng){
 // SAME projection as the road circuit, so the blocks match the actual city (Miami South Beach, Barcelona
 // Eixample, Tokyo Shibuya, NY Midtown). Legal to ship (OSM, attributed) — NOT Google. Async-loaded per track.
 const OSM_CITIES=new Set(['miami','barcelona','tokyo','nyc']);
-let _osmActive=false, _osmMeshes=[], _osmToken=0;   // real-city footprints: skip procedural fill + track meshes so they're cleared on the next track build
+let _osmActive=false, _osmMeshes=[], _osmToken=0, _osmData={};   // real-city footprints: preloaded so occupancy is set before props scatter; meshes cleared on next track build
+OSM_CITIES.forEach(function(c){ fetch('models/districts/'+c+'-buildings.json').then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.buildings) _osmData[c]=d.buildings; }).catch(function(){}); });   // PRELOAD all real-city footprints at startup
+// mark every OSM building's footprint into the shared occupancy grid so trees/grass/props NEVER spawn inside a building (owner: nothing clipping inside anything)
+function _osmMarkOcc(B){ if(!occ) return; const cx=trackCentroid.x, cz=trackCentroid.y;
+  for(const b of B){ const poly=b.p; if(!poly||poly.length<3) continue;
+    let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;
+    for(const p of poly){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<z0)z0=p[1]; if(p[1]>z1)z1=p[1]; }
+    occMark(cx+(x0+x1)*0.5, cz+(z0+z1)*0.5, (x1-x0)*0.5+1, (z1-z0)*0.5+1); } }
 function buildOSMCity(dk){
   if(!dk || !OSM_CITIES.has(dk)) return;
+  const cached=_osmData[dk];
+  if(cached){ _osmMarkOcc(cached); _renderOSMCity(cached); return; }   // preloaded -> occupancy is set BEFORE the prop scatterers run this same build
   const tok=_osmToken;
   fetch('models/districts/'+dk+'-buildings.json').then(r=>r.ok?r.json():null).then(d=>{
-    if(tok===_osmToken && d&&d.buildings) _renderOSMCity(d.buildings);   // ignore a stale fetch from a previous track
+    if(d&&d.buildings){ _osmData[dk]=d.buildings; if(tok===_osmToken) _renderOSMCity(d.buildings); }   // cache + ignore a stale fetch
   }).catch(()=>{});
 }
 function _renderOSMCity(B){
@@ -3959,9 +3968,11 @@ function _renderOSMCity(B){
   const wallP=[], wallUV=[], wallC=[], roofP=[], roofC=[];
   const UWIN=13, VWIN=13;                          // facade texture tiles every ~13 units -> constant-size windows
   const tints=[[0.60,0.58,0.54],[0.70,0.67,0.61],[0.54,0.57,0.61],[0.66,0.61,0.54],[0.57,0.58,0.60],[0.63,0.60,0.57]];
+  const seen=new Set();                            // OSM sometimes has duplicate/stacked footprints -> dedup so no building sits inside another
   for(const b of B){
     const poly=b.p; if(!poly||poly.length<3) continue;
     let mcx=0,mcz=0; for(const p of poly){ mcx+=p[0]; mcz+=p[1]; } mcx/=poly.length; mcz/=poly.length;
+    const ck=Math.round(mcx*0.5)+'_'+Math.round(mcz*0.5); if(seen.has(ck)) continue; seen.add(ck);   // skip a footprint whose centre coincides with one already drawn (2u cell)
     const wx=cx+mcx, wz=cz+mcz;
     if(overWater(wx,wz)) continue;                                    // not in the sea (seaside cities)
     // THE ROAD GOES AROUND EVERY BUILDING: skip a building if ANY part of its footprint (vertex OR edge
