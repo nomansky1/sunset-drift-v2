@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.19-->
+<!--BUILD:v11.20-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1448,7 +1448,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.19';
+(function(){ const BUILD='v11.20';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -3638,7 +3638,9 @@ function buildRoadsideAmenities(rng, addPoles){
   }
   // BENCHES on the sidewalk, facing the road (every track)
   const bn=[]; for(let i=17;i<SAMPLES;i+=44){ if(rng()<0.45) continue; const p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=roadEdge(i)+2.6;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+1) continue; bn.push({x,z,y:terrainHeight(x,z),ang:Math.atan2(p.x-x,p.y-z)}); }
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+1) continue;
+    if(!occClaim(x,z,1.3,1.3,0)) continue;                                              // guardrail: bench never inside a building/storefront/another bench
+    bn.push({x,z,y:terrainHeight(x,z),ang:Math.atan2(p.x-x,p.y-z)}); }
   if(bn.length){ const wood=new THREE.MeshStandardMaterial({color:0x6b4a2e, roughness:0.9});
     const sg=new THREE.BoxGeometry(2.4,0.16,0.66); sg.translate(0,0.48,0);
     const bg=new THREE.BoxGeometry(2.4,0.66,0.12); bg.translate(0,0.82,-0.27);
@@ -3669,10 +3671,10 @@ function buildStreetFurniture(rng){
   const _t=new THREE.Matrix4(), _tp=new THREE.Vector3(), _tq=new THREE.Quaternion(), _ts=new THREE.Vector3();
   const treePos=[];
   for(let i=0;i<SAMPLES;i+=18){ const p=samplePts[i], n=sampleNorm[i], side=((i/18)%2)?1:-1, off=roadEdge(i)+3.5+rng()*2.5;
-    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+2 && !occHit(x,z,1.6,1.6)) treePos.push({x,z,s:0.9+rng()*0.5}); }   // line the street (skip building lots)
+    const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)>roadEdge(i)+2 && !occHit(x,z,1.6,1.6)){ occMark(x,z,1.1,1.1); treePos.push({x,z,s:0.9+rng()*0.5}); } }   // line the street (skip building lots) + claim so benches/parked cars never spawn inside a tree
   for(let c=0;c<4;c++){ const a=rng()*6.283, rad=trackRadius+30+rng()*120, cx=trackCentroid.x+Math.cos(a)*rad, cz=trackCentroid.y+Math.sin(a)*rad;
     if(distToTrackApprox(cx,cz)<30) continue;
-    for(let t=0;t<7;t++){ const x=cx+(rng()-0.5)*24, z=cz+(rng()-0.5)*24; if(occHit(x,z,1.6,1.6)) continue; treePos.push({x,z,s:1.0+rng()*0.6}); } }   // a small park: a cluster of trees (skip lots)
+    for(let t=0;t<7;t++){ const x=cx+(rng()-0.5)*24, z=cz+(rng()-0.5)*24; if(occHit(x,z,1.6,1.6)) continue; occMark(x,z,1.1,1.1); treePos.push({x,z,s:1.0+rng()*0.6}); } }   // a small park: a cluster of trees (skip lots + claim spots)
   if(treePos.length){
     // DETAILED tree: tapered trunk + a MULTI-LOBE canopy (3 overlapping foliage clusters) with per-tree
     // rotation + colour variation -> fuller, more organic than a single blob. Same footprint so it never
@@ -3731,6 +3733,7 @@ function buildRoadsideBusinesses(rng){
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
     if(distToTrackApprox(x,z) < CONFIG.roadHalfWidth + Math.hypot(fw,fd)*0.5 + 5.5) continue;   // never near ANY leg
     if(placed.some(q=>Math.hypot(q.x-x,q.z-z)<34)) continue;                                     // spread them out
+    if(!occClaim(x,z, Math.max(fw,fd)*0.55, Math.max(fw,fd)*0.55, 2)) continue;                  // guardrail: storefront claims its lot
     const b=biz[made%biz.length];
     const tex=makeStorefrontTexture(rng,b);
     const mat=new THREE.MeshStandardMaterial({map:tex, emissiveMap:tex, emissive:0xffffff, emissiveIntensity:0.3, roughness:0.72, metalness:0.05});
@@ -3761,6 +3764,7 @@ function buildTrackBuildings(rng){
       const fw=14+rng()*12, fd=12+rng()*8, off=hw+6.5+fd*0.5;             // near face ~6.5u past the road edge
       const x=p.x+n.x*off*side, z=p.y+n.y*off*side;
       if(distToTrackApprox(x,z) < hw + fw*0.5 + 6) continue;              // guard against another leg on folded tracks
+      if(!occClaim(x,z, Math.max(fw,fd)*0.5, Math.max(fw,fd)*0.5, 2)) continue;   // guardrail: track-wall buildings claim their lot (never intersect OSM/city blocks or each other)
       const distC=Math.hypot(x-trackCentroid.x, z-trackCentroid.y), downtown=clamp(1-distC/520,0,1);
       const H = th==='city' ? (10+downtown*46+rng()*rng()*36) : (7+rng()*15);
       const fi=Math.floor(rng()*TYPES.length), tint=0.6+rng()*0.4, ang=Math.atan2(p.x-x, p.y-z);   // face the road
@@ -3851,9 +3855,9 @@ function scatterProps(){ if(typeof brActive!=='undefined' && brActive) return;  
   buildTrackFurniture(rng);             // build the roadside district + block-grid city FIRST so the shared
                                         // occupancy map is full before ANY trees/props scatter -> nothing lands inside a building
   buildStreetGrid(rng);                 // asphalt streets + sidewalks BETWEEN the building blocks (no more bare grass)
+  buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it) — claims lots BEFORE trees/props scatter (guardrail)
   if(th==='city'||th==='docks') buildStreetFurniture(rng);   // streetlights + STREET TREES: run AFTER buildings so trees skip occupied lots (was in the dispatch = before buildings existed -> trees inside walls)
   buildRoadsideClutter(rng);            // downloaded Street-Props clutter (cones/bags/boxes/bollards) on the verge — street life, occupancy-gated
-  buildTrackBuildings(rng);              // continuous city wall lining the track (built AROUND it, never on it)
   buildRoadsideBusinesses(rng);                        // themed storefront businesses on EVERY non-city biome
   buildRoadside(rng);                                  // cones + roadside markers on EVERY track
   buildRoadsideAmenities(rng, !(th==='city'||th==='docks'));   // benches everywhere + lamp posts where missing
@@ -3915,9 +3919,15 @@ let ferrisWheel=null;
 // hero landmark per biome: place ONE oversized mesh outside the loop, visible from most of the track
 function buildLandmark(rng){
   ferrisWheel=null;                                    // clear stale ref from the previous track
-  const th=currentTheme?currentTheme.theme:'city', cx=trackCentroid.x, cz=trackCentroid.y, dir=2.15;
-  let fr=trackRadius+72, fx=cx+Math.cos(dir)*fr, fz=cz+Math.sin(dir)*fr;
-  while(beachSea!=null && overWater(fx,fz) && fr>trackRadius+26){ fr-=8; fx=cx+Math.cos(dir)*fr; fz=cz+Math.sin(dir)*fr; }   // seaside: never leave the hero landmark standing in the sea
+  const th=currentTheme?currentTheme.theme:'city', cx=trackCentroid.x, cz=trackCentroid.y;
+  const fp = th==='coast'||th==='beach' ? 18 : th==='docks' ? 30 : th==='forest'||th==='snow' ? 7 : 26;   // landmark footprint half-size (ferris legs / crane boom / tower / skyscraper cluster)
+  let fx=0, fz=0, found=false;
+  for(let k=0; k<10 && !found; k++){ const dir=2.15+k*0.63;                                   // guardrail: scan angles until the footprint is CLEAR of every claimed lot
+    let fr=trackRadius+72; fx=cx+Math.cos(dir)*fr; fz=cz+Math.sin(dir)*fr;
+    while(beachSea!=null && overWater(fx,fz) && fr>trackRadius+26){ fr-=8; fx=cx+Math.cos(dir)*fr; fz=cz+Math.sin(dir)*fr; }   // seaside: never leave the hero landmark standing in the sea
+    if(beachSea!=null && overWater(fx,fz)) continue;
+    if(!occHit(fx,fz,fp,fp)){ found=true; occMark(fx,fz,fp,fp); } }
+  if(!found){ console.log('[landmark] no clear lot — skipped'); return; }
   const fy=terrainHeight(fx,fz);
   const faceTrack=Math.atan2(cx-fx, cz-fz);
   if(th==='coast'||th==='beach') buildFerrisWheel(fx,fy,fz,faceTrack);
@@ -3974,13 +3984,16 @@ function buildTrackFurniture(rng){
   if(propModels.gantry){ const p=samplePts[0], t=sampleTan[0]; instProp(propModels.gantry, [propMat(p.x,p.y, 32, Math.atan2(t.x,t.y), 0)]); }   // start/finish gantry over the road — every race has one
   if(circuit && propModels.grandstand && straights.length){ const xf=[], step=Math.max(8,Math.floor(straights.length/9));   // grandstands on the outside of straights, facing the track
     for(let k=0;k<straights.length;k+=step){ const i=straights[k], p=samplePts[i], n=sampleNorm[i], side=(k%2)?1:-1, off=CONFIG.roadHalfWidth+11;
-      xf.push(propMat(p.x+n.x*off*side, p.y+n.y*off*side, 12, Math.atan2(-n.x*side,-n.y*side), 0)); }
+      const gx=p.x+n.x*off*side, gz=p.y+n.y*off*side; occMark(gx,gz,7,7);   // guardrail: grandstand claims its lot (trees/props scatter later)
+      xf.push(propMat(gx, gz, 12, Math.atan2(-n.x*side,-n.y*side), 0)); }
     instProp(propModels.grandstand, xf); }
   if(circuit && propModels.pitgarage){ const xf=[]; for(let g=0;g<6;g++){ const i=(10+g*5)%SAMPLES, p=samplePts[i], n=sampleNorm[i], off=CONFIG.roadHalfWidth+8;   // pit-lane garages near the start
-    xf.push(propMat(p.x+n.x*off, p.y+n.y*off, 8, Math.atan2(-n.x,-n.y), 0)); }
+    const gx=p.x+n.x*off, gz=p.y+n.y*off; occMark(gx,gz,4.5,4.5);           // guardrail: pit garage claims its lot
+    xf.push(propMat(gx, gz, 8, Math.atan2(-n.x,-n.y), 0)); }
     instProp(propModels.pitgarage, xf); }
   if(circuit && propModels.bannertower){ const xf=[]; for(let k=0;k<6;k++){ const i=Math.floor(k/6*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=k%2?1:-1, off=CONFIG.roadHalfWidth+9;
     const bx=p.x+n.x*off*side, bz=p.y+n.y*off*side, yb=Math.max(terrainHeight(bx,bz),(sampleElev[i]||0));
+    occMark(bx,bz,2,2);                                                     // guardrail: banner tower claims its base
     xf.push(propMat(bx, bz, 9, rng()*6.28, yb-terrainHeight(bx,bz))); }
     instProp(propModels.bannertower, xf); }
   if(circuit && propModels.tirebarrier){ const xf=[];                 // tyre safety walls line the OUTSIDE of corners (real-circuit run-off protection)
@@ -4415,6 +4428,7 @@ function buildBusStops(rng){
   const nStops=isTouch?2:3; let placed=0;
   for(let s=0; s<SAMPLES && placed<nStops; s+=Math.max(4,Math.floor(SAMPLES/(nStops+3)))){ const i=(20+s)%SAMPLES, p=samplePts[i], n=sampleNorm[i], side=(placed%2)?1:-1, off=hw+2.8;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<hw+1) continue;
+    if(!occClaim(x,z,2.0,2.0,0)) continue;                                              // guardrail: shelter never inside a building
     const g=new THREE.Group(); g.position.set(x,terrainHeight(x,z),z); g.rotation.y=Math.atan2(p.x-x,p.y-z); scene.add(g);
     const roof=new THREE.Mesh(new THREE.BoxGeometry(3.2,0.1,1.5),glass); roof.position.set(0,2.3,0); g.add(roof);
     const backP=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.7,0.08),glass); backP.position.set(0,1.35,-0.7); g.add(backP);
@@ -4428,6 +4442,7 @@ function buildBusStops(rng){
   const liv = th==='desert'?0xd9a441 : th==='forest'?0x2f6b34 : th==='snow'?0x114a8a : (th==='coast'||th==='beach')?0x2a9d54 : 0xe4b93a;
   for(let s=0;s<26;s++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=hw+6.4;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<hw+5.8) continue;
+    if(!occClaim(x,z,5.4,5.4,1)) continue;                                              // guardrail: parked bus never inside a building
     const g=new THREE.Group(); g.position.set(x,terrainHeight(x,z),z); g.rotation.y=roadAngleAt(x,z)+(rng()<0.5?0:Math.PI); scene.add(g);
     const body=new THREE.Mesh(rbox(2.5,2.5,10.5,0.4), new THREE.MeshStandardMaterial({color:liv, roughness:0.42, metalness:0.2})); body.position.y=1.7; g.add(body);
     const win=new THREE.Mesh(new THREE.BoxGeometry(2.56,0.8,8.4), new THREE.MeshStandardMaterial({color:0x10141c, roughness:0.25, metalness:0.4})); win.position.y=2.25; g.add(win);
@@ -4445,6 +4460,7 @@ function buildRestArea(rng){
   const nClusters=isTouch?1:2; let placed=0;
   for(let s=0;s<SAMPLES&&placed<nClusters;s+=Math.max(6,Math.floor(SAMPLES/(nClusters+3)))){ const i=(30+s)%SAMPLES, p=samplePts[i], n=sampleNorm[i], side=(placed%2)?1:-1, off=hw+13;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<hw+9 || terrainSlope(x,z)>0.2) continue;
+    if(!occClaim(x,z,2.6,2.6,1)) continue;                                              // guardrail: rest-area cluster claims its clearing
     const g=new THREE.Group(); g.position.set(x,terrainHeight(x,z),z); g.rotation.y=rng()*6.283; scene.add(g);
     const top=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.12,1.0),wood); top.position.y=0.78; g.add(top);   // picnic table
     for(const sx of[-1,1]){ const bench=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.1,0.35),wood); bench.position.set(0,0.45,sx*0.75); g.add(bench);
@@ -4500,6 +4516,7 @@ function buildParkedCars(rng){
       matCache.set(m,c); return c; };
     for(let k=0;k<N;k++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+5.8+rng()*1.8;
       const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+5.3) continue;
+      if(!occClaim(x,z,2.5,2.5,0)) continue;                                            // guardrail: parked car never inside a building/another parked car
       const ty=terrainHeight(x,z), e=(sampleElev[i]||0); if(e-ty>0.5) continue;         // embankment edge -> no room to park
       const g=fleetRaw[keys[Math.floor(rng()*keys.length)]].clone();
       const bb=new THREE.Box3().setFromObject(g), sz=new THREE.Vector3(), ctr=new THREE.Vector3(); bb.getSize(sz); bb.getCenter(ctr);
@@ -4521,6 +4538,7 @@ function buildParkedCars(rng){
   const glassMat=new THREE.MeshStandardMaterial({color:0x10141c, roughness:0.25, metalness:0.4});
   for(let k=0;k<22;k++){ const i=Math.floor(rng()*SAMPLES), p=samplePts[i], n=sampleNorm[i], side=rng()>0.5?1:-1, off=CONFIG.roadHalfWidth+5.8+rng()*1.8;
     const x=p.x+n.x*off*side, z=p.y+n.y*off*side; if(distToTrackApprox(x,z)<CONFIG.roadHalfWidth+5.3) continue;   // park BEYOND the raised sidewalk (was 2.4 -> cars sat ON the 4.5-wide sidewalk, half-sunk into it)
+    if(!occClaim(x,z,2.5,2.5,0)) continue;                                              // guardrail: parked car never inside a building/another parked car
     const g=new THREE.Group(); const col=COLORS[Math.floor(rng()*COLORS.length)];
     const bm=new THREE.MeshStandardMaterial({color:col, roughness:0.4, metalness:0.3});   // (clearcoat isn't valid on StandardMaterial — was spamming console warnings; physical paint is applied later via physicalizeBody)
     g.add(new THREE.Mesh(bodyGeo,bm)); g.add(new THREE.Mesh(cabGeo, glassMat));
@@ -7119,8 +7137,14 @@ const BRPROP_HP={dumpster:26, bike:12, trash:6};
 function buildBRProps(){ clearBRProps();
   const M=_obMats(), rng=mulberry32(9911);
   const seq=['dumpster','trash','bike','dumpster','trash','trash','bike','dumpster'];
-  for(let k=0;k<26;k++){ const ang=rng()*6.283, rr=24+rng()*Math.max(30, zoneR-40);
-    const x=zoneCX+Math.cos(ang)*rr, z=zoneCZ+Math.sin(ang)*rr, y=terrainHeight(x,z);
+  for(let k=0;k<26;k++){ let x=0,z=0,ok=false;
+    for(let tr=0;tr<14 && !ok;tr++){ const ang=rng()*6.283, rr=24+rng()*Math.max(30, zoneR-40);
+      x=zoneCX+Math.cos(ang)*rr; z=zoneCZ+Math.sin(ang)*rr;
+      if(brGrid && typeof brSolidAt==='function' && brSolidAt(brGrid,x,z)) continue;          // guardrail: never drop a prop INSIDE a building (OSM + block arenas)
+      if(brProps.some(o=>Math.hypot(o.x-x,o.z-z)<6)) continue;                                // guardrail: props keep 6u apart (no prop-in-prop)
+      ok=true; }
+    if(!ok) continue;
+    const y=terrainHeight(x,z);
     const type=seq[k%seq.length];
     const mesh = type==='dumpster'?_mkDumpster(M) : type==='bike'?_mkBike(M) : _mkTrash(M,rng);
     mesh.position.set(x, y+0.02, z); if(type!=='bike') mesh.rotation.y=rng()*6.283;
