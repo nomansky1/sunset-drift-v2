@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.25-->
+<!--BUILD:v11.26-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1467,7 +1467,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.25';
+(function(){ const BUILD='v11.26';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -7799,14 +7799,18 @@ function voxelizeCar(car){
     const size=new THREE.Vector3(); bb.getSize(size); if(!(Math.max(size.x,size.z)>1e-3)) return;
     const bodyCube=Math.max(size.x,size.z)/((car.isPlayer?150:84)*(isTouch?0.72:1)), wheelCube=bodyCube*0.5;   // owner v2: SMALLER cubes = more car detail (150-cell player grid); wheels still half-size again
     const nmOf=m=>{ const mm=Array.isArray(m.material)?m.material[0]:m.material; return (m.name||'')+' '+((mm&&mm.name)||''); };
-    const wheels=all.filter(m=>_WHEEL_RE.test(nmOf(m))), body=all.filter(m=>!_WHEEL_RE.test(nmOf(m)));
+    // GEOMETRIC wheel detect: many GLBs (skyline: Object_N) carry no wheel/tire names — but the rig already
+    // collected its wheel meshes under the spin pivots, so membership beats name-guessing on every model
+    const wheelSet=new Set(); (rig.wheels||[]).forEach(w=>{ w.traverse(o=>{ if(o.isMesh) wheelSet.add(o); }); });
+    const isWheelM=m=>wheelSet.has(m)||_WHEEL_RE.test(nmOf(m));
+    const wheels=all.filter(isWheelM), body=all.filter(m=>!isWheelM(m));
     const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color();
     function fill(list, cube, cap){
       const cells=new Map();
       for(const m of list){ M.multiplyMatrices(invGrp,m.matrixWorld); const g=m.geometry, pos=g.attributes.position, idx=g.index, vc=g.attributes.color;
         const mat=Array.isArray(m.material)?m.material[0]:m.material; const matHex=(mat&&mat.color)?mat.color.getHex():0x9092a0;
         const _tmap=mat&&(mat.map||mat.bumpMap||mat.roughnessMap); const tdColor=!!(mat&&mat.map); const td=_tmap?_voxTexData(_tmap):null, uv=g.attributes.uv;
-        const _nm=nmOf(m); const isWheel=_WHEEL_RE.test(_nm);
+        const _nm=nmOf(m); const isWheel=isWheelM(m);
         const isLight=!isWheel && (_LIGHT_RE.test(_nm) || (mat&&mat.emissive&&(mat.emissive.r+mat.emissive.g+mat.emissive.b)>0.2));   // lamp lenses -> unlit GLOWING cubes
         const isGlass=!isLight && (_GLASS_RE.test(_nm) || (!isWheel && mat && mat.transparent && mat.opacity!=null && mat.opacity<0.85));   // windshield/windows -> tinted-glass cubes
         const lightHex=isLight ? ((mat&&mat.emissive&&(mat.emissive.r+mat.emissive.g+mat.emissive.b)>0.2)?mat.emissive.getHex():matHex) : 0;
