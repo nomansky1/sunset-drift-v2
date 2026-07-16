@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.14-->
+<!--BUILD:v11.15-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1439,7 +1439,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.14';
+(function(){ const BUILD='v11.15';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -5016,13 +5016,20 @@ function loadCarModels(){
   // car, holds throttle, then parks a low side drone on the wheels. Drives the headless-Chrome screenshot
   // harness (tools: chrome --headless=new --virtual-time-budget) so wheel spin/axis/stance get verified
   // IN MOTION on every model without a human. Zero effect outside localhost.
-  if(window.FLEET_CHECK_DEV && /[?&]qa=garage/.test(location.search)){   // ?qa=garage&car=N — headless garage screenshot (UI kept visible)
+  if(window.FLEET_CHECK_DEV && /[?&]qa=garage/.test(location.search)){   // ?qa=garage&car=N[&parts=spoilerR:3,hood:1][&hidep=lights] — headless garage screenshot (UI kept visible)
     const P=new URLSearchParams(location.search); const qaCar=+(P.get('car')||21);
     try{ localStorage.setItem('sd_owned', JSON.stringify(new Array(64).fill(true))); }catch(e){}
+    try{ if(P.get('parts')||P.get('hidep')){ const obj={};                 // inject a parts config for the QA car (modular-parts verification)
+      (P.get('parts')||'').split(',').forEach(kv=>{ const s=kv.split(':'); if(s[0]) obj[s[0]]=+s[1]; });
+      if(P.get('hidep')){ obj.hide={}; P.get('hidep').split(',').forEach(k=>{ if(k) obj.hide[k]=true; }); }
+      const all=JSON.parse(localStorage.getItem('sd_parts')||'{}'); all[qaCar]=obj; localStorage.setItem('sd_parts', JSON.stringify(all)); } }catch(e){}
     window.addEventListener('load', ()=>{ setTimeout(()=>{ try{
       const gm=document.getElementById('globeModal'); if(gm) gm.classList.remove('show');
       const gt=document.querySelector('#tabStrip .tab[data-tab="garage"]'); if(gt) gt.click();
-      setTimeout(()=>{ const ch=document.querySelector('#carSlider .csChip[data-i="'+qaCar+'"]'); if(ch) ch.click(); }, 900);
+      let tries=0; const sel=setInterval(()=>{ tries++;                    // retry until the chip exists AND took (the strip builds async; a single 900ms click was flaky)
+        const ch=document.querySelector('#carSlider .csChip[data-i="'+qaCar+'"]');
+        if(ch){ ch.click(); if(ch.classList.contains('sel')||tries>6){ clearInterval(sel); } }
+        else if(tries>10) clearInterval(sel); }, 700);
     }catch(e){ console.error('[qa] garage', e); } }, 1500); });
   }
   if(window.FLEET_CHECK_DEV && /[?&]qa=drive/.test(location.search)){
@@ -5297,6 +5304,7 @@ function carToonSync(){ const on=(typeof animeMode!=='undefined'&&animeMode)||(t
     if(on && !(typeof voxelMode!=='undefined'&&voxelMode)) carToonize(c.rig); else carToonRestore(c.rig); }); }
 function upgradeCars(){
   if(!carBodyRaw) return;
+  if(typeof loadPartsCfg==='function') loadPartsCfg();   // fresh per rebuild — the QA hook (and future garage UI) may write sd_parts after boot
   cars.forEach((c,ci)=>{
     const rig=c.rig;
     [...rig.group.children].forEach(o=> rig.group.remove(o));   // wipe the placeholder / old model
@@ -5308,12 +5316,14 @@ function upgradeCars(){
     else buildDogeCar(rig, c.color);
     const liveryIdx=c.isPlayer?selectedCar:((ci*2+1)%CARS.length);
     applyLivery(rig, liveryIdx);                              // country flag decals + flag-colour theme on every car
+    rig._partsCfg = c.isPlayer ? (partsCfg[selectedCar]||{}) : {};          // MODULAR PARTS: player's per-slot part styles drive the kit gates
     attachUpgrades(rig, liveryIdx, c.isPlayer?null:{eng:2,tire:2,nos:1});   // visible kits on ALL cars (AI get a moderate kit)
     physicalizeBody(rig);                                                    // body panels -> physical clearcoat paint (IBL sunset reflection + working finishes)
     paintCar(rig, paintJobs[liveryIdx], CARS[liveryIdx].raw||'doge');        // custom paint job (recolours the body, keeps glass)
     if(paintStyles[liveryIdx]) finishCar(rig, paintStyles[liveryIdx]);       // custom finish/style (matte/metallic/chrome/pearl)
     applyWrap(rig, paintWraps[liveryIdx]);                                    // livery wrap decals (stripes / JDM rising-sun / rally #)
     if(((typeof animeMode!=='undefined'&&animeMode)||(typeof comicMode!=='undefined'&&comicMode)) && !(typeof voxelMode!=='undefined'&&voxelMode)) carToonize(rig);   // TRUE cel cars while ANIME/COMIC is on (after paint so bands snapshot the final colours)
+    registerCarParts(rig); if(c.isPlayer) applyPartHides(rig, selectedCar);   // MODULAR PARTS: inventory the groups + apply persisted hides
     if(rig.flames) rig.flames.forEach((f,fi)=>{ rig.group.add(f);   // re-attach exhaust flames (group was wiped above)
       if(rig.exhaustPts && rig.exhaustPts[fi]) f.position.copy(rig.exhaustPts[fi]); });   // fire comes out of THIS model's pipes
     if(c.isPlayer && !rig.headSpot){                                    // night driving beam (player only - cheap)
@@ -5405,13 +5415,14 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
   const body=raw.clone();
   rig.bodyColor=null; rig.paintMats=null; rig.packCar=false; rig.brakeMats=[]; rig._brakeMat=null;   // Kenney cars paint via texture-swatch, not material colour; brakeMats = glowing rotors (animated on braking)
   body.traverse(o=>{ if(o.isMesh){ if(o.geometry&&o.geometry.attributes&&!o.geometry.attributes.normal) o.geometry.computeVertexNormals();   // some GLBs (aventador) export with NO vertex normals -> zero diffuse term -> car renders pure black. Rebuild them.
-    o.castShadow=true; o.receiveShadow=false; const src=o.material; if(src){
+    o.castShadow=true; o.receiveShadow=false; o.userData._part='body';   // MODULAR PARTS: every mesh carries its group id (owner: 11 swappable groups per car)
+    const src=o.material; if(src){
     { const _gn=(src.name||'')+' '+(o.name||'');
-      if(/glass|glazing/i.test(_gn) && /light|lamp|headl|taill|blink|indicator/i.test(_gn)){ return; }   // light-LENS glass (gen4 EXT_Glass_light): keep the GLB's own lens, just don't paint it
-      if(/^GD_Glass/.test(src.name||'') || GLASS_NAME_RE.test(_gn) || (src.opacity!==undefined && src.opacity<0.95)){ o.material=glassCarMat(); return; } }   // REAL auto glass: GD_Glass split models + gen4 authored names (EXT_Glass_Windows/INT_Glass/DAMAGE_GLASS) or a see-through material (skyline op<1) that /^GD_Glass/ missed -> windshield was painted body-colour (owner)
-    if(/^GD_Tire/.test(src.name||'')){ o.material=tireCarMat(); return; }          // v4 split models: treaded matte rubber
-    if(/^GD_Rim/.test(src.name||'')){ o.material=rimWheelMat(); return; }           // machined alloy rim (reflective metal)
-    if(/^GD_Brake/.test(src.name||'')){ if(!rig._brakeMat){ rig._brakeMat=makeBrakeRotorMat(); rig.brakeMats.push(rig._brakeMat); } o.material=rig._brakeMat; return; }   // steel rotor -> glows with brake heat
+      if(/glass|glazing/i.test(_gn) && /light|lamp|headl|taill|blink|indicator/i.test(_gn)){ o.userData._part='lights'; return; }   // light-LENS glass (gen4 EXT_Glass_light): keep the GLB's own lens, just don't paint it
+      if(/^GD_Glass/.test(src.name||'') || GLASS_NAME_RE.test(_gn) || (src.opacity!==undefined && src.opacity<0.95)){ o.material=glassCarMat(); o.userData._part='glass'; return; } }   // REAL auto glass: GD_Glass split models + gen4 authored names (EXT_Glass_Windows/INT_Glass/DAMAGE_GLASS) or a see-through material (skyline op<1) that /^GD_Glass/ missed -> windshield was painted body-colour (owner)
+    if(/^GD_Tire/.test(src.name||'')){ o.material=tireCarMat(); o.userData._part='wheels'; return; }          // v4 split models: treaded matte rubber
+    if(/^GD_Rim/.test(src.name||'')){ o.material=rimWheelMat(); o.userData._part='rims'; return; }           // machined alloy rim (reflective metal)
+    if(/^GD_Brake/.test(src.name||'')){ if(!rig._brakeMat){ rig._brakeMat=makeBrakeRotorMat(); rig.brakeMats.push(rig._brakeMat); } o.material=rig._brakeMat; o.userData._part='brakes'; return; }   // steel rotor -> glows with brake heat
     if(src.color && rig.bodyColor==null && !/^GD_/.test(src.name||'')) rig.bodyColor=src.color.getHex();   // body hue -> color-matched upgrade kit (skip the split glass/tire mats)
     if(/carmaterial/i.test(src.name||'')) rig.packCar=true;                   // itch LowPoly Cars pack: already has proper rims/tyres -> skip the tyre-upgrade wheel swap (it's tuned for Kenney wheel scale)
     o.material=carPaint(src); } } });   // glossy clear-coat paint over the GLB's base colour
@@ -5501,7 +5512,7 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     const pm=new THREE.MeshStandardMaterial({color:0x16161b, roughness:0.4, metalness:0.8});
     rig.exhaustPts=[];
     for(const sx of [-1,1]){ const tip=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.062,0.18,10), pm);
-      tip.rotation.x=Math.PI/2; tip.position.set(sx*ex, ey, ez); tip.castShadow=false; rig.group.add(tip);
+      tip.rotation.x=Math.PI/2; tip.position.set(sx*ex, ey, ez); tip.castShadow=false; tip.userData._part='exhaust'; rig.group.add(tip);
       rig.exhaustPts.push(new THREE.Vector3(sx*ex, ey, ez-0.08)); }
     // HEAD + TAIL LIGHTS on every model (the GLBs have none): emissive lamps that bloom at night
     const ly=clamp(H*0.30, 0.35, 0.75), lx=W*0.30;
@@ -5520,8 +5531,8 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
       return h2.length? rig.group.worldToLocal(h2[0].point.clone()).z : dir*Lz/2; };
     for(const sx of [-1,1]){
       const hz=surfZ(sx, ly, 1), tz=surfZ(sx, ly, -1);
-      const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, hz+0.005); rig.group.add(hl);
-      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, tz-0.005); rig.group.add(tl);
+      const hl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.09,0.05), headM); hl.position.set(sx*lx, ly, hz+0.005); hl.userData._part='lights'; rig.group.add(hl);
+      const tl=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.08,0.05), tailM); tl.position.set(sx*lx, ly, tz-0.005); tl.userData._part='lights'; rig.group.add(tl);
       { const hh=addGlow(rig.group, sx*lx, ly, hz+0.1, 0xffe9c2, nightMode?1.35:0.85);     // soft lens core halo (rides the group incl. lean)
         hh.material.opacity=nightMode?0.5:0.4; (rig.headHalos||(rig.headHalos=[])).push(hh); }
       addGlow(rig.group, sx*lx, ly, tz-0.1, 0xff2822, nightMode?1.05:0.6);
@@ -5566,8 +5577,13 @@ const BUILTIN_WING=new Set(['rwb','gt3p','mcl35m','lp830','quattro','wrx','skyli
 function attachUpgrades(rig, carIdx, forceU){
   const u=forceU||upgOf(carIdx), g=rig.group, sh=!isTouch;
   const builtinWing=BUILTIN_WING.has((CARS[carIdx]||{}).raw||'');
+  // MODULAR PARTS (owner: 11 swappable groups): rig._partsCfg overrides decouple each part group from
+  // the upgrade levels — {spoilerR:0..3, spoilerF:0..2, skirts:0/1, hood:0/1, exhaust:0/1, engine:0..3}.
+  // null/absent = derive from upgrades exactly as before. Every built node is stamped userData._part.
+  const cfg=rig._partsCfg||{}; let TAG='kit';
+  const cfgAny=['spoilerR','spoilerF','skirts','hood','exhaust','engine'].some(k=>cfg[k]);
   rig.kitMats=null;
-  if(!(u.eng||u.tire||u.nos||u.brake||u.turbo)) return;   // any owned upgrade shows its parts (brake/turbo were missing from this gate)
+  if(!(u.eng||u.tire||u.nos||u.brake||u.turbo) && !cfgAny) return;   // any owned upgrade OR forced part shows the kit
   const d=rig.dims||{W:2,H:1.5,Lz:4.6,yaw:0};                        // true normalized car size captured at build (axis-aligned, centered, +Z fwd)
   const W=d.W, H=d.H, Lz=d.Lz, x0=W/2;
   const top=H, floorY=0, rear=-Lz/2, front=Lz/2, midZ=0;             // car is centered at the rig origin, sitting on y=0
@@ -5584,7 +5600,7 @@ function attachUpgrades(rig, carIdx, forceU){
   rig.kitMats=[bodyKit];   // body-coloured parts (wing/skirts/ducktail) -> paint/finish follow the body  // SAME clear-coat paint + colour as the car body -> parts blend in, not stuck-on
   const carbon=new THREE.MeshStandardMaterial({color:0x0c0c0f, metalness:0.3, roughness:0.45});
   const kit=new THREE.Group(); kit.rotation.y=d.yaw; g.add(kit); g.updateWorldMatrix(true,true);   // match model yaw; matrices fresh for surface raycasts
-  const add=(geo,mat)=>{ const m=new THREE.Mesh(geo,mat); m.castShadow=sh; kit.add(m); return m; };
+  const add=(geo,mat)=>{ const m=new THREE.Mesh(geo,mat); m.castShadow=sh; m.userData._part=TAG; kit.add(m); return m; };
   const dome=(mat)=>add(_domeGeo,mat);
   // raycast the car's ACTUAL mesh so parts sit on the real surface per-car (not on the bounding box -> no more hovering)
   const body=rig.chassis, _ray=new THREE.Raycaster(), _o=new THREE.Vector3(), _t=new THREE.Vector3(), _dn=new THREE.Vector3(0,-1,0);
@@ -5596,19 +5612,22 @@ function attachUpgrades(rig, carIdx, forceU){
     const geo=kitPartGeo[name]; if(!geo) return null;
     if(!geo.boundingBox) geo.computeBoundingBox(); const s=new THREE.Vector3(); geo.boundingBox.getSize(s);
     const dim=axis==='z'?s.z:axis==='y'?s.y:s.x, k=target/(dim||1);
-    const m=new THREE.Mesh(geo,mat); m.castShadow=sh; m.scale.setScalar(k); m.position.set(x,y,z); if(rotX) m.rotation.x=rotX; kit.add(m); return m; };
-  // ENGINE -> GT wing mounted on the car's REAL rear-deck surface (raycast) so it never floats (scoop removed - it hovered on sloped hoods)
-  if(u.eng>0 && !builtinWing){ const s=u.eng;                          // built-in-spoiler cars keep their own wing (no clashing second wing); they still get the ground-effects kit below
+    const m=new THREE.Mesh(geo,mat); m.castShadow=sh; m.userData._part=TAG; m.scale.setScalar(k); m.position.set(x,y,z); if(rotX) m.rotation.x=rotX; kit.add(m); return m; };
+  // REAR SPOILER group — style 0 none / 1 ducktail / 2 GT wing / 3 GT wing + endplates.
+  // cfg.spoilerR overrides; default derives from ENGINE upgrade exactly as before (tall cars -> ducktail).
+  TAG='spoilerR';
+  const wingStyle = cfg.spoilerR!=null ? (builtinWing?0:cfg.spoilerR) : ((u.eng>0 && !builtinWing) ? (tall?1:(u.eng>=2?3:2)) : 0);
+  if(wingStyle>0){ const s=(wingStyle>=3?2:1);
     const wingZ=rear*0.72;                                             // deck = HIGHEST surface AT the wing's z (so a wing never sinks into a pickup bed nor floats on the cabin)
     const deckY=Math.max(surfY(0,wingZ,top*0.5), surfY(W*0.25,wingZ,-9), surfY(-W*0.25,wingZ,-9));
-    if(tall){                                                          // pickup/SUV -> subtle ducktail lip on the rear deck (no GT wing)
+    if(wingStyle===1){                                                 // ducktail lip on the rear deck (default for pickups/SUVs)
       const dz=rear*0.86, dY=Math.max(surfY(0,dz,top*0.5), surfY(W*0.25,dz,-9), surfY(-W*0.25,dz,-9));
       const duck=add(rbox(W*0.82, H*0.045, 0.24, 0.05), bodyKit); duck.position.set(0, dY+H*0.03, dz); duck.rotation.x=-0.32;
     } else if(kitPartGeo.spoiler){ const geo=kitPartGeo.spoiler; if(!geo.boundingBox) geo.computeBoundingBox();
       const gs=new THREE.Vector3(); geo.boundingBox.getSize(gs); const k=W*0.86*(s>=2?1:0.82)/(gs.x||1);
-      const m=new THREE.Mesh(geo, bodyKit); m.castShadow=sh; m.scale.setScalar(k);
+      const m=new THREE.Mesh(geo, bodyKit); m.castShadow=sh; m.userData._part='spoilerR'; m.scale.setScalar(k);
       m.position.set(0, deckY - geo.boundingBox.min.y*k - H*0.06, wingZ); kit.add(m);   // uprights sink slightly INTO the real deck = bolted, no gap
-      if(s>=2) for(const sx of [-1,1]){ const ep=new THREE.Mesh(rbox(0.03,H*0.42,0.44,0.05), carbon); ep.castShadow=sh; ep.position.set(sx*W*0.45, deckY+H*0.22, wingZ); kit.add(ep); }   // tall carbon GT endplates -> aggressive super-racer wing
+      if(s>=2) for(const sx of [-1,1]){ const ep=new THREE.Mesh(rbox(0.03,H*0.42,0.44,0.05), carbon); ep.castShadow=sh; ep.userData._part='spoilerR'; ep.position.set(sx*W*0.45, deckY+H*0.22, wingZ); kit.add(ep); }   // tall carbon GT endplates -> aggressive super-racer wing
     } else { const span=W*0.84;                                         // procedural fallback if the GLB hasn't loaded
       const af=new THREE.Shape(); af.moveTo(-0.5,0); af.quadraticCurveTo(0,0.17,0.5,0.03); af.quadraticCurveTo(0,-0.07,-0.5,0);
       const wingGeo=new THREE.ExtrudeGeometry(af,{depth:span,bevelEnabled:true,bevelThickness:0.02,bevelSize:0.02,bevelSegments:2,steps:1});
@@ -5617,10 +5636,12 @@ function attachUpgrades(rig, carIdx, forceU){
       const wing=new THREE.Mesh(wingGeo, bodyKit); wing.castShadow=sh; wg.add(wing);
       for(const sx of [-1,1]){ const mnt=new THREE.Mesh(rbox(0.07,H*0.34,0.13,0.03), carbon); mnt.position.set(sx*span*0.32, -H*0.15, 0.02); wg.add(mnt); }
       if(s>=2) for(const sx of [-1,1]){ const ep=new THREE.Mesh(rbox(0.025,0.2,0.34,0.05), carbon); ep.position.set(sx*span*0.5,0.02,0); wg.add(ep); }
-      kit.add(wg); }
+      wg.userData._part='spoilerR'; kit.add(wg); }
   }
-  // ENGINE>=2 -> ground-effect kit: sculpted front lip + side skirts + rear diffuser (procedural fallback)
-  if(u.eng>=2){
+  // SKIRTS group -> ground-effect kit: sculpted front lip + side skirts + rear diffuser (procedural fallback).
+  // cfg.skirts overrides; default = ENGINE>=2 as before.
+  TAG='skirts';
+  if(cfg.skirts!=null ? cfg.skirts : (u.eng>=2)){
     if(kitPartGeo.lip) placeGLB('lip','x', W*0.92, bodyKit, 0, floorY+H*0.05, front-Lz*0.04, 0);
     else add(rbox(W*0.92,0.05,0.32,0.06), bodyKit).position.set(0, floorY+H*0.05, front-Lz*0.03);
     for(const side of [-1,1]){                                          // side skirt: raycast the body side at BOTH the skirt's top + bottom height so it CONTOURS the car
@@ -5632,7 +5653,7 @@ function attachUpgrades(rig, carIdx, forceU){
         // LEFT skirt was backface-culled invisible (kits only showed on the right)
         if(i>0){ const a=b-2; if(side>0) idx.push(a,a+1,b, a+1,b+1,b); else idx.push(a,b,a+1, a+1,b,b+1); } }
       const gsk=new THREE.BufferGeometry(); gsk.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); gsk.setIndex(idx); gsk.computeVertexNormals();
-      const m=new THREE.Mesh(gsk, bodyKit); m.castShadow=sh; kit.add(m); }
+      const m=new THREE.Mesh(gsk, bodyKit); m.castShadow=sh; m.userData._part='skirts'; kit.add(m); }
     if(kitPartGeo.diffuser) placeGLB('diffuser','x', W*0.7, bodyKit, 0, floorY+H*0.07, rear+Lz*0.03, -0.18);
     else { const df=add(rbox(W*0.68,0.11,0.3,0.05), bodyKit); df.position.set(0, floorY+H*0.06, rear+Lz*0.03); df.rotation.x=-0.18;
       for(let f=0;f<4;f++){ const fin=add(rbox(0.03,0.11,0.3,0.012), carbon); fin.position.set((f-1.5)*W*0.16, floorY+H*0.06, rear+Lz*0.03); fin.rotation.x=-0.18; } }
@@ -5642,28 +5663,65 @@ function attachUpgrades(rig, carIdx, forceU){
   // rims and suspension untouched. Grown/overlaid/replacement wheel geometry clipped through the
   // authored fenders on every body it was tried on — grip comes from carMul, not from cosmetics.
 
-  // NITROUS -> rounded bottles with domed caps, half-sunk into the rear deck + a molded cradle
-  if(u.nos>0){ const n=u.nos, bz=rear*0.62, blen=0.44+0.14*n, deckY=surfY(0, bz, top*0.45), by=deckY+0.1;   // on the real deck, not floating
+  // ENGINE group (NOS hardware) -> rounded bottles with domed caps, half-sunk into the rear deck + a molded cradle.
+  // cfg.engine (0-3 bottles) overrides; default = NITROUS upgrade level.
+  TAG='engine';
+  { const nosN=cfg.engine!=null?cfg.engine:u.nos;
+  if(nosN>0){ const n=nosN, bz=rear*0.62, blen=0.44+0.14*n, deckY=surfY(0, bz, top*0.45), by=deckY+0.1;   // on the real deck, not floating
     const bm=new THREE.MeshStandardMaterial({color:0x1a6cff, emissive:0x1f7cff, emissiveIntensity:n>=3?1.1:0.7, roughness:0.4, metalness:0.3});
     if(n>=2) add(rbox(W*0.46,0.06,0.5,0.05), bodyKit).position.set(0, by-0.08, bz);
     const xs = n>=2 ? [-1,1] : [0];
     for(const sx of xs){ const bot=add(new THREE.CylinderGeometry(0.09,0.09,blen,16), bm); bot.rotation.x=Math.PI/2; bot.position.set(sx*W*0.12, by, bz);
       for(const cz of [-1,1]){ const cap=dome(bm); cap.scale.setScalar(0.09); cap.rotation.x=cz>0?-Math.PI/2:Math.PI/2; cap.position.set(sx*W*0.12, by, bz+cz*blen/2); } }
-  }
-  // BRAKES -> front splitter + dive-plane canards (the corner-entry aero kit), fitted to the real front
-  if(u.brake>0){ const b=u.brake, splZ=front-Lz*0.03;
+  } }
+  // FRONT SPOILER group -> splitter + dive-plane canards (style 1 = splitter, 2 = +canards).
+  // cfg.spoilerF overrides; default = BRAKES upgrade level.
+  TAG='spoilerF';
+  { const fS=cfg.spoilerF!=null?cfg.spoilerF:u.brake;
+  if(fS>0){ const b=fS, splZ=front-Lz*0.03;
     const spl=add(rbox(W*0.9,0.045,0.26,0.04), carbon); spl.position.set(0, floorY+H*0.055, splZ); spl.rotation.x=0.06;   // low front splitter
-    if(b>=2) for(const sx of [-1,1]){ const can=add(rbox(0.26,0.028,0.17,0.02), carbon); can.position.set(sx*(x0*0.84), floorY+H*0.30, front-Lz*0.07); can.rotation.z=sx*-0.16; can.rotation.x=0.12; } }   // canards
-  // TURBO -> hood intake scoop + twin chrome exhaust tips (the top-speed kit), sat on the real hood/rear
-  if(u.turbo>0){ const x=u.turbo;
+    if(b>=2) for(const sx of [-1,1]){ const can=add(rbox(0.26,0.028,0.17,0.02), carbon); can.position.set(sx*(x0*0.84), floorY+H*0.30, front-Lz*0.07); can.rotation.z=sx*-0.16; can.rotation.x=0.12; } } }   // canards
+  // HOOD group (intake scoop) + EXHAUST group (chrome tips) — independently switchable.
+  // cfg.hood / cfg.exhaust override; defaults = TURBO>0 scoop, TURBO>=2 tips.
+  { const hoodS=cfg.hood!=null?cfg.hood:(u.turbo>0?1:0), exS=cfg.exhaust!=null?cfg.exhaust:(u.turbo>=2?1:0);
+  if(hoodS>0){ TAG='hood';
     let scZ=front*0.55;                                             // HOOD-FINDER: from the windshield base forward, the first surface BELOW the greenhouse is the hood -> the scoop can never climb onto the glass
     for(let f=0.34; f<=0.74; f+=0.05){ const hy=surfY(0, front*f, -9); if(hy>-8 && hy < floorY+H*0.78){ scZ=front*Math.min(f+0.10,0.78); break; } }
     const scY=surfY(0, scZ, top*0.7);
     const scoop=add(rbox(W*0.3,H*0.13,0.5,0.05), carbon); scoop.position.set(0, scY+H*0.045, scZ); scoop.rotation.x=-0.06;
-    const intake=add(new THREE.CylinderGeometry(0.085,0.11,0.12,10), carbon); intake.rotation.x=Math.PI/2; intake.position.set(0, scY+H*0.085, scZ+0.24);
-    if(x>=2){ const chrome=new THREE.MeshStandardMaterial({color:0xbfc4cc, metalness:0.9, roughness:0.25});
-      for(const sx of [-1,1]){ const tip=add(new THREE.CylinderGeometry(0.06,0.075,0.16,10), chrome); tip.rotation.x=Math.PI/2; tip.position.set(sx*W*0.2, floorY+H*0.13, rear-0.03); } } }
+    const intake=add(new THREE.CylinderGeometry(0.085,0.11,0.12,10), carbon); intake.rotation.x=Math.PI/2; intake.position.set(0, scY+H*0.085, scZ+0.24); }
+  if(exS>0){ TAG='exhaust'; const chrome=new THREE.MeshStandardMaterial({color:0xbfc4cc, metalness:0.9, roughness:0.25});
+    for(const sx of [-1,1]){ const tip=add(new THREE.CylinderGeometry(0.06,0.075,0.16,10), chrome); tip.rotation.x=Math.PI/2; tip.position.set(sx*W*0.2, floorY+H*0.13, rear-0.03); } } }
 }
+
+// ---- MODULAR PARTS registry + API (owner: every car = swappable groups — enable, hide, or swap) ----
+// Groups tagged at creation: body, glass, wheels, rims, brakes, lights, exhaust, spoilerR(0-3),
+// spoilerF(0-2), skirts(0/1), hood(0/1), engine(0-3). Styles rebuild the rig via the decoupled
+// attachUpgrades gates; hides toggle node visibility. Config persists per CAR SLOT (sd_parts) so the
+// next-phase garage UI just calls these three functions.
+let partsCfg={};
+function loadPartsCfg(){ try{ partsCfg=JSON.parse(localStorage.getItem('sd_parts'))||{}; }catch(e){ partsCfg={}; } }
+function savePartsCfg(){ try{ localStorage.setItem('sd_parts', JSON.stringify(partsCfg)); }catch(e){} }
+loadPartsCfg();
+function registerCarParts(rig){
+  const P={};
+  rig.group.traverse(o=>{ const t=o.userData&&o.userData._part; if(t){ (P[t]||(P[t]={nodes:[]})).nodes.push(o); } });
+  if(rig.wheels) rig.wheels.forEach(w=>{ (P.wheels||(P.wheels={nodes:[]})).nodes.push(w); });
+  rig.parts=P; return P;
+}
+function applyPartHides(rig, ci){
+  const hides=(partsCfg[ci]&&partsCfg[ci].hide)||{};
+  if(!rig.parts) registerCarParts(rig);
+  for(const k in rig.parts) rig.parts[k].nodes.forEach(n=>{ n.visible=!hides[k]; });
+}
+window.carPartsList=function(){ const rig=player&&player.rig; if(!rig) return {};
+  if(!rig.parts) registerCarParts(rig);
+  const out={}; for(const k in rig.parts) out[k]=rig.parts[k].nodes.length; return out; };
+window.carPartStyle=function(group, style){ const ci=selectedCar;
+  (partsCfg[ci]||(partsCfg[ci]={}))[group]=style; savePartsCfg(); upgradeCars(); return 'ok '+group+'='+style; };
+window.carPartShow=function(group, on){ const ci=selectedCar;
+  const c=(partsCfg[ci]||(partsCfg[ci]={})); (c.hide||(c.hide={}))[group]=!on; savePartsCfg();
+  cars.forEach(cc=>{ if(cc.isPlayer&&cc.rig) applyPartHides(cc.rig, ci); }); return 'ok '+group+' '+(on?'shown':'hidden'); };
 
 /* ---- real CC0 props (Quaternius / Kenney low-poly GLBs) instanced onto the terrain ---- */
 const SHARED=new Set();                 // geometries/materials/textures shared across world rebuilds — never dispose
