@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.21-->
+<!--BUILD:v11.22-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1448,7 +1448,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.21';
+(function(){ const BUILD='v11.22';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -3268,6 +3268,9 @@ function makeFacadeTexture(rng, type){
   const PAL={brick:'#7d574a', glass:'#3e525f', concrete:'#8f887c', limestone:'#c3b396', dark:'#2c2f38', terracotta:'#9a6b4c', sandstone:'#b49572', steel:'#6f7a86'};   // brick/terracotta muted toward aged masonry — the saturated crimson read toy-like against the asphalt (owner: PBR should look natural)
   const base=PAL[type]||'#8a8478'; x.fillStyle=base; x.fillRect(0,0,S,S);
   const glassy=(type==='glass'), masonry=(type==='brick'||type==='terracotta'||type==='sandstone');
+  // ROUGHNESS channel (owner: real PBR): matte walls, GLOSSY window panes -> towers catch the low sun in the glass
+  const rc=document.createElement('canvas'); rc.width=rc.height=S; const xr=rc.getContext('2d');
+  xr.fillStyle = glassy?'#9c9c9c' : masonry?'#f0f0f0' : type==='steel'?'#c4c4c4' : '#e2e2e2'; xr.fillRect(0,0,S,S);
   // material ground layer
   if(masonry){ // true running-bond brick with per-brick tint jitter
     const bh=5*K, bw=13*K;
@@ -3309,6 +3312,7 @@ function makeFacadeTexture(rng, type){
       x.fillStyle=pg; }
     else x.fillStyle = lit?'#4e4636':'#1d2129';
     x.fillRect(bx,by,ww,wh);
+    xr.fillStyle = glassy?'#383838':'#4a4a4a'; xr.fillRect(bx,by,ww,wh);   // panes are GLOSS in the roughness map
     // DEPTH: dark inset top+left (sun AO), lit sill below
     x.fillStyle='rgba(0,0,0,.42)'; x.fillRect(bx,by,ww,1.6*K); x.fillRect(bx,by,1.6*K,wh);
     x.fillStyle='rgba(255,255,255,.14)'; x.fillRect(bx,by+wh,ww,1.4*K);
@@ -3323,7 +3327,8 @@ function makeFacadeTexture(rng, type){
     if(lit && glassy && rng()>0.6){ xe.fillStyle='rgba(0,0,0,.35)'; xe.fillRect(bx+ww*0.5,by,1.2*K,wh); }
   }
   const mk=cv=>{ const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=isTouch?2:8; return t; };
-  return {map:mk(c), emis:mk(e)};
+  const mkL=cv=>{ const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=isTouch?2:8; return t; };   // linear (roughness data, NOT sRGB)
+  return {map:mk(c), emis:mk(e), rough:mkL(rc)};
 }
 // a ground-floor storefront: signage + awning + lit display windows
 function makeStorefrontTexture(rng, biz){
@@ -3561,15 +3566,15 @@ function buildCity(rng){
     if(rng()>0.86) billboards.push({x,z,y:baseH+Math.min(towerH,30)*0.7,fw,fd});
   }
   const box=new THREE.BoxGeometry(1,1,1); box.translate(0,0.5,0);
-  const addInst=(tex,emis,arr,emI,rough,metal)=>{ if(!arr.length) return;
-    const mat=toonify(new THREE.MeshStandardMaterial({map:tex, emissiveMap:emis, emissive:0xffffff, emissiveIntensity:emI, roughness:rough, metalness:metal}));
+  const addInst=(tex,emis,arr,emI,rough,metal,roughMap)=>{ if(!arr.length) return;
+    const mat=toonify(new THREE.MeshStandardMaterial({map:tex, emissiveMap:emis, emissive:0xffffff, emissiveIntensity:emI, roughness:rough, metalness:metal, roughnessMap:roughMap||null}));
     const m=new THREE.InstancedMesh(box, mat, arr.length);
     const tCap=nightMode?1:0.8;                                     // day: cap near-white walls — full-white albedo clips face-on to the low sun
     arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(Math.min(b.tint,tCap)); m.setColorAt(k,_c); });
     m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true;
     m.castShadow=!isTouch; m.receiveShadow=!isTouch; scene.add(m); };
   { const dayE=nightMode?0.85:0.30;                                       // daylight: windows barely lit — 0.85 emissive walls flooded the frame through bloom (owner: overexposed)
-  facadeTex.forEach((tex,fi)=>{ const g=TYPES[fi]==='glass'; addInst(tex.map, tex.emis, towers[fi], dayE, g?0.28:0.92, g?0.32:0.03); }); }
+  facadeTex.forEach((tex,fi)=>{ const g=TYPES[fi]==='glass'; addInst(tex.map, tex.emis, towers[fi], dayE, g?0.55:1.0, g?0.32:0.03, tex.rough); }); }   // roughnessMap carries the pane-vs-wall gloss (scalar multiplies it)
   storeTex.forEach((tex,si)=> addInst(tex, tex, stores[si], nightMode?0.32:0.16, 0.72, 0.05));
   // NYC rooftop water towers (a North-American skyline signature — other cities skip them)
   if(waterTowers.length && nation().wt){ const _m=new THREE.Matrix4();
@@ -3781,7 +3786,7 @@ function buildTrackBuildings(rng){
     }
   }
   facadeTex.forEach((tex,fi)=>{ const arr=rows[fi]; if(!arr.length) return; const g=TYPES[fi]==='glass';
-    const mat=toonify(new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.85:0.30, roughness:g?0.28:0.9, metalness:g?0.32:0.03}));
+    const mat=toonify(new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.85:0.30, roughness:g?0.55:1.0, metalness:g?0.32:0.03, roughnessMap:tex.rough}));   // PBR: glossy panes / matte walls
     const m=new THREE.InstancedMesh(box, mat, arr.length);
     const tCap2=nightMode?1:0.8;
     arr.forEach((b,k)=>{ m.setMatrixAt(k,b.mtx); _c.setScalar(Math.min(b.tint,tCap2)); m.setColorAt(k,_c); });
@@ -4360,7 +4365,7 @@ function _renderOSMCity(B){
   for(const k in FAM){ const F=FAM[k]; if(!F.P.length) continue; total+=F.P.length;
     const g=new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(F.P,3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(F.UV,2)); g.setAttribute('color', new THREE.Float32BufferAttribute(F.C,3)); g.computeVertexNormals();
-    const m=toonify(new THREE.MeshStandardMaterial({map:F.tex.map, emissiveMap:F.tex.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.8:F.emi, vertexColors:true, roughness:F.rough, metalness:F.metal, envMapIntensity:F.env, side:THREE.DoubleSide}));
+    const m=toonify(new THREE.MeshStandardMaterial({map:F.tex.map, emissiveMap:F.tex.emis, emissive:0xffffff, emissiveIntensity:nightMode?0.8:F.emi, vertexColors:true, roughness:(k==='glass'?0.55:1.0), roughnessMap:F.tex.rough, metalness:F.metal, envMapIntensity:F.env, side:THREE.DoubleSide}));   // PBR: pane-vs-wall gloss from the facade rough map
     const mesh=new THREE.Mesh(g,m); mesh.name='osmWalls'; mesh.castShadow=!isTouch; mesh.receiveShadow=true; scene.add(mesh); _osmMeshes.push(mesh); }
   if(total) console.log('[osm] real-city buildings rendered:', B.length);
 }
@@ -4578,7 +4583,7 @@ function buildRoadside(rng){
 function buildBlockBuildings(rng, palette, densityPct, maxH){
   const cols=palette.map(c=>new THREE.Color(c)); const geo=new THREE.BoxGeometry(1,1,1); geo.translate(0,0.5,0);
   const ft=makeFacadeTexture(rng,'concrete');                                    // natural concrete facade (map + windows-only emissive), tinted per building by instance colour
-  const mat=new THREE.MeshStandardMaterial({map:ft.map, emissiveMap:ft.emis, emissive:0xffffff, emissiveIntensity:0.38, roughness:0.9, metalness:0.05});
+  const mat=new THREE.MeshStandardMaterial({map:ft.map, emissiveMap:ft.emis, emissive:0xffffff, emissiveIntensity:0.38, roughness:1.0, roughnessMap:ft.rough, metalness:0.05});   // PBR: glossy panes / matte concrete
   const list=[], block=58, span=820, _m=new THREE.Matrix4();
   for(let gx=-span;gx<=span;gx+=block) for(let gz=-span;gz<=span;gz+=block){
     if(rng()>densityPct) continue; const x=gx+(rng()-0.5)*8, z=gz+(rng()-0.5)*8, fw=18+rng()*20, fd=18+rng()*20;
@@ -6842,8 +6847,8 @@ function brFacadeMats(){ if(_brFacadeMats) return _brFacadeMats;
   const rng=mulberry32(424242), TYPES=['glass','brick','concrete','limestone','dark','terracotta','sandstone','steel'];
   _brFacadeMats=TYPES.map(t=>{ const tex=makeFacadeTexture(rng,t);
     const m=new THREE.MeshStandardMaterial({map:tex.map, emissiveMap:tex.emis, emissive:0xffffff,
-      emissiveIntensity:t==='glass'?0.32:0.03, roughness:t==='glass'?0.28:0.92, metalness:t==='glass'?0.35:0.0});
-    SHARED.add(m); SHARED.add(tex.map); SHARED.add(tex.emis); return m; });
+      emissiveIntensity:t==='glass'?0.32:0.03, roughness:t==='glass'?0.55:1.0, roughnessMap:tex.rough, metalness:t==='glass'?0.35:0.0});
+    SHARED.add(m); SHARED.add(tex.map); SHARED.add(tex.emis); SHARED.add(tex.rough); return m; });
   _brFacadeMats.forEach((m,i)=>{ m.userData._type=['glass','brick','concrete','limestone','dark','terracotta','sandstone','steel'][i]; });
   return _brFacadeMats; }
 const _brRepCache={};                                          // owner: BR buildings looked like smeared neon bands — ONE 256px tile
@@ -6854,6 +6859,7 @@ function brFacadeFit(m, w, h){                                 // was stretched 
   const m2=m.clone();
   m2.map=m.map.clone(); m2.map.repeat.set(rw,rh); m2.map.needsUpdate=true;
   if(m.emissiveMap){ m2.emissiveMap=m.emissiveMap.clone(); m2.emissiveMap.repeat.set(rw,rh); m2.emissiveMap.needsUpdate=true; SHARED.add(m2.emissiveMap); }
+  if(m.roughnessMap){ m2.roughnessMap=m.roughnessMap.clone(); m2.roughnessMap.repeat.set(rw,rh); m2.roughnessMap.needsUpdate=true; SHARED.add(m2.roughnessMap); }   // gloss panes must tile WITH the windows
   SHARED.add(m2); SHARED.add(m2.map); _brRepCache[key]=m2; return m2; }
 let _brStoreMats=null;
 function brStoreMats(){ if(_brStoreMats) return _brStoreMats;
