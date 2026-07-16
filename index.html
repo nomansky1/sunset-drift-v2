@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.22-->
+<!--BUILD:v11.23-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -249,7 +249,7 @@
              transition:transform .18s cubic-bezier(.34,1.25,.5,1), box-shadow .18s, border-color .18s;
              box-shadow:0 7px 20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1); }
   .trackBtn::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--accent,#ff8a3c); opacity:.5; }
-  .trackBtn .ic{ font-size:19px; line-height:1; margin-bottom:3px; }
+  .trackBtn .ic{ font-size:10px; font-weight:900; letter-spacing:1.5px; line-height:1; margin-bottom:4px; color:#8fd4ff; opacity:.85; }
   .trackBtn .ic.map{ font-size:0; margin-bottom:6px; padding:5px 8px; border-radius:11px;
              background:radial-gradient(120% 90% at 50% 35%, rgba(var(--accent-rgb,150,110,190),.20), rgba(0,0,0,.34)); box-shadow:inset 0 0 0 1px rgba(255,255,255,.07); }
   .trackBtn .ic.map svg{ display:block; filter:drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
@@ -589,17 +589,17 @@
   .gdLogo .sub{ display:block; white-space:nowrap; font-style:normal; font-weight:800; letter-spacing:3px; font-size:min(3.4vw,13px);
     color:#cfe9ff; -webkit-text-fill-color:#cfe9ff; margin-top:5px; filter:drop-shadow(0 0 8px rgba(120,220,255,.7)); }
   #gdLogoGlobe{ position:absolute; top:calc(env(safe-area-inset-top,6px) + 6px); left:50%; transform:translateX(-50%) scale(1); z-index:3;
-    animation:gdPulse 3.2s ease-in-out infinite;
-    transition:top .8s cubic-bezier(.5,0,.2,1), transform .8s cubic-bezier(.5,0,.2,1); }
+    animation:gdPulse 5.6s ease-in-out infinite;
+    transition:top 1.15s cubic-bezier(.3,0,.12,1), transform 1.15s cubic-bezier(.3,0,.12,1); }
   #gdLogoGlobe.center{ top:44%; transform:translateX(-50%) translateY(-50%) scale(1.5); }   /* hero pose: dead-center in front of the globe */
   #gdLogoGlobe.center::before{ content:''; position:absolute; left:50%; top:52%; width:340px; height:340px; transform:translate(-50%,-50%);
     background:radial-gradient(circle, rgba(255,110,200,.30) 0%, rgba(120,200,255,.14) 42%, transparent 70%);
     border-radius:50%; z-index:-1; animation:gdHalo 2.6s ease-in-out infinite; pointer-events:none; }
   @keyframes gdHalo{ 0%,100%{ opacity:.7; transform:translate(-50%,-50%) scale(1); } 50%{ opacity:1; transform:translate(-50%,-50%) scale(1.14); } }
-  @keyframes gdPulse{ 0%,100%{ filter:none; } 50%{ filter:brightness(1.12); } }
+  @keyframes gdPulse{ 0%,100%{ filter:none; } 50%{ filter:brightness(1.07); } }
   @keyframes gdShine{ 0%,55%{ background-position:120% 0, 0 0; } 80%,100%{ background-position:-60% 0, 0 0; } }   /* chrome glint sweeping the letters */
-  #gdLogoGlobe .l1,#gdLogoGlobe .l2{ animation:gdShine 4.6s ease-in-out infinite, gdFloat 5.4s ease-in-out infinite; }
-  @keyframes gdFloat{ 0%,100%{ transform:translateY(0) rotate(-.4deg); } 50%{ transform:translateY(-4px) rotate(.4deg); } }
+  #gdLogoGlobe .l1,#gdLogoGlobe .l2{ animation:gdShine 6.5s ease-in-out infinite, gdFloat 8s ease-in-out infinite; }
+  @keyframes gdFloat{ 0%,100%{ transform:translateY(0) rotate(-.2deg); } 50%{ transform:translateY(-2.5px) rotate(.2deg); } }
   /* ---------- 3D WORLD GLOBE SELECTOR ---------- */
   #globeModal{ position:fixed; inset:0; z-index:70; display:none;
     background:radial-gradient(circle at 50% 38%, #0d1030 0%, #060414 62%, #030209 100%); }
@@ -747,7 +747,7 @@
     font-weight:900; font-size:12px; letter-spacing:.6px; padding:11px 15px; border-radius:11px; cursor:pointer;
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); white-space:nowrap; }
   .gaBtn:active{ transform:scale(.93); }
-  .gaBtn.primary{ background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#160c06; }
+  .gaBtn.primary{ background:linear-gradient(95deg,#2ad4ff,#7a5cff); color:#fff; text-shadow:0 1px 4px rgba(0,20,60,.5); box-shadow:0 6px 20px -6px rgba(60,140,255,.6); }
   #globeBack{ width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.3);
     color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; flex:0 0 auto; }
   #globeBack:active{ transform:scale(.9); }
@@ -1143,10 +1143,10 @@
   <div id="edHint">Drag the dots to shape your track · ＋ adds a corner · TEST to drive · SHARE the link</div>
   <div id="edBar">
     <div class="edBtn" id="edBack">✕ EXIT</div>
-    <div class="edBtn" id="edTheme">🌆 CITY</div>
+    <div class="edBtn" id="edTheme">CITY</div>
     <div class="edBtn" id="edAdd">＋ NODE</div>
-    <div class="edBtn" id="edDel">🗑 NODE</div>
-    <div class="edBtn" id="edSave">💾 SAVE</div>
+    <div class="edBtn" id="edDel">DEL NODE</div>
+    <div class="edBtn" id="edSave">SAVE</div>
     <div class="edBtn" id="edShare">⤴ SHARE</div>
     <div class="edBtn edGo" id="edTest">▶ TEST DRIVE</div>
   </div>
@@ -1168,7 +1168,7 @@
 </div>
 
 <!-- menu -->
-<div id="brHud"><div id="brAlive">🔥 6 ALIVE</div><div id="brHpWrap"><div id="brHpFill"></div></div><div id="brRockets">🚀 ×3</div><div id="brZone">ZONE 300m</div></div>
+<div id="brHud"><div id="brAlive">6 ALIVE</div><div id="brHpWrap"><div id="brHpFill"></div></div><div id="brRockets">RKT ×3</div><div id="brZone">ZONE 300m</div></div>
 <div id="brRadar"><canvas id="brRadarCv" width="132" height="132"></canvas></div>
 <div id="brArrows"><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span><span class="brArrow">▲</span></div>
 <div id="zoneOut"></div>
@@ -1185,12 +1185,12 @@
     <i class="ghSep"></i>
     <div id="ghMid">
       <div id="tabStrip">
-        <div class="tab on" data-tab="race">🏁 RACE</div>
-        <div class="tab" data-tab="race" id="tabWorld">🌍</div>
-        <div class="tab" data-tab="garage">🚗 GARAGE</div>
-        <div class="tab" data-tab="settings">⚙ SETTINGS</div>
+        <div class="tab on" data-tab="race">RACE</div>
+        <div class="tab" data-tab="race" id="tabWorld">WORLD</div>
+        <div class="tab" data-tab="garage">GARAGE</div>
+        <div class="tab" data-tab="settings">SETTINGS</div>
       </div>
-      <div id="ghPlate"><em id="ghIco">🏁</em><b id="ghName">—</b><i id="ghCls" class="csCls csC">C</i><span id="ghStars" class="csStars"></span></div>
+      <div id="ghPlate"><em id="ghIco">GP</em><b id="ghName">—</b><i id="ghCls" class="csCls csC">C</i><span id="ghStars" class="csStars"></span></div>
     </div>
     <i class="ghSep"></i>
   </div>
@@ -1198,47 +1198,47 @@
     <div class="mPanel on" id="panel-race">
       <div class="sub" id="trackSub">DOWNTOWN · GOLDEN HOUR</div>
       <canvas id="map3d" width="420" height="208"></canvas>
-      <div id="dailyCard"><div class="dcL">🔥 <b>DAILY</b> <span id="dcTrack">—</span></div><div class="dcR"><span id="dcStreak"></span><span class="dcPlay" id="dcPlay">PLAY&nbsp;▸</span></div></div>
+      <div id="dailyCard"><div class="dcL"><b>DAILY</b> <span id="dcTrack">—</span></div><div class="dcR"><span id="dcStreak"></span><span class="dcPlay" id="dcPlay">PLAY&nbsp;▸</span></div></div>
       <div id="trackPick">
-        <div class="trackBtn sel" data-i="0"><div class="ic">🌇</div><b>GOLDEN MILE</b><span>Golden Hour</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="1"><div class="ic">🌅</div><b>OCEAN DRIVE</b><span>Sunset Coast</span><div class="dots"><i class="on"></i><i></i><i></i></div></div>
-        <div class="trackBtn" data-i="2"><div class="ic">🏗️</div><b>THE DOCKS</b><span>Industrial</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="3"><div class="ic">🏖️</div><b>SUNSET BEACH</b><span>Golden Sands</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="4"><div class="ic">🌲</div><b>PINE PASS</b><span>Forest</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="5"><div class="ic">🏔️</div><b>ALPINE</b><span>Snow Peaks</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="6"><div class="ic">🏜️</div><b>DUST DEVIL</b><span>Desert</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="7"><div class="ic">🌃</div><b>NEON CROSS</b><span>Midnight Loop</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="8"><div class="ic">🏜️</div><b>RED CANYON</b><span>Canyon Sweep</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="9"><div class="ic">🌊</div><b>TIDE LINE</b><span>Shoreline Arc</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="12"><div class="ic">🗽</div><b>MANHATTAN GP</b><span>New York Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="13"><div class="ic">🌴</div><b>OCEAN DRIVE GP</b><span>Miami Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="14"><div class="ic">🏰</div><b>VIEJO SAN JUAN</b><span>Puerto Rico Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="15"><div class="ic">🎡</div><b>WESTMINSTER GP</b><span>London Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="16"><div class="ic">🗼</div><b>CHAMPS CIRCUIT</b><span>Paris Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="17"><div class="ic">🗾</div><b>SHIBUYA SPRINT</b><span>Tokyo Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="18"><div class="ic">🧱</div><b>MITTE RING</b><span>Berlin Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="19"><div class="ic">🏙️</div><b>DOWNTOWN DUBAI</b><span>Dubai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="20"><div class="ic">⛰️</div><b>COPACABANA RUN</b><span>Rio Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="21"><div class="ic">❄️</div><b>TVERSKAYA LOOP</b><span>Moscow Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="22"><div class="ic">🕌</div><b>FORT DISTRICT</b><span>Mumbai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="23"><div class="ic">🏮</div><b>JONGNO SPRINT</b><span>Seoul Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="24"><div class="ic">🌃</div><b>BUND CIRCUIT</b><span>Shanghai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="25"><div class="ic">🏛️</div><b>ROMA CENTRO</b><span>Rome Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="26"><div class="ic">⛱️</div><b>EIXAMPLE GRID</b><span>Barcelona Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="27"><div class="ic">🌵</div><b>ZOCALO GP</b><span>Mexico City Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="28"><div class="ic">💃</div><b>MICROCENTRO GP</b><span>Buenos Aires Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="29"><div class="ic">🛥️</div><b>HARBOUR CIRCUIT</b><span>Sydney Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="30"><div class="ic">🐫</div><b>NILE DOWNTOWN</b><span>Cairo Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="31"><div class="ic">🎺</div><b>HABANA VIEJA</b><span>Havana Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
-        <div class="trackBtn" data-i="32"><div class="ic">🍁</div><b>BAY STREET GP</b><span>Toronto Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
-        <div class="trackBtn" data-i="33"><div class="ic">🦁</div><b>JOZI CBD</b><span>Johannesburg Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn sel" data-i="0"><div class="ic">CTY</div><b>GOLDEN MILE</b><span>Golden Hour</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="1"><div class="ic">CST</div><b>OCEAN DRIVE</b><span>Sunset Coast</span><div class="dots"><i class="on"></i><i></i><i></i></div></div>
+        <div class="trackBtn" data-i="2"><div class="ic">DCK</div><b>THE DOCKS</b><span>Industrial</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="3"><div class="ic">BCH</div><b>SUNSET BEACH</b><span>Golden Sands</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="4"><div class="ic">FST</div><b>PINE PASS</b><span>Forest</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="5"><div class="ic">ALP</div><b>ALPINE</b><span>Snow Peaks</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="6"><div class="ic">DST</div><b>DUST DEVIL</b><span>Desert</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="7"><div class="ic">NEO</div><b>NEON CROSS</b><span>Midnight Loop</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="8"><div class="ic">CYN</div><b>RED CANYON</b><span>Canyon Sweep</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="9"><div class="ic">SHR</div><b>TIDE LINE</b><span>Shoreline Arc</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="12"><div class="ic">NYC</div><b>MANHATTAN GP</b><span>New York Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="13"><div class="ic">MIA</div><b>OCEAN DRIVE GP</b><span>Miami Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="14"><div class="ic">SJU</div><b>VIEJO SAN JUAN</b><span>Puerto Rico Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="15"><div class="ic">LDN</div><b>WESTMINSTER GP</b><span>London Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="16"><div class="ic">PAR</div><b>CHAMPS CIRCUIT</b><span>Paris Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="17"><div class="ic">TYO</div><b>SHIBUYA SPRINT</b><span>Tokyo Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="18"><div class="ic">BER</div><b>MITTE RING</b><span>Berlin Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="19"><div class="ic">DXB</div><b>DOWNTOWN DUBAI</b><span>Dubai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="20"><div class="ic">RIO</div><b>COPACABANA RUN</b><span>Rio Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="21"><div class="ic">MOW</div><b>TVERSKAYA LOOP</b><span>Moscow Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="22"><div class="ic">BOM</div><b>FORT DISTRICT</b><span>Mumbai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="23"><div class="ic">SEL</div><b>JONGNO SPRINT</b><span>Seoul Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="24"><div class="ic">SHA</div><b>BUND CIRCUIT</b><span>Shanghai Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="25"><div class="ic">ROM</div><b>ROMA CENTRO</b><span>Rome Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="26"><div class="ic">BCN</div><b>EIXAMPLE GRID</b><span>Barcelona Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="27"><div class="ic">MEX</div><b>ZOCALO GP</b><span>Mexico City Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="28"><div class="ic">BUE</div><b>MICROCENTRO GP</b><span>Buenos Aires Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="29"><div class="ic">SYD</div><b>HARBOUR CIRCUIT</b><span>Sydney Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="30"><div class="ic">CAI</div><b>NILE DOWNTOWN</b><span>Cairo Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="31"><div class="ic">HAV</div><b>HABANA VIEJA</b><span>Havana Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+        <div class="trackBtn" data-i="32"><div class="ic">YYZ</div><b>BAY STREET GP</b><span>Toronto Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
+        <div class="trackBtn" data-i="33"><div class="ic">JNB</div><b>JOZI CBD</b><span>Johannesburg Real Streets</span><div class="dots"><i class="on"></i><i class="on"></i><i></i></div></div>
       </div>
       <div id="passportRow"></div>
       <div id="nextCarBtn">NEXT · CHOOSE CAR &nbsp;▸</div>
     </div>
     <div class="mPanel" id="panel-garage">
       <div id="garL" class="garPanel">
-        <div id="carName">🏎 DRIFTER</div>
+        <div id="carName">DRIFTER</div>
         <div id="carSlider"></div>
         <div id="carStats">
           <div class="stat"><label>SPD</label><div class="bar"><i id="statSpd"></i></div></div>
@@ -1252,9 +1252,9 @@
         <div id="flagRow"></div>
       </div>
       <div id="garR" class="garPanel">
-        <div class="garHead">⚙ UPGRADES</div>
+        <div class="garHead">UPGRADES</div>
         <div id="kitRow"></div>
-        <div class="garHead">⚔ BATTLE</div>
+        <div class="garHead">BATTLE</div>
         <div id="weaponRow"></div>
       </div>
       <div class="carArrow" id="carPrev">◀</div>
@@ -1284,19 +1284,19 @@
           <h4 class="setH">GRAPHICS</h4>
           <div class="setGrid">
             <div class="tog setToggle" id="togAO">◑ AO</div>
-            <div class="tog setToggle" id="togAnime">🎌 ANIME</div>
-            <div class="tog setToggle" id="togComic">📖 COMIC</div>
-            <div class="tog setToggle" id="togVoxel">🧊 VOXEL</div>
-            <div class="tog setToggle" id="togLow">⚡ LITE</div>
-            <div class="tog setToggle" id="togQual">🖥 HIGH</div>
-            <div class="tog setToggle" id="togFS">⛶ FULLSCREEN</div>
+            <div class="tog setToggle" id="togAnime">ANIME</div>
+            <div class="tog setToggle" id="togComic">COMIC</div>
+            <div class="tog setToggle" id="togVoxel">VOXEL</div>
+            <div class="tog setToggle" id="togLow">LITE</div>
+            <div class="tog setToggle" id="togQual">HIGH</div>
+            <div class="tog setToggle" id="togFS">FULLSCREEN</div>
           </div>
         </div>
         <div class="setSec">
           <h4 class="setH">AUDIO</h4>
           <div id="sndRow">
-            <div class="sndCtl"><div class="tog sndIco" id="muteBtn">🔊</div><input id="volSlider" type="range" min="0" max="100" value="55" aria-label="sfx volume"><span class="sndLbl">SFX</span></div>
-            <div class="sndCtl"><div class="tog sndIco" id="musMuteBtn">🎵</div><input id="musSlider" type="range" min="0" max="100" value="5" aria-label="music volume"><span class="sndLbl">MUSIC</span></div>
+            <div class="sndCtl"><div class="tog sndIco" id="muteBtn">SFX</div><input id="volSlider" type="range" min="0" max="100" value="55" aria-label="sfx volume"><span class="sndLbl">SFX</span></div>
+            <div class="sndCtl"><div class="tog sndIco" id="musMuteBtn">MUSIC</div><input id="musSlider" type="range" min="0" max="100" value="5" aria-label="music volume"><span class="sndLbl">MUSIC</span></div>
           </div>
         </div>
         <div class="setSec">
@@ -1308,16 +1308,16 @@
               <input id="avaFile" type="file" accept="image/*">
             </label>
             <input id="profName" type="text" maxlength="12" placeholder="YOUR NAME" aria-label="your name">
-            <div class="tog setAct" id="supportBtn" style="display:none">💛 SUPPORT</div>
+            <div class="tog setAct" id="supportBtn" style="display:none">SUPPORT</div>
           </div>
         </div>
         <div class="setSec">
           <h4 class="setH">MODES &amp; DATA</h4>
           <div class="setGrid">
             <div class="tog setAct" id="togMore"><svg class="tgIco" viewBox="0 0 24 24"><rect x="2.8" y="8" width="18.4" height="9.4" rx="4.4"/><path d="M7.4 11v3.4M5.7 12.7h3.4"/><circle cx="16" cy="11.6" r="1"/><circle cx="18.4" cy="13.9" r="1"/></svg> PLAY &amp; CREATE</div>
-            <div class="tog setAct" id="togSaveOut">💾 EXPORT SAVE</div>
-            <div class="tog setAct" id="togSaveIn">📂 IMPORT SAVE</div>
-            <div class="tog setAct" id="resetData">🗑 RESET DATA</div>
+            <div class="tog setAct" id="togSaveOut">EXPORT SAVE</div>
+            <div class="tog setAct" id="togSaveIn">IMPORT SAVE</div>
+            <div class="tog setAct" id="resetData">RESET DATA</div>
           </div>
         </div>
         <div class="setSec">
@@ -1341,7 +1341,7 @@
       </div>
     </div>
   </div>
-  <div id="ctaRow"><div class="cta" id="startBtn">▶&nbsp; RACE</div><div class="cta cta2 champ" id="champBtn">🏆&nbsp; CUP</div><div class="cta cta2 battle" id="battleBtn">💥&nbsp; BATTLE</div><div class="cta cta2 online" id="onlineBtn">🌐&nbsp; ONLINE</div></div>
+  <div id="ctaRow"><div class="cta" id="startBtn">▶&nbsp; RACE</div><div class="cta cta2 champ" id="champBtn">CUP</div><div class="cta cta2 battle" id="battleBtn">BATTLE</div><div class="cta cta2 online" id="onlineBtn">ONLINE</div></div>
 </div>
 
 <!-- results -->
@@ -1353,14 +1353,14 @@
   <div id="resReward"></div>
   <div id="resBoard"></div>
   <div class="cta" id="dblBtn" style="display:none;background:linear-gradient(95deg,#7a3bff,#ff5a2c)">▶ 2× COINS</div>
-  <div class="cta cta2" id="boardBtn" style="background:linear-gradient(95deg,#2a7bff,#7a3bff)">🏁 TRACK BOARD</div>
+  <div class="cta cta2" id="boardBtn" style="background:linear-gradient(95deg,#2a7bff,#7a3bff)">TRACK BOARD</div>
   <div class="cta" id="nextBtn">NEXT RACE →</div>
-  <div id="resBtnRow"><div class="cta cta2" id="againBtn">RETRY</div><div class="cta cta2" id="garageBtn">🏠 GARAGE</div></div>
+  <div id="resBtnRow"><div class="cta cta2" id="againBtn">RETRY</div><div class="cta cta2" id="garageBtn">GARAGE</div></div>
 </div>
 
 <!-- championship standings -->
 <div id="champ" class="overlay hidden">
-  <div class="title" id="champTitle">🏆 CHAMPIONSHIP</div>
+  <div class="title" id="champTitle">CHAMPIONSHIP</div>
   <div id="champRound">ROUND 1 / 5</div>
   <div id="champTable"></div>
   <div class="cta" id="champNext">NEXT ROUND →</div>
@@ -1374,12 +1374,12 @@
 </div>
 
 <!-- rotate hint -->
-<div id="rotate"><div class="ph">📱</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
+<div id="rotate"><div class="ph">⟳</div><div style="font-size:22px;font-weight:bold">Rotate your phone</div>
   <div style="opacity:.7">Landscape plays best</div></div>
 
 <div id="netModal" class="hidden">
   <div id="netCard">
-    <div id="netTitle">🌐 ONLINE RACE</div>
+    <div id="netTitle">ONLINE RACE</div>
     <input id="netName" maxlength="10" placeholder="YOUR NAME">
     <div id="netHome">
       <div class="netBtn" id="netHostBtn">HOST A RACE</div>
@@ -1397,7 +1397,7 @@
 </div>
 <div id="mtModal" class="hidden">
   <div id="lbCard">
-    <div id="lbTitle">📁 MY TRACKS</div>
+    <div id="lbTitle">MY TRACKS</div>
     <div id="mtList"></div>
     <div class="netBtn edMakeBtn" id="mtNew">＋ CREATE NEW TRACK</div>
     <div class="netBtn ghostBtn" id="mtClose">CLOSE</div>
@@ -1405,30 +1405,30 @@
 </div>
 <div id="lbModal" class="hidden">
   <div id="lbCard">
-    <div id="lbTitle">🏁 DAILY BOARD</div>
+    <div id="lbTitle">DAILY BOARD</div>
     <div id="lbSub"></div>
     <div id="lbList"></div>
-    <div class="netBtn" id="lbShare">⚔ CHALLENGE A FRIEND</div>
+    <div class="netBtn" id="lbShare">CHALLENGE A FRIEND</div>
     <div id="lbShareNote" style="font-size:10px;color:#9a90ae;min-height:12px"></div>
     <div class="netBtn ghostBtn" id="lbClose">CLOSE</div>
   </div>
 </div>
 <div id="hubModal" class="hidden">
   <div id="hubCard">
-    <div id="hubTitle">🎮 PLAY &amp; CREATE</div>
+    <div id="hubTitle">PLAY &amp; CREATE</div>
     <div id="hubGrid">
-      <div class="hubItem" data-h="quests"><div class="hi">🎯</div><div class="ht">Daily Quests</div></div>
-      <div class="hubItem" data-h="board"><div class="hi">🏁</div><div class="ht">Daily Board</div></div>
-      <div class="hubItem" data-h="editor"><div class="hi">🔧</div><div class="ht">Track Editor</div></div>
-      <div class="hubItem" data-h="mine"><div class="hi">📁</div><div class="ht">My Tracks</div></div>
-      <div class="hubItem" data-h="community"><div class="hi">🌐</div><div class="ht">Community Tracks</div></div>
+      <div class="hubItem" data-h="quests"><div class="hi">Q</div><div class="ht">Daily Quests</div></div>
+      <div class="hubItem" data-h="board"><div class="hi">B</div><div class="ht">Daily Board</div></div>
+      <div class="hubItem" data-h="editor"><div class="hi">E</div><div class="ht">Track Editor</div></div>
+      <div class="hubItem" data-h="mine"><div class="hi">T</div><div class="ht">My Tracks</div></div>
+      <div class="hubItem" data-h="community"><div class="hi">C</div><div class="ht">Community Tracks</div></div>
     </div>
     <div class="netBtn ghostBtn" id="hubClose">CLOSE</div>
   </div>
 </div>
 <div id="cmModal" class="hidden">
   <div id="lbCard">
-    <div id="lbTitle">🌐 COMMUNITY TRACKS</div>
+    <div id="lbTitle">COMMUNITY TRACKS</div>
     <div id="lbSub">Built-in + tracks shared with you — every one has its own leaderboard</div>
     <div id="cmList"></div>
     <div class="netBtn ghostBtn" id="cmClose">CLOSE</div>
@@ -1436,7 +1436,7 @@
 </div>
 <div id="questModal" class="hidden">
   <div id="questCard">
-    <div id="questTitle">🎯 DAILY QUESTS</div>
+    <div id="questTitle">DAILY QUESTS</div>
     <div id="questList"></div>
     <div style="font-size:10px;color:#9a90ae;margin-top:6px">Resets daily · rewards paid instantly</div>
     <div class="netBtn ghostBtn" id="questClose">CLOSE</div>
@@ -1448,7 +1448,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.22';
+(function(){ const BUILD='v11.23';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -1956,9 +1956,9 @@ function renderShop(){                                   // menu car panel: name
   if(isOwned(i)){ st.className='owned'; st.textContent=(c.price>0?'✓ OWNED':'STARTER CAR'); st.onclick=null;
     btn.classList.remove('locked'); btn.innerHTML='▶&nbsp; RACE'; }
   else { const afford=coins>=c.price; st.className='lock'+(afford?' afford':'');
-    st.textContent=(afford?'UNLOCK · ':'🔒 ')+c.price+' 🪙';
+    st.textContent=(afford?'UNLOCK · ':'LOCKED · ')+c.price+' CR';
     st.onclick=(e)=>{ if(e) e.stopPropagation(); if(coins>=CARS[i].price){ coins-=CARS[i].price; saveCoins(); renderCoins(); ownedCars[i]=true; saveOwned(); renderShop(); } };
-    btn.classList.add('locked'); btn.innerHTML='🔒 UNLOCK TO RACE'; }
+    btn.classList.add('locked'); btn.innerHTML='UNLOCK TO RACE'; }
   renderKits(); renderArsenal(); renderPaints(); renderStyles(); renderWraps(); renderFlags(); renderParts();
 }
 function renderArsenal(){                                 // GLOBAL battle-royale weapon upgrades (apply to whichever car you fight in)
@@ -1968,7 +1968,7 @@ function renderArsenal(){                                 // GLOBAL battle-royal
     const el=document.createElement('div'); el.className='kit'+(max?' max':(afford?' afford':' poor'));
     el.innerHTML='<span class="ki">'+w.icon+'</span><b>'+w.name+'</b>'+
       '<span class="pips">'+[0,1,2].map(p=>'<i class="'+(p<lv?'on':'')+'"></i>').join('')+'</span>'+
-      '<span class="kc">'+(max?'MAX':('+'+cost+' 🪙'))+'</span>';
+      '<span class="kc">'+(max?'MAX':('+'+cost+' CR'))+'</span>';
     if(!max) el.onclick=(e)=>{ if(e) e.stopPropagation(); buyWeapon(w.key); };
     host.appendChild(el); });
 }
@@ -2049,7 +2049,7 @@ function renderKits(){
     const el=document.createElement('div'); el.className='kit'+(max?' max':(afford?' afford':' poor'));
     el.innerHTML='<span class="ki">'+k.icon+'</span><b>'+k.name+'</b>'+
       '<span class="pips">'+[0,1,2].map(p=>'<i class="'+(p<lv?'on':'')+'"></i>').join('')+'</span>'+
-      '<span class="kc">'+(max?'MAX':('+'+cost+' 🪙'))+'</span>';
+      '<span class="kc">'+(max?'MAX':('+'+cost+' CR'))+'</span>';
     if(!max) el.onclick=(e)=>{ if(e) e.stopPropagation(); buyKit(i,k.key); };
     host.appendChild(el); });
 }
@@ -2159,12 +2159,12 @@ let passport={}; try{ passport=JSON.parse(localStorage.getItem('sd_passport')||'
 function stampCity(){ const t=TRACKS[currentTrack]; if(!t||!t.osm||passport[t.osm]) return false;
   passport[t.osm]=1; try{ localStorage.setItem('sd_passport', JSON.stringify(passport)); }catch(e){}
   const total=TRACKS.filter(x=>x.osm).length, got=Object.keys(passport).length;
-  popup('🛂 PASSPORT STAMPED — '+t.name+' ('+got+'/'+total+' cities)', '#7ce0ff');
-  if(got>=total) popup('🌍 WORLD CONQUERED — every real city won!', '#ffd24a');
+  popup('PASSPORT STAMPED — '+t.name+' ('+got+'/'+total+' cities)', '#7ce0ff');
+  if(got>=total) popup('WORLD CONQUERED — every real city won!', '#ffd24a');
   return true; }
 function renderPassport(){ const el=document.getElementById('passportRow'); if(!el) return;
   const osm=TRACKS.map((t,i)=>({t,i})).filter(x=>x.t.osm);
-  el.innerHTML='🛂 '+osm.map(x=>'<span class="ppStamp'+(passport[x.t.osm]?' got':'')+'" title="'+x.t.name+'">'+(passport[x.t.osm]?'●':'○')+'</span>').join('')+
+  el.innerHTML=''+osm.map(x=>'<span class="ppStamp'+(passport[x.t.osm]?' got':'')+'" title="'+x.t.name+'">'+(passport[x.t.osm]?'●':'○')+'</span>').join('')+
     ' <b>'+Object.keys(passport).length+'/'+osm.length+'</b>'; }
 // CITY OF THE DAY — the featured real-city circuit rotates daily (UTC): star badge + DOUBLE COINS.
 // This is the retention loop on top of the OSM self-growth pipeline: new cities auto-join the rotation.
@@ -2175,7 +2175,7 @@ function cityOfTheDay(){ const osm=[]; TRACKS.forEach((t,i)=>{ if(t.osm) osm.pus
 function markCityOfTheDay(){ const c=cityOfTheDay(); if(c<0) return;
   document.querySelectorAll('.trackBtn').forEach(b=>{ const i=+b.dataset.i;
     let st=b.querySelector('.cotd');
-    if(i===c){ if(!st){ st=document.createElement('div'); st.className='cotd'; st.textContent='⭐ 2X'; b.appendChild(st); } }
+    if(i===c){ if(!st){ st=document.createElement('div'); st.className='cotd'; st.textContent='2X'; b.appendChild(st); } }
     else if(st) st.remove(); }); }
 function trackDifficulties(){ if(_trackDiffCache) return _trackDiffCache;
   const curv=(ctrl)=>{ try{ const v=ctrl.map(pt=>new THREE.Vector3(pt[0],0,pt[1]));
@@ -2198,14 +2198,14 @@ function dailyDoneToday(){ return dailyState.day===dayNum(); }
 function startDaily(){ if(!isOwned(selectedCar)){ renderShop(); return; } dailyActive=true; champ.active=false; const ti=dailyTrackIdx(); currentTrack=ti; selectTrack(ti); startGame(); }
 function renderDaily(){ const c=document.getElementById('dailyCard'); if(!c) return; const t=TRACKS[dailyTrackIdx()], done=dailyDoneToday();
   const tt=document.getElementById('dcTrack'); if(tt) tt.textContent='· '+t.name;
-  const ds=document.getElementById('dcStreak'); if(ds) ds.innerHTML=(dailyState.streak>0?('🔥 '+dailyState.streak):'')+(done&&dailyState.best?(' <span style="color:#5fe08a">'+fmt(dailyState.best)+'</span>'):'');
+  const ds=document.getElementById('dcStreak'); if(ds) ds.innerHTML=(dailyState.streak>0?('STREAK '+dailyState.streak):'')+(done&&dailyState.best?(' <span style="color:#5fe08a">'+fmt(dailyState.best)+'</span>'):'');
   const dp=document.getElementById('dcPlay'); if(dp) dp.innerHTML=(done?'REPLAY':'PLAY')+'&nbsp;▸'; }
 // ---- DAILY QUESTS: 3 rotating goals per day (retention). Deterministic by dayNum, progress persisted, coin rewards. ----
 const QUEST_POOL=[
-  {type:'finish', verb:'Finish',  unit:'races',            tgts:[2,3,4],       rew:80,  icon:'🏁'},
-  {type:'win',    verb:'Win',     unit:'races',            tgts:[1,2,3],       rew:130, icon:'🏆'},
-  {type:'kill',   verb:'Destroy', unit:'cars in Battle',   tgts:[2,3,5],       rew:120, icon:'💥'},
-  {type:'drift',  verb:'Drift',   unit:'meters',           tgts:[400,700,1100],rew:100, icon:'🌀'},
+  {type:'finish', verb:'Finish',  unit:'races',            tgts:[2,3,4],       rew:80,  icon:'R'},
+  {type:'win',    verb:'Win',     unit:'races',            tgts:[1,2,3],       rew:130, icon:'W'},
+  {type:'kill',   verb:'Destroy', unit:'cars in Battle',   tgts:[2,3,5],       rew:120, icon:'B'},
+  {type:'drift',  verb:'Drift',   unit:'meters',           tgts:[400,700,1100],rew:100, icon:'D'},
 ];
 let quests=[], _questDrift=0;
 function _qrand(seed){ let x=(seed*2654435761)&0x7fffffff; return function(){ x=(x*1103515245+12345)&0x7fffffff; return x/0x7fffffff; }; }
@@ -2226,7 +2226,7 @@ function questProgress(type, amt){ if(!quests.length) loadQuests(); let any=fals
 function questDrift(distM){ _questDrift+=distM; if(_questDrift>=20){ const m=Math.floor(_questDrift); _questDrift-=m; questProgress('drift', m); } }
 function renderQuests(){ const list=document.getElementById('questList'); if(!list) return; if(!quests.length) loadQuests();
   const done=quests.filter(q=>q.done).length;
-  const tt=document.getElementById('questTitle'); if(tt) tt.innerHTML='🎯 DAILY QUESTS <span style="font-size:11px;color:#9a90ae">'+done+'/3</span>';
+  const tt=document.getElementById('questTitle'); if(tt) tt.innerHTML='DAILY QUESTS <span style="font-size:11px;color:#9a90ae">'+done+'/3</span>';
   list.innerHTML=quests.map(q=>{ const pct=Math.round(q.prog/q.target*100);
     return '<div class="qRow'+(q.done?' qDone':'')+'"><div class="qIco">'+q.icon+'</div><div class="qMid"><div class="qLbl">'+q.label+(q.done?' ✔':'')+'</div>'
       +'<div class="qBar"><i style="width:'+pct+'%"></i></div></div><div class="qRew">'+(q.done?'DONE':'+'+q.rew)+'</div></div>'; }).join(''); questBadge(); }
@@ -2287,7 +2287,7 @@ function renderStars(n){ const host=document.getElementById('resStars'); if(!hos
 function renderTrackStars(){ document.querySelectorAll('.trackBtn').forEach(b=>{ const i=+b.dataset.i;
   const lock=trackLocked(i); b.classList.toggle('locked', lock);
   let lk=b.querySelector('.clock'); if(!lk){ lk=document.createElement('div'); lk.className='clock'; b.appendChild(lk); }
-  lk.textContent = lock ? '🔒' : '';
+  lk.textContent = lock ? '✕' : '';
   let el=b.querySelector('.cstars');
   if(!el){ el=document.createElement('div'); el.className='cstars'; b.appendChild(el); }
   const s=trackStars[i]||0; el.innerHTML='<b>'+'★'.repeat(s)+'</b>'+'★'.repeat(3-s);
@@ -3132,11 +3132,11 @@ function arcadePickups(c, dt){       // player only, during a race
     const dx=c.pos.x-pd.x, dz=c.pos.y-pd.z; if(dx*dx+dz*dz<26){ pd.hit=2.0;
       c.boost=CONFIG.boostMax*(c.nosMax||1); c._padBoost=0.65*(c.nosFill||1); camShake=Math.min(camShake+0.3,1);   // pad fills the full (NOS) tank
       sparks.emit(pd.x,0.4+(c.visY||0),pd.z,(Math.random()-.5)*6,2.2,(Math.random()-.5)*6,0.3,12);
-      audio&&audio.boost(); popup('⚡ BOOST','#ffb14d'); } }
+      audio&&audio.boost(); popup('BOOST','#ffb14d'); } }
   for(let i=0;i<wrenchList.length;i++){ const w=wrenchList[i]; if(!w.alive) continue;   // REPAIR: drive through a wrench -> panels self-heal
     const dx=c.pos.x-w.x, dz=c.pos.y-w.z; if(dx*dx+dz*dz<7.5){ w.alive=false; w.g.visible=false; w.t=(typeof brActive!=='undefined'&&brActive)?6:18;
       if(typeof repairPanels==='function') repairPanels(c);
-      camShake=Math.min(camShake+0.15,1); audio&&audio.coin&&audio.coin(); popup('🔧 REPAIRED','#8fd4ff'); } }
+      camShake=Math.min(camShake+0.15,1); audio&&audio.coin&&audio.coin(); popup('REPAIRED','#8fd4ff'); } }
   for(let i=0;i<coinList.length;i++){ const co=coinList[i]; if(!co.alive) continue;
     const dx=c.pos.x-co.x, dz=c.pos.y-co.z; if(dx*dx+dz*dz<7.0){ co.alive=false; coins++; coinGrab++; renderCoins(); saveCoins();
       sparks.emit(co.x,1.2+(c.visY||0),co.z,(Math.random()-.5)*5,3.6,(Math.random()-.5)*5,0.35,16); audio&&audio.coin();
@@ -3210,7 +3210,7 @@ function updateObstacles(c, dt){ if(!obstacles.length) return;
       camShake=Math.min(camShake+(o.type==='dumpster'?0.5:0.34),1);
       obSpawnDebris(o.x,(sampleElev[o.idx]||0)+0.6,o.z);
       if(typeof sparks!=='undefined'&&sparks) sparks.emit(o.x,(sampleElev[o.idx]||0)+0.6,o.z,(Math.random()-.5)*6,3.2,(Math.random()-.5)*6,0.4,14);
-      audio&&audio.thud&&audio.thud(0.75); popup('💥 SMASH','#ff6a4d'); combo=1; }
+      audio&&audio.thud&&audio.thud(0.75); popup('SMASH','#ff6a4d'); combo=1; }
   }
 }
 // AI: lateral offset to steer around a solid obstacle near the aim point
@@ -5369,7 +5369,7 @@ function carToonize(rig){
       color:tcol,
       map:src.map||null, gradientMap:_carToonGrad(mode),
       transparent:!!src.transparent, opacity:(src.opacity!=null?src.opacity:1) });
-    if(src.emissive){ tm.emissive=src.emissive.clone(); tm.emissiveIntensity=(src.emissiveIntensity!=null?src.emissiveIntensity:1); if(src.emissiveMap) tm.emissiveMap=src.emissiveMap; }
+    if(src.emissive){ tm.emissive=src.emissive.clone(); tm.emissiveIntensity=Math.min(0.22, src.emissiveIntensity!=null?src.emissiveIntensity:1); if(src.emissiveMap) tm.emissiveMap=src.emissiveMap; }   // owner: no headlight glow on style cars — flat cel lamps, not lit lamps
     o.material=tm; o.userData._toonMode=mode;
     const glassy=src.transparent && src.opacity!=null && src.opacity<0.95;
     if(!glassy && !o.userData._hasInk){ o.userData._hasInk=true;
@@ -6012,7 +6012,7 @@ const CAM_VIEWS=[                                              // press C / tap 
 let camView=0;
 function loadCamView(){ try{ camView=Math.min(CAM_VIEWS.length-1, Math.max(0, parseInt(localStorage.getItem('sd_cam'))||0)); }catch(e){ camView=0; } }
 function cycleCam(){ camView=(camView+1)%CAM_VIEWS.length; try{ localStorage.setItem('sd_cam',camView); }catch(e){}
-  popup('📷 '+CAM_VIEWS[camView].name+' VIEW', '#7ce0ff'); }
+  popup(CAM_VIEWS[camView].name+' VIEW', '#7ce0ff'); }
 let _scy=null, _camDist=null, _povRoll=0;   // smoothed camera elevation + collision distance + interior head-roll
 // COCKPIT DASH: camera-attached interior (dash slab + working steering wheel) so the interior
 // POV reads as a car, not a floating windshield. Built once, toggled by the cockpit view.
@@ -6230,7 +6230,7 @@ function updateHUD(){
   if(elRival && rv && state==='race'){
     const gapS=prog(player)-prog(rv), name=RACER_NAMES[rivalIdx]||'RIVAL';
     elRival.classList.remove('hidden');
-    const txt='⚔ '+name+'  '+(gapS>=0?'+':'−')+(Math.abs(gapS)/28).toFixed(1)+'s';
+    const txt=name+'  '+(gapS>=0?'+':'−')+(Math.abs(gapS)/28).toFixed(1)+'s';
     if(txt!==_rivalTxt){ elRival.textContent=txt; _rivalTxt=txt; }
     const rivAhead=gapS<0;
     if(player._rivAhead!==undefined && player._rivAhead!==rivAhead && Math.abs(gapS)<SAMPLES*0.5 && raceTime-(player._rivCallT||-9)>3){
@@ -6299,18 +6299,18 @@ function startChampionship(){
 function showStandings(){
   const N=champ.order.length, done=champ.round>=N;
   cars.forEach((c,i)=>{ champ.points[i]=(champ.points[i]||0)+(CHAMP_PTS[rankOf(c)-1]||0); });   // award this round
-  document.getElementById('champTitle').textContent = done?'🏆 CHAMPIONSHIP WON?' : '🏆 CHAMPIONSHIP';
+  document.getElementById('champTitle').textContent = done?'CHAMPIONSHIP WON?' : 'CHAMPIONSHIP';
   const order=cars.map((c,i)=>({i,pts:champ.points[i]})).sort((a,b)=>b.pts-a.pts);
   const myPos=order.findIndex(o=>o.i===0)+1;
   document.getElementById('champRound').textContent = done ? ('FINAL · YOU FINISHED '+ordinal(myPos)) : ('ROUND '+champ.round+' / '+N+' DONE');
-  if(done) document.getElementById('champTitle').textContent = myPos===1?'🏆 CHAMPION!' : '🏁 CHAMPIONSHIP OVER';
+  if(done) document.getElementById('champTitle').textContent = myPos===1?'CHAMPION!' : 'CHAMPIONSHIP OVER';
   const tbl=document.getElementById('champTable'); tbl.innerHTML='';
   order.forEach((o,k)=>{ const row=document.createElement('div'); row.className='champRow'+(o.i===0?' you':'');
     row.innerHTML='<div class="pos">'+(k+1)+'</div><div class="nm">'+(RACER_NAMES[o.i]||('CPU'+o.i))+'</div><div class="pts">'+o.pts+' pts</div>';
     tbl.appendChild(row); });
   const nb=document.getElementById('champNext');
   if(done){ const bonus=[700,350,180,80][myPos-1]||50; coins+=bonus; saveCoins(); renderCoins();
-    nb.textContent='CLAIM '+bonus+' 🪙  ·  FINISH'; champ.active=false; }
+    nb.textContent='CLAIM '+bonus+' CR  ·  FINISH'; champ.active=false; }
   else nb.textContent='NEXT: '+TRACKS[champ.order[champ.round]].name+' →';
   document.getElementById('champ').classList.remove('hidden');
 }
@@ -6501,13 +6501,13 @@ function updateZone(dt){
       zoneX1=zoneX0+Math.cos(ang)*off; zoneZ1=zoneZ0+Math.sin(ang)*off;   // new centre stays inside the old ring (forces a rotation)
       zoneDur=Math.max(ZONE.closeMin, ZONE.closeBase-zoneRound*0.7);
       zonePhase='close'; zoneT=zoneDur;
-      popup('⚠️ ZONE CLOSING','#ff6a4d'); if(audio&&audio.ui) audio.ui();
+      popup('ZONE CLOSING','#ff6a4d'); if(audio&&audio.ui) audio.ui();
     }
   } else {                                                          // closing: ease radius + centre from old to new
     const k=zoneDur>0?clamp(1-zoneT/zoneDur,0,1):1, e=k*k*(3-2*k);
     zoneR=zoneR0+(zoneR1-zoneR0)*e; zoneCX=zoneX0+(zoneX1-zoneX0)*e; zoneCZ=zoneZ0+(zoneZ1-zoneZ0)*e;
     if(zoneT<=0){ zoneR=zoneR1; zoneCX=zoneX1; zoneCZ=zoneZ1; zonePhase='hold';
-      zoneT=(zoneR1<=BR.zoneMin+1)?1e9:ZONE.hold; if(zoneR1>BR.zoneMin+1) popup('✔ ZONE SET','#7ce0ff'); }
+      zoneT=(zoneR1<=BR.zoneMin+1)?1e9:ZONE.hold; if(zoneR1>BR.zoneMin+1) popup('ZONE SET','#7ce0ff'); }
   }
   if(zoneMesh){ zoneMesh.position.set(zoneCX,45,zoneCZ); zoneMesh.scale.set(zoneR,1,zoneR);   // wall now MOVES with the re-centring circle
     if(zoneMesh.userData.tex){ zoneMesh.userData.tex.offset.y-=dt*(zonePhase==='close'?0.9:0.4); zoneMesh.userData.tex.offset.x+=dt*0.05; }
@@ -6657,7 +6657,7 @@ function spawnPickup(type){ const central=type==='supply';
   const m=buildPickupMesh(type); m.position.set(x,y,z); scene.add(m); pickups.push({m,type,x,z,base:y,spin:Math.random()*6}); }
 function updatePickups(dt){ pickupTimer-=dt;
   if(pickups.length<4 && pickupTimer<=0){ pickupTimer=3.5; spawnPickup(Math.random()<0.55?'heal':'rkt'); }
-  brSupplyT-=dt; if(brSupplyT<=0 && !pickups.some(p=>p.type==='supply')){ brSupplyT=17; spawnPickup('supply'); if(brActive) flash('📦 SUPPLY DROP','good'); }   // periodic contested drop
+  brSupplyT-=dt; if(brSupplyT<=0 && !pickups.some(p=>p.type==='supply')){ brSupplyT=17; spawnPickup('supply'); if(brActive) flash('SUPPLY DROP','good'); }   // periodic contested drop
   for(let i=pickups.length-1;i>=0;i--){ const p=pickups[i]; p.spin+=dt; p.m.rotation.y=p.spin*(p.type==='supply'?0.8:1.4); p.m.position.y=p.base+Math.sin(p.spin*2.0)*(p.type==='supply'?0.34:0.3);
     const rg=p.m.userData.fxRing; if(rg){ rg.rotation.z+=dt*2.4; const s=1+Math.sin(p.spin*3)*0.08; rg.scale.set(s,s,s); }   // energy ring tumbles + pulses
     const pd=p.m.userData.fxPad; if(pd) pd.position.y=0.12-p.m.position.y;                                                 // keep the hover-glow pinned to the street
@@ -6669,7 +6669,7 @@ function collectPickup(p,c){ if(p.type==='supply'){ c.hp=Math.min(c.hpMax||BR.ma
   else if(p.type==='heal'){ c.hp=Math.min(c.hpMax||BR.maxHP, c.hp+55); if(c.isPlayer) updateBRHud(); }
   else { c.rkAmmo=(c.rkAmmo||0)+2; if(c.isPlayer) updateBRHud(); }
   for(let i=0;i<10;i++) sparks.emit(p.x,p.base+0.4,p.z,(Math.random()-.5)*6,3+Math.random()*3,(Math.random()-.5)*6, 0.4, 6);
-  if(c.isPlayer){ flash(p.type==='supply'?'📦 SUPPLY! +90 HP · +4 🚀':(p.type==='heal'?'+55 HP':'+2 🚀'),'good'); if(navigator.vibrate){try{navigator.vibrate(p.type==='supply'?30:14);}catch(e){}} } }
+  if(c.isPlayer){ flash(p.type==='supply'?'SUPPLY! +90 HP · +4 RKT':(p.type==='heal'?'+55 HP':'+2 RKT'),'good'); if(navigator.vibrate){try{navigator.vibrate(p.type==='supply'?30:14);}catch(e){}} } }
 /* ---- ENEMY HP BARS: floating billboards (research #1 tension driver) ---- */
 function buildHpBars(){ clearHpBars(); for(let i=0;i<cars.length;i++){ const g=new THREE.Group();
     const bg=new THREE.Mesh(new THREE.PlaneGeometry(2.3,0.36), new THREE.MeshBasicMaterial({color:0x0c0e12, transparent:true, opacity:0.72, depthTest:false})); bg.renderOrder=997;
@@ -7200,7 +7200,7 @@ function destroyProp(o, by){ o.alive=false;
   const pd=Math.hypot(o.x-player.pos.x, o.z-player.pos.y);
   if(pd<26) camShake=Math.min(camShake+(1-pd/26)*0.5, 1);
   if(audio&&audio.boom) audio.boom(clamp(1-pd/60, 0.12, 0.8));
-  if(by===player) popup('💥 DESTROYED','#ff8a4d'); }
+  if(by===player) popup('DESTROYED','#ff8a4d'); }
 function propsOnSegment(ax,az,bx,bz,rad,amt,by){                                    // gatling line-of-fire vs props
   const dx=bx-ax, dz=bz-az, len2=dx*dx+dz*dz||1;
   for(const o of brProps){ if(!o.alive) continue;
@@ -7279,19 +7279,19 @@ function brFinish(place){ state='finished'; hidePauseUI();
   const h=document.getElementById('brHud'); if(h) h.classList.remove('show');
   const won=place===1, reward=won?600:Math.max(60,Math.round(360/place));
   coins+=reward; saveCoins(); renderCoins();
-  document.getElementById('resTitle').innerHTML = won?'👑 VICTORY ROYALE!' : '☠️ ELIMINATED';
+  document.getElementById('resTitle').innerHTML = won?'VICTORY ROYALE!' : 'ELIMINATED';
   document.getElementById('resPos').innerHTML = '#'+place+' <span style="font-size:.5em;opacity:.7">/ '+cars.length+'</span>';
-  document.getElementById('resStats').innerHTML = won?'Last car standing. 👑' : ('Placed '+ordinal(place)+' of '+cars.length+'.');
+  document.getElementById('resStats').innerHTML = won?'Last car standing.' : ('Placed '+ordinal(place)+' of '+cars.length+'.');
   const rs=document.getElementById('resStars'); if(rs) rs.querySelectorAll('i').forEach(el=>el.classList.remove('on'));
-  animateCount(document.getElementById('resReward'), reward, '+', ' 🪙');
+  animateCount(document.getElementById('resReward'), reward, '+', ' CR');
   document.getElementById('nextBtn').textContent='NEW BATTLE ▸';
   elResults.classList.remove('hidden'); if(audio&&audio.ok) audio.update(0,0,false); }
 function updateBRHud(){ const hpMax=player.hpMax||BR.maxHP, f=Math.max(0,player.hp||0)/hpMax;
   const bar=document.getElementById('brHpFill'); if(bar) bar.style.width=(f*100)+'%';
-  const al=document.getElementById('brAlive'); if(al) al.textContent='🔥 '+brAlive+' ALIVE';
-  const rk=document.getElementById('brRockets'); if(rk){ rk.textContent='🚀 ×'+(player.rkAmmo||0); rk.classList.toggle('empty',(player.rkAmmo||0)<=0); }
+  const al=document.getElementById('brAlive'); if(al) al.textContent=brAlive+' ALIVE';
+  const rk=document.getElementById('brRockets'); if(rk){ rk.textContent='RKT ×'+(player.rkAmmo||0); rk.classList.toggle('empty',(player.rkAmmo||0)<=0); }
   const lo=document.getElementById('lowHp'); if(lo) lo.style.opacity = f<0.35 ? ((0.35-f)/0.35*0.8).toFixed(2) : 0;
-  const zn=document.getElementById('brZone'); if(zn){ const closing=zonePhase==='close'; zn.textContent=(closing?'⚠ CLOSING ':'ZONE ')+Math.round(zoneR)+'m'; zn.classList.toggle('tight', closing||zoneR<BR.zoneMin+40); }
+  const zn=document.getElementById('brZone'); if(zn){ const closing=zonePhase==='close'; zn.textContent=(closing?'CLOSING ':'ZONE ')+Math.round(zoneR)+'m'; zn.classList.toggle('tight', closing||zoneR<BR.zoneMin+40); }
   const zo=document.getElementById('zoneOut'); if(zo){ const dC=Math.hypot(player.pos.x-zoneCX, player.pos.y-zoneCZ);
     if(!player.alive) zo.style.opacity=0;
     else if(dC>zoneR){ zo.classList.add('danger'); zo.style.opacity=(0.5+0.32*Math.abs(Math.sin(raceTime*5))).toFixed(2); }   // OUTSIDE the zone: red pulsing damage vignette
@@ -7356,7 +7356,7 @@ function finishRace(){
   if(!solo) try{ let ad=parseFloat(localStorage.getItem('sd_adapt')||'0')||0;
     ad = won ? Math.min(ad+0.07, 0.35) : (r>=3 ? Math.max(ad-0.10, 0) : ad);
     localStorage.setItem('sd_adapt', ad.toFixed(2));
-    if(won && ad>=0.14) popup("⚠️ RIVALS ADAPTING — getting faster", "#ff9a5a");
+    if(won && ad>=0.14) popup("RIVALS ADAPTING — getting faster", "#ff9a5a");
   }catch(e){}
   let prevGhostT=null; try{ const g=JSON.parse(localStorage.getItem('sd_ghost_'+currentTrack)||'null'); if(g) prevGhostT=g.time; }catch(e){}   // GHOST: time to beat (before we overwrite)
   if(ghostMesh) ghostMesh.visible=false; ghostActive=false; saveGhostIfBest();
@@ -7371,14 +7371,14 @@ function finishRace(){
   const cotdMul = (typeof cityOfTheDay==='function' && currentTrack===cityOfTheDay()) ? 2 : 1;   // CITY OF THE DAY pays double
   const reward=Math.round((([240,140,90,50][r-1]||30) + Math.max(0, Math.round((22-(bestLap||raceTime))*8)) + styleCoins) * diffMul) * cotdMul;   // place + lap-speed + style, scaled by track difficulty
   coins+=reward; saveCoins(); renderCoins();
-  if(cotdMul>1) popup('⭐ CITY OF THE DAY — 2X COINS!','#ffd24a');
+  if(cotdMul>1) popup('CITY OF THE DAY — 2X COINS!','#ffd24a');
   if(won) try{ stampCity(); }catch(e){}
   try{ if(typeof LB!=='undefined' && !brActive) LB.submitTrack(trackKeyNow(), lbName(), Math.round(raceTime*1000)); }catch(e){}
   { const rb=document.getElementById('resBoard'); if(rb){ rb.innerHTML='';                     // WORLD BOARD, right on the results card
     if(typeof LB!=='undefined' && LB.remote && !brActive){ const bk=trackKeyNow(), me=lbName();
       setTimeout(()=>{ try{ LB._top(bk, d=>{ if(!d||!d.rows||!d.rows.length) return;
         const myIdx=d.rows.findIndex(r2=>r2.name===me);
-        rb.innerHTML='<div class="rbTitle">🌐 WORLD BOARD'+(myIdx>=0?(' · YOU ARE #'+(myIdx+1)):'')+'</div>'
+        rb.innerHTML='<div class="rbTitle">WORLD BOARD'+(myIdx>=0?(' · YOU ARE #'+(myIdx+1)):'')+'</div>'
           + d.rows.slice(0,5).map((r2,i2)=>'<div class="lbRow'+(r2.name===me?' me':'')+'"><div class="rk">'+(i2+1)+'</div><div class="nm">'+(r2.name===me?'YOU':r2.name)+'</div><div class="tm">'+lbFmt(r2.ms)+'</div></div>').join('');
       }); }catch(e){} }, 1000); } } }
   { const db=document.getElementById('dblBtn'); if(db){ db._reward=reward;   // REWARDED AD: offer to double the winnings (only when an ad provider is available)
@@ -7391,19 +7391,19 @@ function finishRace(){
   if(won && currentTrack===maxTrack && maxTrack<TRACKS.length-1){ maxTrack++; saveMaxTrack(); unlockedName=TRACKS[maxTrack].name; }
   const prevBest=trackBest[currentTrack]; let newRecord=false;          // best total time per track
   if(prevBest===undefined || raceTime<prevBest){ trackBest[currentTrack]=raceTime; saveBest(); if(prevBest!==undefined) newRecord=true; }
-  const medal = r===1?'🥇 ':r===2?'🥈 ':r===3?'🥉 ':'';
-  document.getElementById('resTitle').textContent = newRecord?'⏱ NEW RECORD!' : (solo?(timeTrial?'⏱ TIME TRIAL':'FINISH!'):(won?'🏆 YOU WIN!':(r<=2?'PODIUM!':'FINISH!')));
-  if(wasDaily) document.getElementById('resTitle').innerHTML = '🔥 DAILY · '+dailyState.streak+' DAY'+(dailyState.streak===1?'':'S');   // daily streak headline
+  const medal = '';
+  document.getElementById('resTitle').textContent = newRecord?'NEW RECORD!' : (solo?(timeTrial?'TIME TRIAL':'FINISH!'):(won?'YOU WIN!':(r<=2?'PODIUM!':'FINISH!')));
+  if(wasDaily) document.getElementById('resTitle').innerHTML = 'DAILY · '+dailyState.streak+' DAY'+(dailyState.streak===1?'':'S');   // daily streak headline
   document.getElementById('resPos').innerHTML = solo ? '⏱' : (medal+ordinal(r));
   document.getElementById('resStats').innerHTML =
     lapSplitsHTML() + 'Total <b>'+fmt(raceTime)+'</b> &nbsp;·&nbsp; Best <b>'+fmt(bestLap)+'</b>'
-    + (unlockedName ? '<br><span style="font-size:.92em;color:#ffd24a;font-weight:800">🔓 UNLOCKED: '+unlockedName+'</span>' : '')
-    + (prevGhostT!=null ? '<br><span style="font-size:.82em">👻 '+(raceTime<prevGhostT
+    + (unlockedName ? '<br><span style="font-size:.92em;color:#ffd24a;font-weight:800">UNLOCKED: '+unlockedName+'</span>' : '')
+    + (prevGhostT!=null ? '<br><span style="font-size:.82em">GHOST '+(raceTime<prevGhostT
         ? '<span style="color:#5fe08a">−'+(prevGhostT-raceTime).toFixed(1)+'s vs your ghost</span>'
         : '<span style="opacity:.8">+'+(raceTime-prevGhostT).toFixed(1)+'s vs your ghost</span>')+'</span>' : '')
-    + (coinGrab>0?'<br><span style="font-size:.82em;opacity:.85">🪙 '+coinGrab+' collected on track</span>':'');
+    + (coinGrab>0?'<br><span style="font-size:.82em;opacity:.85">'+coinGrab+' CR collected on track</span>':'');
   renderStars(stars);
-  animateCount(document.getElementById('resReward'), reward, '+', ' 🪙'+(runScore>0?'   ·   '+Math.round(runScore).toLocaleString()+' pts':''));
+  animateCount(document.getElementById('resReward'), reward, '+', ' CR'+(runScore>0?'   ·   '+Math.round(runScore).toLocaleString()+' pts':''));
   let nextIdx=(currentTrack+1)%TRACKS.length; if(trackLocked(nextIdx)) nextIdx=0;   // don't send NEXT to a still-locked track
   document.getElementById('nextBtn').textContent = 'NEXT: '+TRACKS[nextIdx].name+' →';
   elResults.classList.remove('hidden');
@@ -7833,7 +7833,7 @@ function voxelizeCar(car){
       const bk={b:[],g:[],l:[]}; cells.forEach(cell=>{ bk[cell.k==='g'?'g':(cell.k==='l'?'l':'b')].push(cell); });
       const mats={ b:new THREE.MeshStandardMaterial({roughness:0.94, metalness:0.0, flatShading:true}),
         g:new THREE.MeshStandardMaterial({roughness:0.14, metalness:0.35, flatShading:true, transparent:true, opacity:0.92}),
-        l:new THREE.MeshBasicMaterial({toneMapped:false}) };
+        l:new THREE.MeshStandardMaterial({roughness:0.35, metalness:0.15, flatShading:true}) };   // owner: NO glow effect on style-car headlights — lit lens colour, scene-shaded like the rest
       for(const k of ['b','g','l']){ const list=bk[k]; if(!list.length){ mats[k].dispose(); continue; }
         const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(cube,cube,cube), mats[k], list.length);
         const m4=new THREE.Matrix4(); let i=0;
@@ -7845,7 +7845,7 @@ function voxelizeCar(car){
             else col.setHSL(Math.round(hsl.h*16)/16, Math.min(0.95,Math.round(hsl.s*0.95*6)/6), Math.min(0.9,Math.max(0.12,Math.round(hsl.l*9)/9))); }   // averaged body colour, quantised (v2: finer palette so livery detail survives the smaller cubes)
           inst.setColorAt(i,col); i++; }
         inst.instanceMatrix.needsUpdate=true; if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
-        inst.castShadow=(k!=='l'); inst.receiveShadow=false; inst.userData._voxel=true; inst.frustumCulled=false; group.add(inst); }
+        inst.castShadow=true; inst.receiveShadow=(k==='b'); inst.userData._voxel=true; inst.frustumCulled=false; group.add(inst); }   // owner: better shadows/shading — cubes self-shadow (body receives, all cast)
     }
     build(bodyCells, bodyCube); build(wheelCells, wheelCube);
     grp.add(group); rig._voxelMesh=group;
@@ -8056,7 +8056,7 @@ function init(){
   document.body.classList.add('inmenu');                  // start on the menu -> driving controls hidden until RACE
   document.getElementById('lapTot').textContent=CONFIG.laps;
   if(isTouch) document.getElementById('keysHint').innerHTML=
-    'Steer with the <b>joystick</b> &nbsp;•&nbsp; hold <b>GAS</b> ⬆ / <b>BRAKE</b> ⬇ (hold to reverse)<br><b>DRIFT</b> round corners &nbsp;•&nbsp; <b>BOOST</b> for speed';
+    'Steer with the <b>joystick</b> &nbsp;•&nbsp; hold <b>GAS</b> ↑ / <b>BRAKE</b> ↓ (hold to reverse)<br><b>DRIFT</b> round corners &nbsp;•&nbsp; <b>BOOST</b> for speed';
 
   scene=new THREE.Scene();
   scene.fog=new THREE.Fog(CONFIG.colors.fog, 120, 760);
@@ -8319,14 +8319,14 @@ function init(){
     if(t.osm) return (t.sub||'').split('·')[0].trim() || t.name;
     return t.name||('ARENA '+ti); }
   // card icons: the trackBtn .ic emojis are swapped for mini-map SVGs at runtime, so map city/theme directly
-  const BR_CITY_ICO={newyork:'🗽',miami:'🌴',puertorico:'🏝️',london:'🎡',paris:'🗼',tokyo:'🗾',berlin:'🐻',dubai:'🏙️',rio:'⛰️',moscow:'🏰',mumbai:'🕌',seoul:'🏯',shanghai:'🌃',rome:'🏛️',barcelona:'⛪',mexicocity:'🌵',buenosaires:'💃',sydney:'🎭',cairo:'🔺',havana:'🚗',toronto:'🌆',johannesburg:'🦁'};
-  const BR_THEME_ICO={city:'🌇',coast:'🌅',docks:'🏗️',beach:'🏖️',forest:'🌲',alpine:'🏔️',desert:'🏜️',neon:'🌃',canyon:'🧱',bayou:'🌿'};
-  function brCardIco(ti){ const t=TRACKS[ti]||{}; return BR_CITY_ICO[t.osm]||BR_THEME_ICO[t.theme]||'🏁'; }
+  const BR_CITY_ICO={newyork:'NYC',miami:'MIA',puertorico:'SJU',london:'LDN',paris:'PAR',tokyo:'TYO',berlin:'BER',dubai:'DXB',rio:'RIO',moscow:'MOW',mumbai:'BOM',seoul:'SEL',shanghai:'SHA',rome:'ROM',barcelona:'BCN',mexicocity:'MEX',buenosaires:'BUE',sydney:'SYD',cairo:'CAI',havana:'HAV',toronto:'YYZ',johannesburg:'JNB'};
+  const BR_THEME_ICO={city:'CTY',coast:'CST',docks:'DCK',beach:'BCH',forest:'FST',alpine:'ALP',desert:'DST',neon:'NEO',canyon:'CYN',bayou:'BYU'};
+  function brCardIco(ti){ const t=TRACKS[ti]||{}; return BR_CITY_ICO[t.osm]||BR_THEME_ICO[t.theme]||'GP'; }
   let _brPickBuilt=false, _brSelTi=0; const _brMeta={};
   function brDetailTags(ti){ const t=TRACKS[ti]||{}, p=[];
     if(t.theme) p.push(t.theme.toUpperCase());
     if(_brMeta[ti]) p.push(_brMeta[ti]);
-    if(t.osm) p.push('📍 REAL CITY');
+    if(t.osm) p.push('REAL CITY');
     return p.join('  ·  '); }
   function openBRDetail(ti){ _brSelTi=ti; const bp=document.getElementById('brPick'), bd=document.getElementById('brDetail'), t=TRACKS[ti]||{};
     document.getElementById('bdName').textContent=brCityLabel(ti);
@@ -8336,7 +8336,7 @@ function init(){
     catch(e){ try{ const acc=(typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[t.theme])||'#ff7a3c'; document.getElementById('bdMap').innerHTML=(typeof trackThumb==='function'&&t.ctrl)?trackThumb(t.ctrl,acc):''; }catch(e2){ document.getElementById('bdMap').innerHTML=''; } }
     let d=3; try{ d=(trackDifficulties()[ti])||3; }catch(e){}
     document.getElementById('bdDiff').innerHTML='DIFFICULTY  <span class="on">'+'★'.repeat(d)+'</span><span class="off">'+'★'.repeat(5-d)+'</span>';
-    document.getElementById('bdTags').textContent='⚔  '+brDetailTags(ti);
+    document.getElementById('bdTags').textContent=brDetailTags(ti);
     bd.classList.remove('hidden'); bp.classList.add('detailOpen'); if(window.audio&&audio.ui) audio.ui(); }
   function closeBRDetail(){ brDetailAnimStop(); document.getElementById('brDetail').classList.add('hidden'); document.getElementById('brPick').classList.remove('detailOpen'); }
   function openBRPick(){
@@ -8381,7 +8381,7 @@ function init(){
     document.getElementById('champ').classList.add('hidden');
     if(champ.active){ currentTrack=champ.order[champ.round]; selectTrack(currentTrack); startGame(); } else showMenu(); });
   document.querySelectorAll('.trackBtn').forEach(b=> b.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
-    const i=+b.dataset.i; if(trackLocked(i)){ popup('🔒 WIN THE TRACK BEFORE IT TO UNLOCK','#ffd24a'); return; } selectTrack(i); showTrackPreview(i);
+    const i=+b.dataset.i; if(trackLocked(i)){ popup('WIN THE TRACK BEFORE IT TO UNLOCK','#ffd24a'); return; } selectTrack(i); showTrackPreview(i);
     clearTimeout(window._toCarT);                                   // picking a track flows you into car selection (owner UX: track -> car -> race)
     window._toCarT=setTimeout(()=>{ if(state!=='menu') return;
       const go=()=>{ const gt=document.querySelector('#tabStrip .tab[data-tab="garage"]'); if(gt) gt.click(); };
@@ -8396,7 +8396,7 @@ function init(){
   const togRoam=document.getElementById('togRoam');
   if(togRoam) togRoam.addEventListener('click', e=>{ e.stopPropagation(); window.freeRoam=!window.freeRoam;
     togRoam.classList.toggle('on', window.freeRoam);
-    popup(window.freeRoam?'🧭 FREE ROAM: cruise anywhere, no barriers, no opponents':'🏁 RACE MODE','#7ce0ff'); });
+    popup(window.freeRoam?'FREE ROAM: cruise anywhere, no barriers, no opponents':'RACE MODE','#7ce0ff'); });
   togAuto.addEventListener('click', e=>{ e.stopPropagation(); autoDrive=!autoDrive; togAuto.classList.toggle('on',autoDrive);
     document.body.classList.toggle('autodrive', autoDrive); try{ localStorage.setItem('sd_auto', autoDrive?1:0); }catch(_){} });
   const togGhost=document.getElementById('togGhost');
@@ -8449,7 +8449,7 @@ function init(){
       renderer.shadowMap.enabled=sh; renderer.shadowMap.needsUpdate=true;
       scene&&scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; });
       if(typeof buildComposer==='function'){ buildComposer(); }
-      if(tq) tq.textContent='🖥 '+nm; };
+      if(tq) tq.textContent=nm; };
     if(tq){ tq.classList.add('on');
       tq.addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
         qi=(qi+1)%PRESETS.length; try{ localStorage.setItem('sd_qual',qi); }catch(e2){} applyQ(); }); }
@@ -8521,7 +8521,7 @@ function init(){
       location.reload(); }); }
   })();
   const volSlider=document.getElementById('volSlider'), muteBtn=document.getElementById('muteBtn');
-  const applyVol=()=>{ muteBtn.textContent = (muted||sfxVolume<=0) ? '🔇' : '🔊'; muteBtn.classList.toggle('on',!muted&&sfxVolume>0); if(audio) audio.setVolume(sfxVolume); };
+  const applyVol=()=>{ muteBtn.textContent = 'SFX'; muteBtn.classList.toggle('on',!muted&&sfxVolume>0); if(audio) audio.setVolume(sfxVolume); };
   try{ volSlider.value=Math.round(sfxVolume*100); }catch(e){}
   ['input','change'].forEach(ev=> volSlider.addEventListener(ev, e=>{ e.stopPropagation(); sfxVolume=(+volSlider.value)/100; muted=false; try{ localStorage.setItem('sd_sfxvol', sfxVolume); }catch(_){} applyVol(); }));
   volSlider.addEventListener('pointerdown', e=>e.stopPropagation());
@@ -8529,7 +8529,7 @@ function init(){
   applyVol();
   const musSlider=document.getElementById('musSlider'), musMuteBtn=document.getElementById('musMuteBtn');
   try{ musSlider.value=Math.round(musicVolume*100); }catch(e){}
-  const applyMus=()=>{ musMuteBtn.textContent=(musicMuted||musicVolume<=0)?'🔈':'🎵'; musMuteBtn.classList.toggle('on',!musicMuted&&musicVolume>0); applyMusicVol(); };
+  const applyMus=()=>{ musMuteBtn.textContent='MUSIC'; musMuteBtn.classList.toggle('on',!musicMuted&&musicVolume>0); applyMusicVol(); };
   ['input','change'].forEach(ev=> musSlider.addEventListener(ev, e=>{ e.stopPropagation(); musicVolume=(+musSlider.value)/100; musicMuted=false; try{ localStorage.setItem('sd_musvol', musicVolume); }catch(_){} applyMus(); if(currentTheme) playMusic(currentTheme.theme); }));
   musSlider.addEventListener('pointerdown', e=>e.stopPropagation());
   musMuteBtn.addEventListener('click', e=>{ e.stopPropagation(); musicMuted=!musicMuted; applyMus(); if(!musicMuted && currentTheme) playMusic(currentTheme.theme); });
@@ -8686,7 +8686,7 @@ let _lbTrackMode=false;
 function renderTrackBoard(){ const list=document.getElementById('lbList'); if(!list) return; _lbTrackMode=true;
   const rows=LB.topTrack(trackKeyNow());
   const tname=(currentTrack===CUSTOM_IDX)?((customTrack&&customTrack.name)||'CUSTOM'):(((typeof TRACKS!=='undefined'&&TRACKS[currentTrack])||{}).name||'TRACK');
-  const tt=document.getElementById('lbTitle'); if(tt) tt.textContent='🏁 TRACK BOARD';
+  const tt=document.getElementById('lbTitle'); if(tt) tt.textContent='TRACK BOARD';
   const sub=document.getElementById('lbSub'); if(sub) sub.textContent=tname+' · all-time best';
   const sh=document.getElementById('lbShare'); if(sh) sh.style.display=(currentTrack===CUSTOM_IDX)?'block':'none';
   list.innerHTML = rows.length ? rows.slice(0,12).map((r,i)=>
@@ -8834,7 +8834,7 @@ const Rewarded=(function(){
 (function(){
   const row=document.getElementById('carSlider'); if(!row) return;
   const menuEl=document.getElementById('menu'); if(menuEl && row.parentNode!==menuEl) menuEl.appendChild(row);   // escape transformed ancestors (fixed-positioning trap)
-  const CATS=[['ALL',null,'🏁'],['STREET','street','🏙️'],['JDM','jdm','⛩️'],['EXOTIC','exotic','💎'],['RACE','race','🏎️'],['HEAVY','heavy','🚚']];
+  const CATS=[['ALL',null,''],['STREET','street',''],['JDM','jdm',''],['EXOTIC','exotic',''],['RACE','race',''],['HEAVY','heavy','']];
   function carClass(i){ const d=CARS[i]||{}; if(d.kind==='doge') return 'street';
     const r=d.raw||'';
     if(/^(kart|mcl35m|nascar|racecar|timeattack)/.test(r)) return 'race';
@@ -8870,10 +8870,10 @@ const Rewarded=(function(){
     row.innerHTML='';
     CARS.forEach((c,i)=>{
       const d=document.createElement('div'); d.className='csChip'+(i===selectedCar?' sel':''); d.dataset.i=i;
-      const em=document.createElement('em'); em.className='ci'; em.textContent=catIco[carClass(i)]||'🏁'; d.appendChild(em);
+      const em=document.createElement('em'); em.className='ci'; em.textContent=catIco[carClass(i)]||''; d.appendChild(em);
       d.appendChild(document.createTextNode(c.name));
       const cl=clsOf(i); const cb=document.createElement('b'); cb.className='csCls '+cl[1]; cb.textContent=cl[0]; d.appendChild(cb);
-      if(!(typeof isOwned==='function'&&isOwned(i))){ const own=document.createElement('i'); own.className='csOwn'; own.textContent='🔒'; d.appendChild(own); }
+      if(!(typeof isOwned==='function'&&isOwned(i))){ const own=document.createElement('i'); own.className='csOwn'; own.textContent='✕'; d.appendChild(own); }
       d.onclick=()=>{ selectedCar=i; sync(); renderShop(); saveSelCar(); upgradeCars(); };
       row.appendChild(d); });
     applyCat();
@@ -8950,7 +8950,7 @@ window.NETRACE=false;
     // GUEST: if the connection to the host is gone mid-race, bail back to the menu cleanly (no frozen ghost race)
     if(!NET.host && NET.running && NET.conns.length===0){ NET.running=false; window.NETRACE=false; stand.classList.add('hidden');
       if(typeof showMenu==='function' && (state==='race'||state==='finished'||state==='countdown')) showMenu();
-      if(typeof popup==='function') popup('⚠️ Host disconnected', '#ff6a5a'); } }
+      if(typeof popup==='function') popup('Host disconnected', '#ff6a5a'); } }
   function broadcast(m,except){ NET.conns.forEach(c=>{ if(c.open && c.peer!==except) c.send(m); }); }
 
   // ---- host ----
@@ -9187,7 +9187,7 @@ window.NETRACE=false;
     save(t){ const a=this.list(); a.unshift(t); try{ localStorage.setItem('sd_mytracks', JSON.stringify(a.slice(0,40))); }catch(e){} },
     del(i){ const a=this.list(); a.splice(i,1); try{ localStorage.setItem('sd_mytracks', JSON.stringify(a)); }catch(e){} } };
   document.getElementById('edSave').onclick=()=>{ MT.save({ name:'Track '+(MT.list().length+1), t:theme, c:ctrl.map(p=>[p[0],p[1]]) });
-    document.getElementById('edHint').textContent='✔ Saved to My Tracks'; };
+    document.getElementById('edHint').textContent='Saved to My Tracks'; };
   function raceCustom(t){ try{ customTrack=makeCustomTrack(t.t, t.c); currentTrack=CUSTOM_IDX; overlay.classList.add('hidden');
     const mm=document.getElementById('mtModal'); if(mm) mm.classList.add('hidden'); document.body.classList.remove('inmenu');
     selectTrack(CUSTOM_IDX); if(typeof ownedCars!=='undefined' && !ownedCars[selectedCar]) ownedCars[selectedCar]=true; startGame(); }catch(e){} }
@@ -9234,14 +9234,14 @@ window.NETRACE=false;
 })();
 </script>
 <div id="brPick">
-  <div id="brPickHead"><span>⚔ CHOOSE YOUR ARENA</span><div id="brPickClose">✕</div></div>
+  <div id="brPickHead"><span>CHOOSE YOUR ARENA</span><div id="brPickClose">✕</div></div>
   <div id="brPickGrid"></div>
-  <div id="brPickFoot"><div class="gaBtn" id="brPickRandom">🎲 RANDOM CITY</div></div>
+  <div id="brPickFoot"><div class="gaBtn" id="brPickRandom">RANDOM CITY</div></div>
   <div id="brDetail" class="hidden">
-    <div id="bdTop"><div id="bdIcon">🏙️</div><div id="bdInfo"><div id="bdName">—</div><div id="bdMeta">—</div></div><div id="bdBack">✕</div></div>
+    <div id="bdTop"><div id="bdIcon">GP</div><div id="bdInfo"><div id="bdName">—</div><div id="bdMeta">—</div></div><div id="bdBack">✕</div></div>
     <div id="bdHolo"><i class="hScan"></i><div id="bdMap"></div></div>
     <div id="bdMid"><div id="bdDiff"></div><div id="bdTags"></div></div>
-    <div id="bdBtns"><div id="bdBattle">⚔ START BATTLE</div><div id="bdRace">▶ RACE</div></div>
+    <div id="bdBtns"><div id="bdBattle">START BATTLE</div><div id="bdRace">▶ RACE</div></div>
   </div>
 </div>
 <div id="globeModal">
@@ -9251,11 +9251,11 @@ window.NETRACE=false;
   <canvas id="globeCanvas"></canvas>
   <div id="globeActions">
     <div class="gaBtn primary" id="gaRace">▶ RACE</div>
-    <div class="gaBtn" id="gaGarage">🚗 GARAGE</div>
-    <div class="gaBtn" id="gaCup">🏆 CUP</div>
-    <div class="gaBtn" id="gaBattle">💥 BATTLE</div>
-    <div class="gaBtn" id="gaOnline">🌐 ONLINE</div>
-    <div class="gaBtn" id="gaSettings">⚙</div>
+    <div class="gaBtn" id="gaGarage">GARAGE</div>
+    <div class="gaBtn" id="gaCup">CUP</div>
+    <div class="gaBtn" id="gaBattle">BATTLE</div>
+    <div class="gaBtn" id="gaOnline">ONLINE</div>
+    <div class="gaBtn" id="gaSettings">SETTINGS</div>
   </div>
   <div id="globeCard" class="hidden">
     <div id="gcTop">
@@ -9268,7 +9268,7 @@ window.NETRACE=false;
       <div id="gcTrack"></div>
       <div id="gcInfo2"><div id="gcDiff"></div><div id="gcCar"></div></div>
     </div>
-    <div id="gcBtns"><div id="globeRace">RACE ▶</div><div id="globeBattle">⚔ BATTLE</div></div>
+    <div id="gcBtns"><div id="globeRace">RACE ▶</div><div id="globeBattle">BATTLE</div></div>
   </div>
 </div>
 <script>
@@ -9485,7 +9485,7 @@ window.NETRACE=false;
     const dd=document.getElementById('gcDiff'); if(dd){ let d=3; try{ d=trackDifficulties()[ti]||3; }catch(e){} dd.innerHTML='DIFFICULTY  <span class="on">'+'\u2605'.repeat(d)+'</span><span class="off">'+'\u2605'.repeat(5-d)+'</span>'; }
     const cc=document.getElementById('gcCar'); if(cc){ const GNAME={latin:'REGGAETON',funk:'BAILE FUNK',usa:'HIP-HOP',europe:'ELECTRO',phonk:'DRIFT PHONK',india:'BHANGRA',arabic:'ARABIC TRAP',afro:'AFRO HOUSE'};
       const nn=(typeof NATION!=='undefined'&&NATION[co.key])||{}; const gname=GNAME[nn.grp||'latin']||'';
-      cc.textContent='🏎 '+car+'  ·  '+gd.theme.toUpperCase()+(nn.district?'  ·  📍 REAL CITY':'')+(gname?('  ·  🎵 '+gname):''); }
+      cc.textContent=car+'  ·  '+gd.theme.toUpperCase()+(nn.district?'  ·  REAL CITY':'')+(gname?('  ·  '+gname):''); }
     document.getElementById('globeCard').classList.remove('hidden');
     const ga=document.getElementById('globeActions'); if(ga) ga.style.display='none'; }
   function close(){ clearDiorama(); document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
