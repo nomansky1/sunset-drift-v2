@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.24-->
+<!--BUILD:v11.25-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -613,6 +613,19 @@
   #globeModal{ position:fixed; inset:0; z-index:70; display:none;
     background:radial-gradient(circle at 50% 38%, #0d1030 0%, #060414 62%, #030209 100%); }
   #globeModal.show{ display:block; }
+  /* BATTLE DUALITY (owner: BR selection on the main globe, 'make something hot') — the same world turns EMBER */
+  #globeHeat{ position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .9s ease;
+    background:radial-gradient(circle at 50% 38%, #33100e 0%, #170507 58%, #070203 100%); }
+  #globeModal.battle #globeHeat{ opacity:1; }
+  #globeModal.battle #globeHint{ color:#ffc9b4; text-shadow:0 1px 2px #000, 0 0 14px rgba(255,90,50,.5); }
+  #globeModal.battle #globeCard{ border-color:rgba(255,120,90,.45);
+    box-shadow:0 0 0 1px rgba(255,90,60,.16), 0 18px 60px rgba(0,0,0,.62), 0 0 40px rgba(255,110,60,.24), inset 0 0 22px rgba(255,110,60,.07); }
+  #globeModal.battle #globeCard::before,#globeModal.battle #globeCard::after{ border-color:rgba(255,150,110,.9); }
+  #globeModal.battle #globeBattle{ flex:1.6; background:linear-gradient(95deg,#e8342e,#ff7a3c); color:#fff; text-shadow:0 1px 4px rgba(60,10,0,.5);
+    border-radius:11px; padding:11px 17px; box-shadow:0 6px 20px -6px rgba(255,80,40,.65); }
+  #globeModal.battle #globeRace{ flex:1; background:rgba(24,20,40,.72); color:#e8e2f4; box-shadow:none; border:1px solid rgba(255,255,255,.22); }
+  #globeModal.battle .gaBtn#gaBattle{ background:linear-gradient(95deg,#e8342e,#ff7a3c); color:#fff; border-color:transparent; }
+  #globeModal.battle #gdLogoGlobe .sub{ color:#ffd2bc; -webkit-text-fill-color:#ffd2bc; filter:drop-shadow(0 0 8px rgba(255,140,80,.7)); }
   #globeCanvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; display:block; }
   #globeCard.pop{ animation:gcPop .38s cubic-bezier(.2,1.4,.4,1); }
   @keyframes gcPop{ 0%{ transform:translateY(26px) scale(.86); opacity:0; } 100%{ transform:none; opacity:1; } }
@@ -1454,7 +1467,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.24';
+(function(){ const BUILD='v11.25';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -8381,7 +8394,8 @@ function init(){
       Array.prototype.forEach.call(grid.children, c=>c.classList.toggle('sel', +c.dataset.ti===currentTrack));
       grid.classList.remove('anim'); void grid.offsetWidth; grid.classList.add('anim'); }
   }
-  document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return; openBRPick(); });
+  document.getElementById('battleBtn').addEventListener('click', e=>{ e.stopPropagation(); if(state!=='menu') return;
+    if(typeof window.openGlobe==='function') window.openGlobe('battle'); else openBRPick(); });   // BR arena picking = the MAIN GLOBE in ember battle mode (owner)
   { const dc=document.getElementById('dailyCard'); if(dc) dc.addEventListener('click', e=>{ e.stopPropagation(); startDaily(); }); }
   document.getElementById('champNext').addEventListener('click', e=>{ e.stopPropagation();
     document.getElementById('champ').classList.add('hidden');
@@ -9251,6 +9265,7 @@ window.NETRACE=false;
   </div>
 </div>
 <div id="globeModal">
+  <div id="globeHeat"></div>
   <div id="globeClose">✕</div>
   <div id="gdLogoGlobe" class="gdLogo"><span class="l1">GLOBAL</span><span class="l2">DRIFT</span><span class="sub">LOW-POLY WORLD RACER</span></div>
   <div id="globeHint">TAP A COUNTRY · SPIN THE GLOBE</div>
@@ -9321,10 +9336,10 @@ window.NETRACE=false;
     // ANIMATED OCEANS (owner: animate water on the globe) — a shimmer shell just above the surface, masked
     // to water by the earth texture itself (blue-dominant = ocean), scrolling interference glints + a soft
     // fresnel rim. Additive + depthWrite:false so land/pins/borders stay crisp.
-    { const waterU={ uMap:{value:em.map}, uTime:{value:0} };
+    { const waterU={ uMap:{value:em.map}, uTime:{value:0}, uHot:{value:0} };
       const waterMat=new THREE.ShaderMaterial({ uniforms:waterU, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
         vertexShader:'varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-        fragmentShader:'uniform sampler2D uMap; uniform float uTime; varying vec2 vUv; varying vec3 vN;\n'+
+        fragmentShader:'uniform sampler2D uMap; uniform float uTime; uniform float uHot; varying vec2 vUv; varying vec3 vN;\n'+
           'void main(){ vec3 t=texture2D(uMap,vUv).rgb;\n'+
           '  float ocean=smoothstep(0.015,0.12,t.b-t.r)*(1.0-smoothstep(0.35,0.6,t.g));\n'+
           '  float w1=sin(vUv.x*160.0+uTime*0.7+sin(vUv.y*95.0-uTime*0.45)*1.6);\n'+
@@ -9332,18 +9347,20 @@ window.NETRACE=false;
           '  float g2=pow(max(0.0,w1*w2),6.0);\n'+
           '  float fr=pow(1.0-abs(vN.z),2.5);\n'+
           '  float a=ocean*(g2*0.45+fr*0.10+0.03*sin(uTime*0.8+vUv.x*40.0));\n'+
-          '  gl_FragColor=vec4(vec3(0.45,0.75,1.0), max(0.0,a)); }' });
+          '  gl_FragColor=vec4(mix(vec3(0.45,0.75,1.0), vec3(1.0,0.5,0.28), uHot), max(0.0,a)); }' });   // BATTLE: the oceans glint EMBER
       const water=new THREE.Mesh(new THREE.SphereGeometry(1.703,64,64), waterMat);
       grp.add(water); grp.userData._waterU=waterU; }
     try{ new THREE.TextureLoader().load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
       t=>{ t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; em.map=t; em.emissiveIntensity=0.4; em.emissive.setHex(0x223a5e); em.needsUpdate=true;
         if(grp&&grp.userData._waterU) grp.userData._waterU.uMap.value=t; }, undefined, ()=>{}); }catch(e){}
-    grp.add(new THREE.Mesh(new THREE.SphereGeometry(1.9,32,32), new THREE.MeshBasicMaterial({color:0x3f83ff,transparent:true,opacity:0.14,side:THREE.BackSide})));
+    { const atmo=new THREE.Mesh(new THREE.SphereGeometry(1.9,32,32), new THREE.MeshBasicMaterial({color:0x3f83ff,transparent:true,opacity:0.14,side:THREE.BackSide}));
+      grp.add(atmo); grp.userData._atmoM=atmo.material; }
     const sp=[]; let ss=7; const sr=()=>{ ss=(ss*16807)%2147483647; return ss/2147483647-0.5; };
     for(let i=0;i<650;i++){ const v=new THREE.Vector3(sr(),sr(),sr()); if(v.length()<0.05) continue; v.normalize().multiplyScalar(34+sr()*24); sp.push(v.x,v.y,v.z); }
     const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
     sc.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xdfe8ff,size:0.16,sizeAttenuation:true})));
-    sc.add(new THREE.AmbientLight(0xbcc8e6,0.55*Math.PI)); const dl=new THREE.DirectionalLight(0xfff4e2,1.05*Math.PI); dl.position.set(5,3,6); sc.add(dl);   // natural earth tones (was 3PI total = washed out)
+    const amb=new THREE.AmbientLight(0xbcc8e6,0.55*Math.PI); sc.add(amb); const dl=new THREE.DirectionalLight(0xfff4e2,1.05*Math.PI); dl.position.set(5,3,6); sc.add(dl);   // natural earth tones (was 3PI total = washed out)
+    grp.userData._amb=amb; grp.userData._dl=dl;
     const mg=new THREE.SphereGeometry(0.05,10,10);
     GLOBE.forEach((gd,i)=>{ const co=(typeof COUNTRIES!=='undefined'&&COUNTRIES[i])||{col:0xffffff}; const pos=llToVec(gd.lat,gd.lon,1.73);
       const pin=new THREE.Mesh(mg,new THREE.MeshBasicMaterial({color:co.col})); pin.position.copy(pos); pin.userData.i=i; grp.add(pin);
@@ -9360,12 +9377,21 @@ window.NETRACE=false;
         if(g.type==='Polygon') g.coordinates.forEach(ring);
         else if(g.type==='MultiPolygon') g.coordinates.forEach(function(poly){ poly.forEach(ring); }); });
       const bg=new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
-      grp.add(new THREE.LineSegments(bg, new THREE.LineBasicMaterial({color:0xbfeeff, transparent:true, opacity:0.55})));
+      const bm=new THREE.LineBasicMaterial({color:0xbfeeff, transparent:true, opacity:0.55});
+      grp.add(new THREE.LineSegments(bg, bm)); grp.userData._borderM=bm;
     }).catch(function(){}); }
   function resize(){ const cv=document.getElementById('globeCanvas'); const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
     if(ren){ ren.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); } }
   function loop(){ raf=requestAnimationFrame(loop);
     if(grp&&grp.userData._waterU) grp.userData._waterU.uTime.value=performance.now()*0.001;   // animated oceans
+    // BATTLE DUALITY: lerp the whole world cool<->ember (atmosphere, sun, ambient, borders, ocean glints)
+    if(Math.abs(heatT-heat)>0.002 || heat>0.002){ heat+=(heatT-heat)*0.055;
+      const u=grp.userData;
+      if(u._atmoM) u._atmoM.color.lerpColors(_heatC1.setHex(0x3f83ff), _heatC2.setHex(0xff4a2c), heat);
+      if(u._dl)    u._dl.color.lerpColors(_heatC1.setHex(0xfff4e2), _heatC2.setHex(0xffa070), heat);
+      if(u._amb)   u._amb.color.lerpColors(_heatC1.setHex(0xbcc8e6), _heatC2.setHex(0xd8a090), heat);
+      if(u._borderM) u._borderM.color.lerpColors(_heatC1.setHex(0xbfeeff), _heatC2.setHex(0xffb090), heat);
+      if(u._waterU) u._waterU.uHot.value=heat; }
     if(spinT!=null){ const d=Math.atan2(Math.sin(spinT-rot),Math.cos(spinT-rot)); rot+=d*0.12; tilt+=(tiltT-tilt)*0.12;
       if(Math.abs(d)<0.01){ spinT=null; } }
     else if(drag===null && picked<0) rot+=0.0024;                        // globe HOLDS STILL while the track card is open
@@ -9407,6 +9433,13 @@ window.NETRACE=false;
         const ga2=document.getElementById('globeActions'); if(ga2) ga2.style.display=''; } });
   }
   let spinT=null, tiltT=null, trackDio=null, dioSpin=null, camZT=6.1, uZoom=6.1;   // uZoom = user pinch/wheel dolly
+  let heat=0, heatT=0; const _heatC1=new THREE.Color(), _heatC2=new THREE.Color();  // 0=cool explorer globe, 1=EMBER battle globe
+  function setHeat(on, instant){ heatT=on?1:0; if(instant) heat=heatT;
+    const gm=document.getElementById('globeModal'); if(gm) gm.classList.toggle('battle', !!on);
+    const gh=document.getElementById('globeHint'); if(gh) gh.textContent = on ? 'PICK YOUR BATTLEGROUND · LAST CAR STANDING' : 'TAP A COUNTRY · SPIN THE GLOBE';
+    const gbb=document.getElementById('globeBattle'); if(gbb) gbb.textContent = on ? 'START BATTLE ▶' : 'BATTLE';
+    const grc=document.getElementById('globeRace'); if(grc) grc.textContent = on ? 'RACE' : 'RACE ▶'; }
+  window.__battleGlobe=()=>heatT>0.5;
   function clearDiorama(){ if(trackDio){ sc.remove(trackDio); trackDio.traverse(o=>{ if(o.isMesh){ o.geometry.dispose(); o.material.dispose(); } }); trackDio=null; dioSpin=null; } camZT=6.1; }
   function showTrackDiorama(ti){ clearDiorama(); const trk=TRACKS[ti]; if(!trk||!trk.ctrl||typeof THREE==='undefined') return;
     const acc=new THREE.Color((typeof TRACK_ACCENT!=='undefined'&&TRACK_ACCENT[trk.theme])||'#ffb13b');
@@ -9495,17 +9528,21 @@ window.NETRACE=false;
     document.getElementById('globeCard').classList.remove('hidden');
     const ga=document.getElementById('globeActions'); if(ga) ga.style.display='none'; }
   function close(){ clearDiorama(); document.getElementById('globeModal').classList.remove('show'); document.body.classList.remove('globe-open'); if(raf){ cancelAnimationFrame(raf); raf=0; } }
-  window.openGlobe=function(){ if(window.audio){ audio.start&&audio.start(); audio.ui&&audio.ui(); } init(); picked=-1;
+  window.openGlobe=function(mode){ if(window.audio){ audio.start&&audio.start(); audio.ui&&audio.ui(); } init(); picked=-1;
+    const gm=document.getElementById('globeModal'); const wasOpen=gm.classList.contains('show');
+    setHeat(mode==='battle', !wasOpen);                                   // fresh open snaps to the right skin; toggling while open ANIMATES the duality
     const gc=document.getElementById('globeCard'); if(gc) gc.classList.add('hidden'); const ga=document.getElementById('globeActions'); if(ga) ga.style.display='';
-    document.getElementById('globeModal').classList.add('show'); resize(); if(!raf) loop();
-    if(window.__logoHero) window.__logoHero(); };
+    gm.classList.add('show'); resize(); if(!raf) loop();
+    if(window.__logoHero && !wasOpen) window.__logoHero(); };
   window.addEventListener('resize', ()=>{ if(document.getElementById('globeModal').classList.contains('show')) resize(); });
   document.getElementById('globeClose').addEventListener('click', e=>{ e.stopPropagation(); close(); });
   document.getElementById('globeBattle').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return;
     const gd2=GLOBE[picked], ti2=trackForCountry(picked,gd2.theme); currentTrack=ti2;
+    window.__globeCountry=picked;                                          // battle in the picked COUNTRY (flags/signage/music)
     try{ if(typeof selectTrack==='function') selectTrack(ti2); }catch(_){}
-    const go2=()=>{ close(); const gt2=document.querySelector('.tab[data-tab="garage"]'); if(gt2) gt2.click();
-      if(typeof isOwned==='function' && isOwned(selectedCar)){ const b2=document.getElementById('battleBtn'); if(b2) b2.click(); } };   // owned car -> straight into battle; else pick a car first (BATTLE cta is right there)
+    const go2=()=>{ close();
+      if(typeof isOwned==='function' && isOwned(selectedCar) && typeof startBattle==='function'){ startBattle(); }   // straight into the fight — no second picker (owner: selection lives on the globe now)
+      else { const gt2=document.querySelector('.tab[data-tab="garage"]'); if(gt2) gt2.click(); } };                 // unowned car -> garage to pick one first
     (typeof playTransition==='function')? playTransition(go2) : go2(); });
   document.getElementById('globeRace').addEventListener('click', e=>{ e.stopPropagation(); if(picked<0) return; const gd=GLOBE[picked];
     selectedCar=picked%CARS.length; try{ if(typeof saveSelCar==='function') saveSelCar(); else localStorage.setItem('sd_car',selectedCar); }catch(_){}
@@ -9520,7 +9557,7 @@ window.NETRACE=false;
     (typeof playTransition==='function')? playTransition(go) : go(); });   // RACE = pick your track first (track -> car -> race)
   act('gaGarage', ()=>{ close(); const t=document.querySelector('.tab[data-tab="garage"]'); if(t) t.click(); });
   act('gaCup',    ()=>{ close(); const b=document.getElementById('champBtn'); if(b) b.click(); });
-  act('gaBattle', ()=>{ close(); const b=document.getElementById('battleBtn'); if(b) b.click(); });
+  act('gaBattle', ()=>{ setHeat(!window.__battleGlobe()); });   // DUALITY: the open globe itself turns ember (and back) — no modal swap
   act('gaOnline', ()=>{ close(); const b=document.getElementById('onlineBtn'); if(b) b.click(); });
   act('gaSettings',()=>{ close(); const t=document.querySelector('.tab[data-tab="settings"]'); if(t) t.click(); });
   const tw=document.getElementById('tabWorld'); if(tw) tw.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });   // (WORLD tab removed — kept for safety)
