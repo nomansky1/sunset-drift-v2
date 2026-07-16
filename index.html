@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.23-->
+<!--BUILD:v11.24-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -140,7 +140,8 @@
   /* GARAGE: car showcased in the middle; spec + upgrade GLASS PANELS on LEFT and RIGHT; stationary side arrows */
   #panel-garage{ pointer-events:none; }
   .garPanel{ pointer-events:auto; display:flex; flex-direction:column; gap:7px; }
-  .garHead{ font-size:11px; font-weight:900; letter-spacing:1.4px; color:#ffb45a; opacity:.92; text-align:left; margin-top:3px; }
+  .garHead{ display:flex; align-items:center; gap:8px; font-size:11px; font-weight:900; letter-spacing:2px; color:#9fc4e8; opacity:.95; text-align:left; margin-top:3px; }
+  .garHead::after{ content:''; flex:1; height:1px; background:linear-gradient(90deg, rgba(120,180,255,.4), transparent); }   /* section rule = calm structure instead of orange shout */
   #nextCarBtn{ pointer-events:auto; cursor:pointer; margin:9px auto 0; padding:9px 22px; border-radius:6px; font-size:min(3.8vw,14px); font-weight:900; letter-spacing:.8px;
     background:linear-gradient(160deg,rgba(40,28,18,.9),rgba(22,15,12,.85)); color:#ffce7a; border:1.5px solid rgba(255,196,88,.55); box-shadow:0 6px 18px rgba(0,0,0,.4); width:fit-content; }
   #nextCarBtn:active{ transform:scale(.96); }
@@ -206,7 +207,7 @@
   .styleSw{ font-size:10px; font-weight:800; letter-spacing:.4px; padding:4px 9px; border-radius:4px; cursor:pointer;
             background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.16); color:#d4d2de; transition:.12s; }
   .styleSw:hover{ border-color:rgba(255,255,255,.34); }
-  .styleSw.sel{ background:linear-gradient(100deg,#ff5a2c,#ffab34); color:#160c06; border-color:transparent; box-shadow:0 3px 12px rgba(255,90,40,.4); }
+  .styleSw.sel{ background:linear-gradient(100deg,#2ad4ff,#7a5cff); color:#fff; border-color:transparent; box-shadow:0 3px 12px rgba(70,140,255,.4); }
   .kit{ pointer-events:auto; display:flex; align-items:center; gap:7px; padding:7px 12px; border-radius:6px; cursor:pointer;
         background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.13); font-size:11px; font-weight:800; letter-spacing:.5px; transition:.12s;
         box-shadow:0 3px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1); }
@@ -233,8 +234,8 @@
                         50%{ filter:drop-shadow(0 3px 0 rgba(150,40,10,.55)) drop-shadow(0 16px 32px rgba(0,0,0,.6)) drop-shadow(0 0 22px rgba(255,175,75,.62)); } }
   @media (prefers-reduced-motion:reduce){ .title{ animation:none; filter:drop-shadow(0 3px 0 rgba(150,40,10,.55)) drop-shadow(0 16px 32px rgba(0,0,0,.6)); } }
   .sub{ margin-top:12px; font-size:min(3.3vw,14px); opacity:.95; font-weight:800; letter-spacing:4px; color:#ffd9a0; text-transform:uppercase; }
-  .sub::before,.sub::after{ content:''; display:inline-block; width:26px; height:2px; vertical-align:middle; margin:0 12px; background:linear-gradient(90deg,transparent,#ff8a3c); }
-  .sub::after{ background:linear-gradient(90deg,#ff8a3c,transparent); }
+  .sub::before,.sub::after{ content:''; display:inline-block; width:26px; height:2px; vertical-align:middle; margin:0 12px; background:linear-gradient(90deg,transparent,#5ab8ff); }
+  .sub::after{ background:linear-gradient(90deg,#5ab8ff,transparent); }
   #trackPick{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; justify-content:center; max-width:840px; }
   #dailyCard{ display:flex; align-items:center; justify-content:space-between; gap:8px; pointer-events:auto; cursor:pointer; width:min(92%,440px); margin:9px auto 0; padding:8px 12px; border-radius:13px;
               background:linear-gradient(100deg, rgba(255,90,40,.34), rgba(255,170,60,.16) 62%, rgba(20,12,28,.5)); border:1px solid rgba(255,170,80,.45);
@@ -242,7 +243,7 @@
   #dailyCard:hover{ transform:translateY(-2px); }
   #dailyCard .dcL{ display:flex; align-items:center; gap:6px; color:#ffe2b0; letter-spacing:.4px; } #dailyCard .dcL b{ color:#fff; } #dailyCard #dcTrack{ opacity:.85; }
   #dailyCard .dcR{ display:flex; align-items:center; gap:10px; } #dailyCard #dcStreak{ color:#ffd23b; font-weight:900; white-space:nowrap; }
-  #dailyCard .dcPlay{ padding:5px 13px; border-radius:9px; background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#1a0f08; font-weight:900; letter-spacing:.5px; box-shadow:0 3px 10px rgba(255,90,40,.4); }
+  #dailyCard .dcPlay{ padding:5px 13px; border-radius:9px; background:linear-gradient(95deg,#2ad4ff,#7a5cff); color:#fff; font-weight:900; letter-spacing:.5px; box-shadow:0 3px 10px rgba(70,140,255,.4); }
   .trackBtn{ pointer-events:auto; padding:9px 11px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.10);
              background:linear-gradient(168deg, rgba(38,26,52,.55), rgba(10,7,15,.78) 66%); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
              display:flex; flex-direction:column; align-items:center; min-width:98px; cursor:pointer; position:relative; overflow:hidden;
@@ -308,7 +309,7 @@
            background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.10); }
   .sndLbl{ font-size:10px; font-weight:800; letter-spacing:1.5px; color:#8b8aa2; flex:0 0 auto; }
   .tog.sndIco{ padding:8px 10px; flex:0 0 auto; }
-  #volSlider,#musSlider{ pointer-events:auto; flex:1 1 auto; min-width:70px; accent-color:#ff8a3c; cursor:pointer; height:5px; }
+  #volSlider,#musSlider{ pointer-events:auto; flex:1 1 auto; min-width:70px; accent-color:#5ab8ff; cursor:pointer; height:5px; }
   #musSlider{ accent-color:#7cc0ff; }
   .cta{ margin-top:6px; font-size:min(6.5vw,30px); font-weight:900; letter-spacing:1px; padding:15px 56px; border-radius:6px;
         background:linear-gradient(100deg,#ff5423,#ff8a2e 48%,#ffc23b); color:#160c06; cursor:pointer; position:relative; overflow:hidden;
@@ -393,7 +394,9 @@
      form. .brand.gdLogoMini selectors out-rank the later .gdLogo block rules (0,3,0 vs 0,2,0). */
   .brand.gdLogoMini{ pointer-events:none; text-align:left; background:none; transform:none; overflow:visible; filter:none; }
   .brand.gdLogoMini::after{ display:none; }
-  .brand.gdLogoMini .l1, .brand.gdLogoMini .l2{ display:inline-block; font-size:min(6.4vw,26px); }
+  .brand.gdLogoMini .l1, .brand.gdLogoMini .l2{ display:inline-block; font-size:min(6.4vw,26px);
+    animation:none;                                                             /* mini logo: no chrome-glint sweep in the header (owner: garage top looked busy/ugly) */
+    filter:drop-shadow(1px 1.5px 0 #8f1552) drop-shadow(0 0 10px rgba(255,90,210,.4)); }   /* flat 1-step drop + soft glow instead of the 5-layer hero stack */
   .brand.gdLogoMini .l2{ margin:0 0 0 .28em; }
   /* GARAGE/MENU HEADER (owner: redesign the top section — ref: Nitro Speed racing-game header):
      ONE cohesive angular band — logo | mode tabs + live car plate | currency — instead of loose
@@ -404,20 +407,26 @@
   #garHeader::after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; pointer-events:none;
     background:linear-gradient(90deg, transparent, rgba(18,198,242,.85) 28%, rgba(90,75,255,.85) 72%, transparent); }
   #garHeader #topBar{ flex:0 0 auto; margin:0; padding:0; position:static; }
-  .ghSep{ width:2px; align-self:stretch; transform:skewX(-14deg); pointer-events:none;
-    background:linear-gradient(180deg, transparent, rgba(120,180,255,.45), transparent); }
-  #ghMid{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  #ghMid{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
   #garHeader #tabStrip{ margin:0; }
-  #ghPlate{ display:flex; align-items:center; gap:7px; font-size:12px; font-weight:900; letter-spacing:1.4px;
-    color:#e8eeff; text-shadow:0 1px 4px rgba(0,0,0,.7); white-space:nowrap; }
-  #ghPlate em{ font-style:normal; font-size:12px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  /* track plate = a real button now (opens the globe) — the WORLD tab it replaces led to the same place as RACE */
+  #ghPlate{ pointer-events:auto; cursor:pointer; display:flex; align-items:center; gap:7px; font-size:12px; font-weight:900; letter-spacing:1.4px;
+    color:#e8eeff; text-shadow:0 1px 4px rgba(0,0,0,.7); white-space:nowrap;
+    padding:3px 10px; border-radius:20px; border:1px solid rgba(120,180,255,.22); background:rgba(10,10,22,.4); transition:border-color .15s, background .15s; }
+  #ghPlate:hover{ border-color:rgba(120,200,255,.55); background:rgba(16,18,36,.6); }
+  #ghPlate u{ text-decoration:none; font-size:9px; color:#7fc4ff; opacity:.85; }
+  #ghPlate em{ font-style:normal; font-size:9px; letter-spacing:1.5px; color:#8fd4ff; opacity:.85; }
   #ghPlate .csStars{ font-size:9px; }
   @media (max-width:560px){ #garHeader{ padding-right:96px; gap:8px; } #ghPlate{ font-size:10px; letter-spacing:.8px; } }
-  #tabStrip{ display:flex; gap:5px; padding:4px; margin:4px auto 0; border-radius:6px; background:rgba(8,6,14,.55);
-             -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:var(--hairline); }
-  .tab{ pointer-events:auto; padding:8px 16px; border-radius:4px; font-size:min(3.4vw,13px); font-weight:800; letter-spacing:.6px;
-        color:#c8c6d4; cursor:pointer; transition:.15s; white-space:nowrap; }
-  .tab.on{ background:linear-gradient(100deg,#ff5a2c,#ffab34); color:#160c06; box-shadow:0 3px 12px rgba(255,90,40,.35); }
+  /* clean text tabs + animated neon underline (owner: garage top looked ugly/cluttered, no orange) */
+  #tabStrip{ display:flex; gap:26px; padding:2px 6px; margin:4px auto 0; }
+  .tab{ pointer-events:auto; position:relative; padding:8px 2px 9px; font-size:min(3.4vw,13px); font-weight:900; letter-spacing:2.2px;
+        color:#9a96ac; cursor:pointer; transition:color .16s; white-space:nowrap; }
+  .tab::after{ content:''; position:absolute; left:50%; bottom:2px; height:2px; width:0; transform:translateX(-50%);
+        border-radius:2px; background:linear-gradient(90deg,#2ad4ff,#7a5cff); box-shadow:0 0 8px rgba(70,160,255,.7); transition:width .22s cubic-bezier(.3,0,.2,1); }
+  .tab:hover{ color:#dcd9ea; }
+  .tab.on{ color:#fff; text-shadow:0 0 12px rgba(90,170,255,.45); }
+  .tab.on::after{ width:100%; }
   #mPanels{ flex:1 1 auto; width:100%; min-height:0; position:relative; }
   .mPanel{ display:none; position:absolute; inset:0; flex-direction:column; align-items:center; padding:8px 14px; }
   .mPanel.on{ display:flex; animation:panelIn .22s ease; }
@@ -736,8 +745,8 @@
   #globeInfo{ flex:1; text-align:left; min-width:0; }
   #globeCountry{ font-weight:900; font-size:15px; letter-spacing:.5px; color:#fff; }
   #globeMeta{ font-size:12px; color:#bcb0e4; margin-top:2px; }
-  #globeRace{ background:linear-gradient(95deg,#ff5a2c,#ffb13b); color:#160c06; font-weight:900; padding:11px 17px;
-    border-radius:11px; cursor:pointer; letter-spacing:1px; flex:0 0 auto; }
+  #globeRace{ background:linear-gradient(95deg,#2ad4ff,#7a5cff); color:#fff; text-shadow:0 1px 4px rgba(0,20,60,.5); font-weight:900; padding:11px 17px;
+    border-radius:11px; cursor:pointer; letter-spacing:1px; flex:0 0 auto; box-shadow:0 6px 20px -6px rgba(60,140,255,.6); }
   #globeRace:active{ transform:scale(.95); }
   #globeActions{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,10px) + 12px);
     display:flex; gap:8px; z-index:2; flex-wrap:wrap; justify-content:center;
@@ -1182,17 +1191,14 @@
     <div id="topBar">
       <div class="brand gdLogo gdLogoMini"><span class="l1">GLOBAL</span><span class="l2">DRIFT</span></div>
     </div>
-    <i class="ghSep"></i>
     <div id="ghMid">
       <div id="tabStrip">
         <div class="tab on" data-tab="race">RACE</div>
-        <div class="tab" data-tab="race" id="tabWorld">WORLD</div>
         <div class="tab" data-tab="garage">GARAGE</div>
         <div class="tab" data-tab="settings">SETTINGS</div>
       </div>
-      <div id="ghPlate"><em id="ghIco">GP</em><b id="ghName">—</b><i id="ghCls" class="csCls csC">C</i><span id="ghStars" class="csStars"></span></div>
+      <div id="ghPlate" title="Change track"><em id="ghIco">GP</em><b id="ghName">—</b><i id="ghCls" class="csCls csC">C</i><span id="ghStars" class="csStars"></span><u>▾</u></div>
     </div>
-    <i class="ghSep"></i>
   </div>
   <div id="mPanels">
     <div class="mPanel on" id="panel-race">
@@ -1448,7 +1454,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.23';
+(function(){ const BUILD='v11.24';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -9517,7 +9523,8 @@ window.NETRACE=false;
   act('gaBattle', ()=>{ close(); const b=document.getElementById('battleBtn'); if(b) b.click(); });
   act('gaOnline', ()=>{ close(); const b=document.getElementById('onlineBtn'); if(b) b.click(); });
   act('gaSettings',()=>{ close(); const t=document.querySelector('.tab[data-tab="settings"]'); if(t) t.click(); });
-  const tw=document.getElementById('tabWorld'); if(tw) tw.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });
+  const tw=document.getElementById('tabWorld'); if(tw) tw.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });   // (WORLD tab removed — kept for safety)
+  const ghp=document.getElementById('ghPlate'); if(ghp) ghp.addEventListener('click', e=>{ e.stopPropagation(); window.openGlobe(); });   // track plate = change-track button (replaces the duplicate WORLD tab)
   // LOGO HERO POSE: centered in front of the globe on entry, then docks up top on first touch (or 3.2s)
   { const lg=document.getElementById('gdLogoGlobe'); let dockT=null;
     const dock=()=>{ if(lg) lg.classList.remove('center'); clearTimeout(dockT); };
