@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.16-->
+<!--BUILD:v11.17-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -158,8 +158,13 @@
     #kitRow .kit,#weaponRow .kit{ width:100%; justify-content:space-between; box-sizing:border-box; padding:4px 9px; font-size:10px; }
     #kitRow .kit b,#weaponRow .kit b{ flex-basis:52px; }
     .paintSw{ width:19px; height:19px; }
-    .styleSw{ font-size:9px; padding:3px 7px; }
-    #carStats .bar{ height:7px; }
+    .styleSw{ font-size:8.5px; padding:2px 6px; }
+    #carStats .bar{ height:6px; }
+    /* garage panel must fit WITHOUT scrolling (owner): tight rows, all options + the car visible */
+    #paintRow,#styleRow,#wrapRow{ margin-top:4px; gap:4px; }
+    #partsRows{ margin-top:4px; gap:2px 6px; }
+    #carStatus{ margin-top:3px; }
+    .garPanel{ gap:3px; }
     #carPrev{ position:absolute; left:calc(env(safe-area-inset-left,0px) + min(30vw,254px) + 14px); top:50%; transform:translateY(-50%); z-index:3; }
     #carNext{ position:absolute; right:calc(env(safe-area-inset-right,0px) + min(30vw,254px) + 14px); top:50%; transform:translateY(-50%); z-index:3; }
     #paintRow,#styleRow,#wrapRow{ justify-content:flex-start; }
@@ -191,8 +196,9 @@
   .paintSw.sel{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.55); }
   .paintSw.stock{ background:repeating-linear-gradient(45deg,#4a4d57,#4a4d57 3px,#8a8d97 3px,#8a8d97 6px); }
   #styleRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
-  #partsRows{ display:none; pointer-events:auto; }
-  #partsRows .pRow{ display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:5px; margin-top:6px; }
+  #partsRows{ display:none; pointer-events:auto; grid-template-columns:1fr; gap:3px 8px; margin-top:5px; }
+  #partsRows .pRow{ display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:4px; }
+  #partsRows .paintLbl{ min-width:44px; font-size:8px; }
   #wrapRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
   #flagRow{ display:none; align-items:center; gap:5px; margin-top:7px; pointer-events:auto; overflow-x:auto; padding-bottom:3px; scrollbar-width:thin; }
   #flagRow .flagSw{ flex:0 0 auto; width:26px; height:17px; border-radius:3px; cursor:pointer; border:2px solid transparent; background-size:cover; background-position:center; box-shadow:0 1px 3px rgba(0,0,0,.5); }
@@ -1442,7 +1448,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.16';
+(function(){ const BUILD='v11.17';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -1996,7 +2002,7 @@ const PART_MENU=[ ['spoilerR','WING',['Stock','Duck','GT','GT+']],
 function renderParts(){
   const host=document.getElementById('partsRows'); if(!host) return; const i=selectedCar;
   if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
-  host.style.display='block';
+  host.style.display='grid';
   const cfg=partsCfg[i]||{}, hides=(cfg.hide||{});
   host.innerHTML=PART_MENU.map(([k,lbl,opts])=>{
     const cur=cfg[k];
@@ -5074,6 +5080,7 @@ function loadCarModels(){
       selectTrack(qaTrk); if(typeof startGame==='function') startGame();
       const kd=k=>{ const e=new KeyboardEvent('keydown',{key:k,code:k,bubbles:true}); window.dispatchEvent(e); document.dispatchEvent(e); };
       setTimeout(()=>{ setInterval(()=>{ kd('ArrowUp'); if(qaSteer) kd(qaSteer>0?'ArrowRight':'ArrowLeft'); }, 400); }, 3000);   // re-press every 400ms — a single press can be eaten by the countdown
+      if(P.get('jump')) setTimeout(()=>{ try{ player._airV=7.6; player.air=0.03; player._peak=0; player._rampJump=true; }catch(e){} }, 7000);   // deterministic ramp launch for landing QA
       // headless/hidden contexts starve rAF, freezing the game loop (countdown stuck, cars parked —
       // earlier "in-motion" shots were parked cars; headless=new even lies document.hidden=false).
       // Watchdog: animate() stamps __rafT per real frame; when frames stop arriving for >50ms, the
@@ -5097,6 +5104,7 @@ function loadCarModels(){
           setInterval(()=>{ try{ if(qn<+(P.get('shots')||8)){ qn++; const id='q'+String(qn).padStart(2,'0'); DEVCAM.shot(id);
             const f0=player.rig.front[0], f1=player.rig.front[1];
             const tel='spd '+player.vel.length().toFixed(1)
+              +' air '+(player.air||0).toFixed(2)+' tilt '+(player._airTilt||0).toFixed(3)+' susY '+(player._susY||0).toFixed(3)
               +' steerY '+(f0?f0.rotation.y.toFixed(3):'-')+'/'+(f1?f1.rotation.y.toFixed(3):'-')
               +' rotX '+player.rig.wheels.map(w=>w.rotation.x.toFixed(1)).join(' ')
               +' camZ '+player.rig.wheels.map(w=>(w.parent&&w.parent.userData._wheelAlign?w.parent.rotation.z.toFixed(2):'-')).join(' ')
@@ -5903,7 +5911,7 @@ function rigRideBase(c){                                          // per-rig bas
 function syncCarMesh(c){
   c.visY = (brActive||window.freeRoam) ? Math.max(terrainHeight(c.pos.x, c.pos.y), (beachSea!=null?beachSea+0.3:-45)) : roadElevExact(c.pos.x, c.pos.y, c.trackIdx);   // BR roams off-road -> follow terrain (but float on water, never sink under the sea)
   const rideB=rigRideBase(c);
-  c.rig.group.position.set(c.pos.x, rideB+c.visY+(c.air||0)+(c.rig.lift||0), c.pos.y);   // +air = crest launch; +lift = upgraded tires raise ride height
+  c.rig.group.position.set(c.pos.x, rideB+c.visY+(c.air||0)+(c.rig.lift||0)+(c._susY||0), c.pos.y);   // +air = crest launch; +lift = upgraded tires raise ride height; +susY = landing squat/rebound
   // PITCH the car to follow the road grade so it never clips its nose/tail into a hill (and reads natural on slopes)
   let pitch=0;
   if(sampleElev.length && !((c.air||0)>0) && !brActive){
@@ -5920,7 +5928,7 @@ function syncCarMesh(c){
     }
   }
   c._pitch=(c._pitch||0)+(pitch-(c._pitch||0))*0.25;       // light smoothing -> no jitter at slope transitions
-  c.rig.group.position.y=rideB+c.visY+(c.air||0)+(c.rig.lift||0);   // visY may have been lifted onto the terrain above
+  c.rig.group.position.y=rideB+c.visY+(c.air||0)+(c.rig.lift||0)+(c._susY||0);   // visY may have been lifted onto the terrain above
   c.rig.group.rotation.order='YXZ'; c.rig.group.rotation.y=c.heading; c.rig.group.rotation.x=-c._pitch;
   // soft contact shadow under the car (grounds it; AI cars cast no real shadow on mobile)
   carShadowAssets();

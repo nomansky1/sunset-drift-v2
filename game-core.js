@@ -96,13 +96,27 @@ function updateCar(c, inp, dt){
   }
   if((c.air||0)>0 || (c._airV||0)>0){
     const wasAir=(c.air||0)>0; c._airV=(c._airV||0)-24*dt; c.air=(c.air||0)+c._airV*dt; c._peak=Math.max(c._peak||0, c.air);   // ballistic arc
-    if(c.air<=0){ c.air=0; c._airV=0; c._landT=raceTime;                                          // landed (cooldown before next launch)
-      if(wasAir && c.isPlayer){ camShake=Math.min(camShake+0.3,1); audio&&audio.thud&&audio.thud(0.55);
-        if(c._rampJump){ c._rampJump=false; c.boost=Math.min((c.boost||0)+CONFIG.boostMax*0.5, CONFIG.boostMax*(c.nosMax||1)); c._padBoost=0.5; audio&&audio.boost&&audio.boost(); popup&&popup('⚡ STOMP BOOST','#ffb14d'); }
-        if((c._peak||0)>2 && raceTime-(c._airCue||-9)>1.2){ c._airCue=raceTime; addScore&&addScore(70+Math.round((c._peak||0)*22),'BIG AIR!','#7ce0ff'); } }
+    // AIRBORNE ATTITUDE: nose lifts on the way up, dips toward the landing — the car follows its arc
+    const _tilt = c._airV>0 ? -0.10*Math.min(1,c._airV/6) : 0.13*Math.min(1,-c._airV/8);
+    c._airTilt=(c._airTilt||0)+(_tilt-(c._airTilt||0))*Math.min(1,dt*7);
+    if(c.air<=0){ const impact=Math.min(1, -(c._airV)/9); c.air=0; c._airV=0; c._landT=raceTime;   // landed (cooldown before next launch)
+      if(wasAir){
+        c._susYV=(c._susYV||0) - (0.12+0.45*impact);                       // SUSPENSION ABSORB: squat with the hit, damped spring below rebounds it
+        c._landGrip=Math.max(0.25, 1-impact*0.75);                          // tyres take a beat to bite again — big landings squirm instead of snapping to full grip
+        if(c.isPlayer){ camShake=Math.min(camShake+0.15+impact*0.55,1); audio&&audio.thud&&audio.thud(0.35+impact*0.5);
+          if(typeof dust!=='undefined'&&dust&&dust.emit){ const fx2=Math.sin(c.heading), fz2=Math.cos(c.heading);   // landing dust kicked off the tyres
+            for(let k=0;k<10;k++){ const sx=(Math.random()-0.5)*1.8;
+              dust.emit(c.pos.x - fx2*1.3 - fz2*sx, 0.25, c.pos.y - fz2*1.3 + fx2*sx,
+                (Math.random()-0.5)*3, 1.4+Math.random()*2.2, (Math.random()-0.5)*3, 0.5+Math.random()*0.35, 0.55+Math.random()*0.5); } }
+          if(c._rampJump){ c._rampJump=false; c.boost=Math.min((c.boost||0)+CONFIG.boostMax*0.5, CONFIG.boostMax*(c.nosMax||1)); c._padBoost=0.5; audio&&audio.boost&&audio.boost(); popup&&popup('⚡ STOMP BOOST','#ffb14d'); }
+          if((c._peak||0)>2 && raceTime-(c._airCue||-9)>1.2){ c._airCue=raceTime; addScore&&addScore(70+Math.round((c._peak||0)*22),'BIG AIR!','#7ce0ff'); } } }
       c._peak=0;
     }
-  }
+  } else if(c._airTilt) c._airTilt*=(1-Math.min(1,dt*8));
+  // landing suspension spring (underdamped: one soft rebound, settles ~0.4s) + grip recovery
+  if(c._susY||c._susYV){ c._susYV=(c._susYV||0)+((-(c._susY||0))*95 - (c._susYV||0)*10)*dt; c._susY=(c._susY||0)+c._susYV*dt;
+    if(Math.abs(c._susY)<0.001 && Math.abs(c._susYV)<0.01){ c._susY=0; c._susYV=0; } }
+  if((c._landGrip||1)<1) c._landGrip=Math.min(1,(c._landGrip||1)+dt*2.2);
 
   // steering (needs speed; reverses when reversing; stronger while drifting)
   let steer=inp.steer*CONFIG.steerRate*dt;
@@ -117,7 +131,7 @@ function updateCar(c, inp, dt){
   _l.copy(c.vel).addScaledVector(_f, -fd);          // lateral component
   const _slip = c.isPlayer ? _l.length() : 0;        // sideways speed = drift intensity (player only)
   const gripMul = c.isPlayer ? (c.gripMul||1) : (1.30+(aiAccel-1)*1.1);   // AI grip RAISED: they were physically sliding wide in corners (read as constant drifting + slow exits); planted grip = fast clean curves
-  const grip=(c.drifting?CONFIG.gripDrift*(1+0.18*tire):CONFIG.gripNormal)*gripMul;   // TIRES: snappier drift exit
+  const grip=(c.drifting?CONFIG.gripDrift*(1+0.18*tire):CONFIG.gripNormal)*gripMul*(c._landGrip||1);   // TIRES: snappier drift exit; landings briefly loosen the tyres
   _l.multiplyScalar(Math.exp(-grip*dt));            // frame-rate independent
   c.vel.copy(_f).multiplyScalar(fd).add(_l);
   // ---- DRIFT SCORING (player): style points while sliding sideways at speed; combo mult grows the longer
@@ -223,7 +237,7 @@ function updateCar(c, inp, dt){
   c._leanZ = lerp(c._leanZ||0, clamp(-lateral*0.013,-0.15,0.15), 0.14);   // weightier: a touch more roll, slower settle (reads as suspension)
   c._leanX = lerp(c._leanX||0, clamp((inp.brake?0.04:(inp.throttle?-0.028:0)),-0.06,0.06), 0.08);   // deeper brake dive / throttle squat, eased in
   c.rig.group.rotation.z = c._leanZ;
-  c.rig.group.rotation.x = -(c._pitch||0) + c._leanX;                 // road grade + brake/throttle squat, one pivot
+  c.rig.group.rotation.x = -(c._pitch||0) + c._leanX + (c._airTilt||0);   // road grade + brake/throttle squat + airborne arc attitude, one pivot
   // SUSPENSION GROUND-STICK (owner: turns looked odd, front wheels lifted): the BODY rolls with
   // lateral load but every WHEEL pivot counter-offsets vertically so its contact patch stays ON the
   // road — outside suspension compresses, inside extends, exactly like real travel. Road-grade pitch
