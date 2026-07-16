@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.18-->
+<!--BUILD:v11.19-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1448,7 +1448,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.18';
+(function(){ const BUILD='v11.19';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -5057,6 +5057,7 @@ function loadCarModels(){
   if(window.FLEET_CHECK_DEV && /[?&]qa=garage/.test(location.search)){   // ?qa=garage&car=N[&parts=spoilerR:3,hood:1][&hidep=lights] — headless garage screenshot (UI kept visible)
     const P=new URLSearchParams(location.search); const qaCar=+(P.get('car')||21);
     try{ localStorage.setItem('sd_owned', JSON.stringify(new Array(64).fill(true))); }catch(e){}
+    try{ const _st=P.get('style'); if(_st==='voxel') voxelMode=true; else if(_st==='comic') comicMode=true; else if(_st==='anime') animeMode=true; }catch(e){}   // &style=voxel|comic|anime — car-style QA
     try{ if(P.get('parts')||P.get('hidep')){ const obj={};                 // inject a parts config for the QA car (modular-parts verification)
       (P.get('parts')||'').split(',').forEach(kv=>{ const s=kv.split(':'); if(s[0]) obj[s[0]]=+s[1]; });
       if(P.get('hidep')){ obj.hide={}; P.get('hidep').split(',').forEach(k=>{ if(k) obj.hide[k]=true; }); }
@@ -5074,6 +5075,7 @@ function loadCarModels(){
     const P=new URLSearchParams(location.search);
     const qaCar=+(P.get('car')||26), qaTrk=+(P.get('trk')||0), qaSteer=+(P.get('steer')||0);
     try{ localStorage.setItem('sd_owned', JSON.stringify(new Array(64).fill(true))); }catch(e){}
+    try{ const _st=P.get('style'); if(_st==='voxel') voxelMode=true; else if(_st==='comic') comicMode=true; else if(_st==='anime') animeMode=true; }catch(e){}   // &style=voxel|comic|anime — car-style QA
     window.addEventListener('load', ()=>{ setTimeout(()=>{ try{
       const gm=document.getElementById('globeModal'); if(gm) gm.classList.remove('show');
       selectedCar=qaCar; if(typeof saveSelCar==='function') saveSelCar();
@@ -5302,33 +5304,40 @@ const CAR_WHEELS=[
 // have). Cars swap to MeshToonMaterial on a shared 3-step gradient and grow inverted-hull ink shells
 // (BackSide, pushed out along normals in the vertex stage — offset scaled per-mesh so every model gets
 // the same world-space line weight). Environment keeps its own grade. Fully reversible.
-function _carToonGrad(){ if(_carToonGrad.t) return _carToonGrad.t;
-  const t=new THREE.DataTexture(new Uint8Array([90,170,255]), 3, 1, THREE.RedFormat);
+function _carToonGrad(mode){ _carToonGrad.t=_carToonGrad.t||{};
+  if(_carToonGrad.t[mode]) return _carToonGrad.t[mode];
+  const bands = mode==='comic' ? [74,255] : [70,140,215,255];   // COMIC: hard 2-band poster fills; ANIME: 4 steps w/ a bright highlight band
+  const t=new THREE.DataTexture(new Uint8Array(bands), bands.length, 1, THREE.RedFormat);
   t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true;
-  _carToonGrad.t=t; return t; }
+  _carToonGrad.t[mode]=t; return t; }
 const _inkMats={};
-function _inkHull(off){ const key=off.toFixed(4);
+function _inkHull(off, hex){ const key=off.toFixed(4)+'_'+hex;
   if(_inkMats[key]) return _inkMats[key];
-  const m=new THREE.MeshBasicMaterial({color:0x07070d, side:THREE.BackSide});
+  const m=new THREE.MeshBasicMaterial({color:hex, side:THREE.BackSide});
   m.onBeforeCompile=sh=>{ sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>',
     '#include <begin_vertex>\n\ttransformed += normal * '+off.toFixed(6)+';'); };
   _inkMats[key]=m; return m; }
 function carToonize(rig){
   if(!rig||!rig.group) return;
-  const S=new THREE.Vector3(), targets=[];
+  const comic=(typeof comicMode!=='undefined'&&comicMode);                 // comic wins when both toggles are on (bolder look)
+  const mode=comic?'comic':'anime';
+  const inkOff=comic?0.028:0.016, inkHex=comic?0x050508:0x141026;          // comic: THICK pure-black ink; anime: thin indigo line art
+  const S=new THREE.Vector3(), targets=[], hsl={h:0,s:0,l:0};
   rig.group.traverse(o=>{ if(o.isMesh && !o.userData._inkShell) targets.push(o); });
   for(const o of targets){
     const src=o.userData._preToon || o.material; if(!src || (o.material&&o.material.isMeshToonMaterial)) continue;
     if(!o.userData._preToon) o.userData._preToon=o.material;
+    const tcol=(src.color?src.color.clone():new THREE.Color(0xffffff));
+    tcol.getHSL(hsl); tcol.setHSL(hsl.h, Math.min(1,hsl.s*(comic?1.35:1.15)), hsl.l);   // punch chroma -> vivid comic inks / rich anime paint
     const tm=new THREE.MeshToonMaterial({
-      color:(src.color?src.color.clone():new THREE.Color(0xffffff)),
-      map:src.map||null, gradientMap:_carToonGrad(),
+      color:tcol,
+      map:src.map||null, gradientMap:_carToonGrad(mode),
       transparent:!!src.transparent, opacity:(src.opacity!=null?src.opacity:1) });
     if(src.emissive){ tm.emissive=src.emissive.clone(); tm.emissiveIntensity=(src.emissiveIntensity!=null?src.emissiveIntensity:1); if(src.emissiveMap) tm.emissiveMap=src.emissiveMap; }
-    o.material=tm;
+    o.material=tm; o.userData._toonMode=mode;
     const glassy=src.transparent && src.opacity!=null && src.opacity<0.95;
     if(!glassy && !o.userData._hasInk){ o.userData._hasInk=true;
-      o.getWorldScale(S); const shell=new THREE.Mesh(o.geometry, _inkHull(0.02/Math.max(S.x,0.0001)));
+      o.getWorldScale(S); const shell=new THREE.Mesh(o.geometry, _inkHull(inkOff/Math.max(S.x,0.0001), inkHex));
       shell.userData._inkShell=true; shell.raycast=function(){};
       shell.castShadow=false; shell.receiveShadow=false;
       o.add(shell); }
@@ -5342,6 +5351,9 @@ function carToonRestore(rig){
   kill.forEach(s=>{ if(s.parent) s.parent.remove(s); });
 }
 function carToonSync(){ const on=(typeof animeMode!=='undefined'&&animeMode)||(typeof comicMode!=='undefined'&&comicMode);
+  const mode=(typeof comicMode!=='undefined'&&comicMode)?'comic':'anime';
+  if(on && carToonSync._m && carToonSync._m!==mode) cars.forEach(c=>{ if(c.rig) carToonRestore(c.rig); });   // anime<->comic switch: rebuild (bands/ink differ per mode)
+  carToonSync._m = on?mode:null;
   cars.forEach(c=>{ if(!c.rig) return;
     if(on && !(typeof voxelMode!=='undefined'&&voxelMode)) carToonize(c.rig); else carToonRestore(c.rig); }); }
 function upgradeCars(){
@@ -7697,7 +7709,7 @@ function renderCarMask(){
 // sample a texture's pixels into a small cached canvas so voxelizeCar can read the car's painted colour from its MAP
 function _voxTexData(tex){ if(!tex) return null; if(tex.__vdat!==undefined) return tex.__vdat;
   try{ const img=tex.image; if(!img||!(img.width||img.videoWidth)){ tex.__vdat=null; return null; }
-    const w=Math.min(img.width||64,44), h=Math.min(img.height||64,44);   // small = heavy bilinear DOWNSAMPLE -> blends noisy/holo textures into smooth voxel colour regions
+    const w=Math.min(img.width||64,56), h=Math.min(img.height||64,56);   // small = heavy bilinear DOWNSAMPLE -> blends noisy/holo textures into smooth voxel colour regions (v2: 56 keeps livery stripes readable on the finer grid)
     const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true});
     cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
     cx.drawImage(img,0,0,w,h); tex.__vdat={data:cx.getImageData(0,0,w,h).data,w:w,h:h}; return tex.__vdat;
@@ -7705,7 +7717,7 @@ function _voxTexData(tex){ if(!tex) return null; if(tex.__vdat!==undefined) retu
 // 🧊 REAL VOXEL GEOMETRY — rebuild a car out of actual small cubes (world-locked, lit by the scene = the true
 // MagicaVoxel look, not a screen-space filter). Surface-samples the car's triangles into a voxel grid in
 // rig.group space so the cube shell moves/leans with the car. Built ONCE per car on toggle (not per frame).
-const _WHEEL_RE=/wheel|tyre|tire|\brim\b|hub|brake/i, _GLASS_RE=/glass|windshield|windscreen|window|glazing|canopy/i;
+const _WHEEL_RE=/wheel|tyre|tire|\brim\b|hub|brake/i, _GLASS_RE=/glass|windshield|windscreen|window|glazing|canopy/i, _LIGHT_RE=/head.?li|tail.?li|\blight\b|lamp|lens|drl|indicator|blinker/i;
 function voxelizeCar(car){
   try{
     const rig=car&&car.rig; if(!rig||!rig.group||!rig.chassis) return;
@@ -7722,7 +7734,7 @@ function voxelizeCar(car){
     all.forEach(m=>{ m.updateWorldMatrix(true,false); M.multiplyMatrices(invGrp,m.matrixWorld); const pos=m.geometry.attributes.position;
       for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(M); bb.expandByPoint(v); } });
     const size=new THREE.Vector3(); bb.getSize(size); if(!(Math.max(size.x,size.z)>1e-3)) return;
-    const bodyCube=Math.max(size.x,size.z)/((car.isPlayer?96:56)*(isTouch?0.72:1)), wheelCube=bodyCube*0.5;   // owner: FINER cubes around the tyres (half-size wheel grid)
+    const bodyCube=Math.max(size.x,size.z)/((car.isPlayer?150:84)*(isTouch?0.72:1)), wheelCube=bodyCube*0.5;   // owner v2: SMALLER cubes = more car detail (150-cell player grid); wheels still half-size again
     const nmOf=m=>{ const mm=Array.isArray(m.material)?m.material[0]:m.material; return (m.name||'')+' '+((mm&&mm.name)||''); };
     const wheels=all.filter(m=>_WHEEL_RE.test(nmOf(m))), body=all.filter(m=>!_WHEEL_RE.test(nmOf(m)));
     const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),e1=new THREE.Vector3(),e2=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color();
@@ -7732,7 +7744,9 @@ function voxelizeCar(car){
         const mat=Array.isArray(m.material)?m.material[0]:m.material; const matHex=(mat&&mat.color)?mat.color.getHex():0x9092a0;
         const _tmap=mat&&(mat.map||mat.bumpMap||mat.roughnessMap); const tdColor=!!(mat&&mat.map); const td=_tmap?_voxTexData(_tmap):null, uv=g.attributes.uv;
         const _nm=nmOf(m); const isWheel=_WHEEL_RE.test(_nm);
-        const isGlass=_GLASS_RE.test(_nm) || (!isWheel && mat && mat.transparent && mat.opacity!=null && mat.opacity<0.85);   // windshield/windows -> tinted-glass cubes
+        const isLight=!isWheel && (_LIGHT_RE.test(_nm) || (mat&&mat.emissive&&(mat.emissive.r+mat.emissive.g+mat.emissive.b)>0.2));   // lamp lenses -> unlit GLOWING cubes
+        const isGlass=!isLight && (_GLASS_RE.test(_nm) || (!isWheel && mat && mat.transparent && mat.opacity!=null && mat.opacity<0.85));   // windshield/windows -> tinted-glass cubes
+        const lightHex=isLight ? ((mat&&mat.emissive&&(mat.emissive.r+mat.emissive.g+mat.emissive.b)>0.2)?mat.emissive.getHex():matHex) : 0;
         let wcy=0,wcz=0,wr=1; if(isWheel){ const wb=new THREE.Box3(),_wv=new THREE.Vector3(); for(let vi=0;vi<pos.count;vi++){ _wv.fromBufferAttribute(pos,vi).applyMatrix4(M); wb.expandByPoint(_wv);} wcy=(wb.min.y+wb.max.y)/2; wcz=(wb.min.z+wb.max.z)/2; wr=Math.max((wb.max.y-wb.min.y)/2,(wb.max.z-wb.min.z)/2,0.02); }
         const tris=idx?idx.count/3:pos.count/3;
         for(let t=0;t<tris;t++){ const i0=idx?idx.getX(t*3):t*3, i1=idx?idx.getX(t*3+1):t*3+1, i2=idx?idx.getX(t*3+2):t*3+2;
@@ -7744,14 +7758,15 @@ function voxelizeCar(car){
             if(tdColor){ if(THREE.SRGBColorSpace) col.setRGB(td.data[o4]/255,td.data[o4+1]/255,td.data[o4+2]/255,THREE.SRGBColorSpace); else col.setRGB(td.data[o4]/255,td.data[o4+1]/255,td.data[o4+2]/255); }
             else { const lum=(td.data[o4]*0.299+td.data[o4+1]*0.587+td.data[o4+2]*0.114)/255; col.setHex(matHex).multiplyScalar(0.55+0.55*lum); } }
           e1.subVectors(b,a); e2.subVectors(c,a);
-          const n=Math.min(24, 1+Math.ceil(Math.max(a.distanceTo(b),a.distanceTo(c))/cube));
+          const n=Math.min(34, 1+Math.ceil(Math.max(a.distanceTo(b),a.distanceTo(c))/cube));   // v2: denser tri sampling so the finer grid has no surface holes
           for(let s=0;s<=n;s++) for(let r=0;r<=n-s;r++){ const u=s/n, w=r/n;
             p.copy(a).addScaledVector(e1,u).addScaledVector(e2,w);
             const gx=Math.floor((p.x-bb.min.x)/cube), gy=Math.floor((p.y-bb.min.y)/cube), gz=Math.floor((p.z-bb.min.z)/cube);
             const key=gx+'_'+gy+'_'+gz; let cell=cells.get(key);
             if(!cell){ cell={x:gx,y:gy,z:gz,r:0,g:0,b:0,n:0,fx:-1}; cells.set(key,cell);
               if(isWheel){ const dy=p.y-wcy, dz=p.z-wcz, rr=Math.sqrt(dy*dy+dz*dz)/wr; cell.fx = rr<0.52?0xb9c0cc:(rr<0.66?0x6b7078:(rr<0.86?0x1c1c22:0x0e0e12)); } }   // alloy hub -> spokes -> tyre -> edge
-            if(isGlass) cell.fx=0x28455f;                                                                                          // GLASS ALWAYS wins its cells (windshield + side/rear windows override body-colour bleed)
+            if(isGlass){ cell.fx=0x28455f; cell.k='g'; }                                                                           // GLASS ALWAYS wins its cells (windshield + side/rear windows override body-colour bleed)
+            if(isLight){ cell.fx=lightHex; cell.k='l'; }                                                                           // lamp lens wins over glass (clear covers) -> glowing cube
             if(cell.fx<0){ cell.r+=col.r; cell.g+=col.g; cell.b+=col.b; cell.n++; } }   // AVERAGE the body colour per cube -> kills the texture speckle
           if(cells.size>cap) break; }
         if(cells.size>cap) break; }
@@ -7761,24 +7776,32 @@ function voxelizeCar(car){
       const yBelt=Math.floor(0.44*size.y/cube);
       for(let pass=0; pass<3; pass++){ const gc2=[]; cells.forEach(cc=>{ if(cc.fx===0x28455f) gc2.push(cc); });
         for(const gc of gc2){ for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) for(let dz=-1;dz<=1;dz++){
-          const ny=gc.y+dy; if(ny<yBelt) continue; const nc=cells.get((gc.x+dx)+'_'+ny+'_'+(gc.z+dz)); if(nc && nc.fx<0) nc.fx=0x28455f; } } }
+          const ny=gc.y+dy; if(ny<yBelt) continue; const nc=cells.get((gc.x+dx)+'_'+ny+'_'+(gc.z+dz)); if(nc && nc.fx<0){ nc.fx=0x28455f; nc.k='g'; } } } }
       return cells;
     }
-    const bodyCells=fill(body, bodyCube, car.isPlayer?26000:8000), wheelCells=fill(wheels, wheelCube, car.isPlayer?18000:5000);
+    const bodyCells=fill(body, bodyCube, car.isPlayer?60000:18000), wheelCells=fill(wheels, wheelCube, car.isPlayer?30000:11000);   // caps scale with the finer v2 grid (surface cells grow ~quadratically)
     if(!bodyCells.size && !wheelCells.size) return;
     const group=new THREE.Group(); group.userData._voxel=true; const hsl={h:0,s:0,l:0};
     function build(cells, cube){
       if(!cells.size) return;
-      const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(cube,cube,cube), new THREE.MeshStandardMaterial({roughness:0.94, metalness:0.0, flatShading:true}), cells.size);   // MATTE flat cubes (like MagicaVoxel) -> no specular speckle, clean faces
-      const m4=new THREE.Matrix4(); let i=0;
-      cells.forEach(cell=>{ m4.makeTranslation(bb.min.x+(cell.x+0.5)*cube, bb.min.y+(cell.y+0.5)*cube, bb.min.z+(cell.z+0.5)*cube); inst.setMatrixAt(i,m4);
-        if(cell.fx>=0){ col.setHex(cell.fx); }                                                                                    // wheel/glass fixed palette
-        else { const nn=Math.max(1,cell.n); col.setRGB(cell.r/nn, cell.g/nn, cell.b/nn); col.getHSL(hsl);
-          if((cell.y*cube)/Math.max(size.y,0.01)>0.5 && hsl.l<0.27 && hsl.s<0.5){ col.setHex(0x2e4c68); }   // dark low-sat cube up in the cabin = WINDSHIELD/window (baked into the paint on many models) -> glass tint so it reads as glass
-          else col.setHSL(Math.round(hsl.h*12)/12, Math.min(0.95,Math.round(hsl.s*0.95*5)/5), Math.min(0.9,Math.max(0.12,Math.round(hsl.l*7)/7))); }   // averaged body colour, HARD-QUANTISED to a small clean voxel palette (collapses rainbow speckle)
-        inst.setColorAt(i,col); i++; });
-      inst.instanceMatrix.needsUpdate=true; if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
-      inst.castShadow=true; inst.receiveShadow=false; inst.userData._voxel=true; inst.frustumCulled=false; group.add(inst);
+      // v2: THREE material buckets — matte body (MagicaVoxel), GLOSSY tinted glass, and UNLIT lamp-lens
+      // cubes (MeshBasic = always-bright headlight/taillight glow, the detail read at small cube sizes)
+      const bk={b:[],g:[],l:[]}; cells.forEach(cell=>{ bk[cell.k==='g'?'g':(cell.k==='l'?'l':'b')].push(cell); });
+      const mats={ b:new THREE.MeshStandardMaterial({roughness:0.94, metalness:0.0, flatShading:true}),
+        g:new THREE.MeshStandardMaterial({roughness:0.14, metalness:0.35, flatShading:true, transparent:true, opacity:0.92}),
+        l:new THREE.MeshBasicMaterial({toneMapped:false}) };
+      for(const k of ['b','g','l']){ const list=bk[k]; if(!list.length){ mats[k].dispose(); continue; }
+        const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(cube,cube,cube), mats[k], list.length);
+        const m4=new THREE.Matrix4(); let i=0;
+        for(const cell of list){ m4.makeTranslation(bb.min.x+(cell.x+0.5)*cube, bb.min.y+(cell.y+0.5)*cube, bb.min.z+(cell.z+0.5)*cube); inst.setMatrixAt(i,m4);
+          if(cell.fx>=0){ col.setHex(cell.fx);
+            if(k==='l'){ col.getHSL(hsl); col.setHSL(hsl.h, Math.min(1,hsl.s*1.1), Math.max(0.62,hsl.l)); } }   // lift dark lens paints so the lamp reads LIT
+          else { const nn=Math.max(1,cell.n); col.setRGB(cell.r/nn, cell.g/nn, cell.b/nn); col.getHSL(hsl);
+            if((cell.y*cube)/Math.max(size.y,0.01)>0.5 && hsl.l<0.27 && hsl.s<0.5){ col.setHex(0x2e4c68); }   // dark low-sat cube up in the cabin = WINDSHIELD/window (baked into the paint on many models) -> glass tint so it reads as glass
+            else col.setHSL(Math.round(hsl.h*16)/16, Math.min(0.95,Math.round(hsl.s*0.95*6)/6), Math.min(0.9,Math.max(0.12,Math.round(hsl.l*9)/9))); }   // averaged body colour, quantised (v2: finer palette so livery detail survives the smaller cubes)
+          inst.setColorAt(i,col); i++; }
+        inst.instanceMatrix.needsUpdate=true; if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
+        inst.castShadow=(k!=='l'); inst.receiveShadow=false; inst.userData._voxel=true; inst.frustumCulled=false; group.add(inst); }
     }
     build(bodyCells, bodyCube); build(wheelCells, wheelCube);
     grp.add(group); rig._voxelMesh=group;
