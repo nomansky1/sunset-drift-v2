@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.15-->
+<!--BUILD:v11.16-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -191,6 +191,8 @@
   .paintSw.sel{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.55); }
   .paintSw.stock{ background:repeating-linear-gradient(45deg,#4a4d57,#4a4d57 3px,#8a8d97 3px,#8a8d97 6px); }
   #styleRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
+  #partsRows{ display:none; pointer-events:auto; }
+  #partsRows .pRow{ display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:5px; margin-top:6px; }
   #wrapRow{ display:none; flex-wrap:wrap; align-items:center; justify-content:center; gap:5px; margin-top:7px; pointer-events:auto; }
   #flagRow{ display:none; align-items:center; gap:5px; margin-top:7px; pointer-events:auto; overflow-x:auto; padding-bottom:3px; scrollbar-width:thin; }
   #flagRow .flagSw{ flex:0 0 auto; width:26px; height:17px; border-radius:3px; cursor:pointer; border:2px solid transparent; background-size:cover; background-position:center; box-shadow:0 1px 3px rgba(0,0,0,.5); }
@@ -1240,6 +1242,7 @@
         <div id="paintRow"></div>
         <div id="styleRow"></div>
         <div id="wrapRow"></div>
+        <div id="partsRows"></div>
         <div id="flagRow"></div>
       </div>
       <div id="garR" class="garPanel">
@@ -1439,7 +1442,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.15';
+(function(){ const BUILD='v11.16';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -1950,7 +1953,7 @@ function renderShop(){                                   // menu car panel: name
     st.textContent=(afford?'UNLOCK · ':'🔒 ')+c.price+' 🪙';
     st.onclick=(e)=>{ if(e) e.stopPropagation(); if(coins>=CARS[i].price){ coins-=CARS[i].price; saveCoins(); renderCoins(); ownedCars[i]=true; saveOwned(); renderShop(); } };
     btn.classList.add('locked'); btn.innerHTML='🔒 UNLOCK TO RACE'; }
-  renderKits(); renderArsenal(); renderPaints(); renderStyles(); renderWraps(); renderFlags();
+  renderKits(); renderArsenal(); renderPaints(); renderStyles(); renderWraps(); renderFlags(); renderParts();
 }
 function renderArsenal(){                                 // GLOBAL battle-royale weapon upgrades (apply to whichever car you fight in)
   const host=document.getElementById('weaponRow'); if(!host) return; host.style.display='flex';
@@ -1982,6 +1985,35 @@ function renderWraps(){ const host=document.getElementById('wrapRow'); if(!host)
     WRAPS.map(w=>'<i class="styleSw'+(cur===w.key?' sel':'')+'" data-w="'+w.key+'">'+w.name+'</i>').join('');
   host.querySelectorAll('.styleSw').forEach(sw=>{ sw.onclick=(e)=>{ if(e) e.stopPropagation(); const w=sw.getAttribute('data-w');
     if(w==='') delete paintWraps[i]; else paintWraps[i]=w; savePaintWrap(); upgradeCars(); renderWraps(); }; }); }
+// garage MODULAR PARTS picker (owner: 11 groups — enabled, hidden, or swapped) — one row per group,
+// same chip language as FINISH/WRAP. 'Auto' = derive from upgrade levels (the pre-modular default).
+const PART_MENU=[ ['spoilerR','WING',['Stock','Duck','GT','GT+']],
+  ['spoilerF','FRONT',['Stock','Splitter','Canards']],
+  ['skirts','SKIRTS',['Off','On']],
+  ['hood','SCOOP',['Off','On']],
+  ['exhaust','EXHAUST',['Std','Chrome']],
+  ['engine','NOS',['0','1','2','3']] ];
+function renderParts(){
+  const host=document.getElementById('partsRows'); if(!host) return; const i=selectedCar;
+  if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
+  host.style.display='block';
+  const cfg=partsCfg[i]||{}, hides=(cfg.hide||{});
+  host.innerHTML=PART_MENU.map(([k,lbl,opts])=>{
+    const cur=cfg[k];
+    return '<div class="pRow"><span class="paintLbl">'+lbl+'</span>'
+      +'<i class="styleSw'+(cur==null?' sel':'')+'" data-g="'+k+'" data-s="">Auto</i>'
+      +opts.map((o,oi)=>'<i class="styleSw'+(cur===oi?' sel':'')+'" data-g="'+k+'" data-s="'+oi+'">'+o+'</i>').join('')+'</div>';
+  }).join('')
+  +'<div class="pRow"><span class="paintLbl">LIGHTS</span>'
+  +'<i class="styleSw'+(!hides.lights?' sel':'')+'" data-g="_lights" data-s="1">Show</i>'
+  +'<i class="styleSw'+(hides.lights?' sel':'')+'" data-g="_lights" data-s="0">Hide</i></div>';
+  host.querySelectorAll('.styleSw').forEach(sw=>{ sw.onclick=(e)=>{ if(e) e.stopPropagation();
+    const g=sw.getAttribute('data-g'), s=sw.getAttribute('data-s');
+    if(g==='_lights'){ carPartShow('lights', s==='1'); renderParts(); return; }
+    const c=(partsCfg[i]||(partsCfg[i]={}));
+    if(s==='') delete c[g]; else c[g]=+s;
+    savePartsCfg(); upgradeCars(); renderParts(); }; });
+}
 function renderFlags(){                                   // FLAG picker (owner ask): fly ANY nation's flag on this car
   const host=document.getElementById('flagRow'); if(!host) return; const i=selectedCar;
   if(!isOwned(i)){ host.style.display='none'; host.innerHTML=''; return; }
@@ -5593,7 +5625,8 @@ function attachUpgrades(rig, carIdx, forceU){
   let base=new THREE.Color(rig.bodyColor!=null?rig.bodyColor:0x2a2c33);
   { let bigM=null, ba=-1; const _s=new THREE.Vector3();
     if(rig.chassis) rig.chassis.traverse(o=>{ if(!o.isMesh||!o.material) return; const m=Array.isArray(o.material)?o.material[0]:o.material;
-      if(!m||!m.color||(m.userData&&m.userData._wheel)) return; if(/glass|window|light|lamp|tire|tyre|susp|plate|badge/i.test((o.name||'')+' '+(m.name||''))) return;
+      if(!m||!m.color||(m.userData&&m.userData._wheel)) return; if(m.map) return;   // atlas-textured mats carry a meaningless .color (kits came out green on gen6-8 cars) — sample painted panels only
+      if(/glass|window|light|lamp|tire|tyre|susp|plate|badge/i.test((o.name||'')+' '+(m.name||''))) return;
       const g=o.geometry; if(!g) return; if(!g.boundingBox) g.computeBoundingBox(); g.boundingBox.getSize(_s); const v=_s.x*_s.y*_s.z; if(v>ba){ ba=v; bigM=m; } });
     if(bigM&&bigM.color) base=bigM.color.clone(); }                 // real body colour -> wing/skirts/lip blend in; paintCar re-tints kitMats to a custom paint job later
   const bodyKit=new THREE.MeshPhysicalMaterial({color:base.clone().multiplyScalar(0.95), metalness:0.45, roughness:0.32, envMapIntensity:1.15, clearcoat:1.0, clearcoatRoughness:0.12, normalMap:flakeTex(), normalScale:new THREE.Vector2(0.12,0.12)});
