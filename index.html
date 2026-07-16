@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.20-->
+<!--BUILD:v11.21-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1448,7 +1448,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.20';
+(function(){ const BUILD='v11.21';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -2940,7 +2940,9 @@ function buildTrackMeshes(){
   { const _sth=currentTheme?currentTheme.theme:'city';
     if(terrainAmp<=0 || _sth==='coast' || _sth==='docks' || _sth==='city'){   // sidewalks on flat AND urban-terrain themes (strips now follow sampleElev)
     const curbMat=new THREE.MeshStandardMaterial({color:0x9a9da3, roughness:0.85, side:THREE.DoubleSide});
-    const walkMat=toonify(new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.95, side:THREE.DoubleSide}));
+    const _wNm=new THREE.TextureLoader().load('textures/road_normal.jpg'); _wNm.wrapS=_wNm.wrapT=THREE.RepeatWrapping; _wNm.repeat.set(4,4);
+    const _wRg=new THREE.TextureLoader().load('textures/road_rough.jpg'); _wRg.wrapS=_wRg.wrapT=THREE.RepeatWrapping; _wRg.repeat.set(4,4);
+    const walkMat=toonify(new THREE.MeshStandardMaterial({color:0x55585f, roughness:0.92, roughnessMap:_wRg, normalMap:_wNm, normalScale:new THREE.Vector2(0.5,0.5), side:THREE.DoubleSide}));   // REAL PBR paving (owner: real textures) — same CC0 maps the road uses, sidewalk-scale tiling
     buildCurbFace(0, 0.06, 0.28, curbMat);              // curb rides the per-sample road edge
     buildSideStrips(0, 8.0, 0.28, walkMat);             // WIDE city sidewalk = road edge .. edge+8 -> the buildings front a real pavement, not grass (owner)
     { const th=currentTheme?currentTheme.theme:'city';   // GRASS VERGE: a planted strip just past the sidewalk (REAL grass on city/docks, dune on coast/beach)
@@ -4006,6 +4008,17 @@ function buildTrackFurniture(rng){
         if(elev2-th2>1.2) continue;                                            // ELEVATED deck: a stack beside a bridge floats mid-air (owner shots) — skip it
         xf.push(propMat(bx, bz, 8, Math.atan2(t.x,t.y), Math.max(th2,elev2)-th2)); } }
     if(xf.length) instProp(propModels.tirebarrier, xf); }
+  if(circuit && propModels.barrier && straights.length){ const xf=[];   // concrete jersey barriers line the STRAIGHTS (tyre walls own the corners) — street-circuit run-off
+    for(let k=0;k<straights.length;k++){ const i=straights[k];
+      if((k%9)>5) continue;                                             // 6-on/3-off rhythm -> barrier stretches with crossing gaps (not a solid wall)
+      const p=samplePts[i], n=sampleNorm[i], t=sampleTan[i];
+      for(const side of [1,-1]){ const off=(sampleHW[i]||CONFIG.roadHalfWidth)+2.0;
+        const bx=p.x+n.x*off*side, bz=p.y+n.y*off*side;
+        const th2=terrainHeight(bx,bz), elev2=(sampleElev[i]||0);
+        if(elev2-th2>1.2) continue;                                     // skip beside elevated decks (would float)
+        if(occHit(bx,bz,1.2,1.2)) continue; occMark(bx,bz,1.4,0.6);     // guardrail: never through a building/grandstand
+        xf.push(propMat(bx, bz, 3.6, Math.atan2(t.x,t.y), Math.max(th2,elev2)-th2)); } }
+    if(xf.length) instProp(propModels.barrier, xf); }
   buildPackDistrict(rng);                               // real textured buildings from the LowPoly City pack, themed per environment
 }
 // themed districts from the LowPoly City pack: skyscrapers downtown, factories at the docks,
@@ -5812,6 +5825,7 @@ const PROP_SPECS={
   gantry:{file:'models/cc0/racing/overhead.glb', fit:'xz'},
   bannertower:{file:'models/cc0/racing/bannerTowerRed.glb', fit:'height'},
   tirebarrier:{file:'models/cc0/racing/tirebarrier.glb', fit:'xz'},   // Blender-made drop-in (baked-AO vertex colours) -> tyre safety wall
+  barrier:{file:'models/props/concrete-barrier.glb', fit:'xz'},       // Street Props concrete jersey barrier -> lines the straights (street-circuit run-off)
   // LowPoly City pack (user's itch asset, commercial OK) -> real textured buildings for themed districts
   'bldg-sky-a':{file:'models/city/bldg-sky-a.glb', fit:'height'}, 'bldg-sky-b':{file:'models/city/bldg-sky-b.glb', fit:'height'}, 'bldg-sky-c':{file:'models/city/bldg-sky-c.glb', fit:'height'},
   'bldg-shop-a':{file:'models/city/bldg-shop-a.glb', fit:'height'}, 'bldg-shop-b':{file:'models/city/bldg-shop-b.glb', fit:'height'}, 'bldg-shop-c':{file:'models/city/bldg-shop-c.glb', fit:'height'},
