@@ -206,8 +206,12 @@ function updateCar(c, inp, dt){
   _rw.forEach(w=>{ const oz=(w.userData._nz!==undefined ? w.userData._nz : (w.userData._oz!==undefined ? w.userData._oz : w.position.z));
     const isRear = oz < 0;                                          // +Z = front (normalized car space; align-pivot wheels sit at local 0,0,0 so _nz is authoritative)
     w.rotation.x = c.rig.spinAcc + (isRear ? c.rig._spinX : 0); });   // fronts roll true
+  // visual steer is DAMPED: the auto-drive controller outputs corrective steer that can flick sign every
+  // few frames — raw rotation.y snapped the front wheels side-to-side at speed (read as "wheels pointing
+  // the wrong way"). A real steering rack is damped; 0.22 lerp settles in ~4 frames but kills the flicker.
   const vSteer=clamp(inp.steer,-1,1)*0.5;
-  c.rig.front.forEach(w=> w.rotation.y=vSteer);
+  c.rig._vSteer=(c.rig._vSteer||0)+(vSteer-(c.rig._vSteer||0))*0.22;
+  c.rig.front.forEach(w=> w.rotation.y=c.rig._vSteer);
   // BRAKE LIGHTS: the tail lamps FIRE while braking — bright enough to read in full daylight too
   if(c.rig.lampMats && c.rig.lampMats[1]){ const tm=c.rig.lampMats[1];
     if(tm.userData._restEI==null) tm.userData._restEI=tm.emissiveIntensity;

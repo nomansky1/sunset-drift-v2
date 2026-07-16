@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--BUILD:v11.13-->
+<!--BUILD:v11.14-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -894,32 +894,12 @@
   .csChip.sel{ background:linear-gradient(140deg,#ff5a2c,#a13bff); color:#fff; transform:scale(1.12);
     box-shadow:0 4px 16px rgba(255,90,44,.45); }
   .csChip em.ci{ font-style:normal; margin-right:5px; font-size:11px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
-  /* stat-card chips (Nitro Speed reference): class badge + stars + SPD/GRIP bars per car */
-  .csChip{ min-width:118px; text-align:left; padding:6px 9px 7px; }
-  .csTop{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
-  .csMid{ display:flex; align-items:center; gap:5px; margin-top:3px; }
-  .csCls{ display:inline-block; min-width:14px; text-align:center; font-size:9px; font-weight:900; padding:1px 3px; border-radius:2px; color:#fff; }
+  /* compact single-line chips (owner: stacked cards read as clutter) — class letter inline, lock if unowned */
+  .csCls{ display:inline-block; min-width:13px; text-align:center; font-size:8.5px; font-weight:900; padding:1px 3px; margin-left:6px;
+    border-radius:2px; color:#fff; vertical-align:1px; }
   .csS{ background:linear-gradient(140deg,#c46bff,#7a3bff); } .csA{ background:linear-gradient(140deg,#ff5a5a,#c0301c); }
   .csB{ background:linear-gradient(140deg,#ffb45a,#e07820); } .csC{ background:linear-gradient(140deg,#5ab4ff,#2a6bff); }
-  .csStars{ font-size:8px; letter-spacing:1px; color:#ffd76b; }
-  .csOwn{ font-style:normal; font-size:8px; margin-left:auto; opacity:.85; }
-  .csBars{ margin-top:4px; display:grid; gap:2px; }
-  .csBars s{ display:block; height:3px; border-radius:1px; background:rgba(255,255,255,.10); text-decoration:none; overflow:hidden; }
-  .csBars i{ display:block; height:100%; border-radius:1px; }
-  .csSpd{ background:linear-gradient(90deg,#12c6f2,#2a6bff); }
-  .csGrp{ background:linear-gradient(90deg,#5fe08a,#1fae5e); }
-  .csChip.sel .csBars s{ background:rgba(0,0,0,.25); }
-  /* NAME PLATE (Nitro Speed reference): centered plate under the strip — name, class, stars, power */
-  #carPlate{ display:none; position:fixed; left:50%; transform:translateX(-50%); z-index:6; text-align:center;
-    padding:6px 26px 7px; background:linear-gradient(160deg,rgba(14,10,22,.88),rgba(30,22,44,.82));
-    border:1px solid rgba(255,255,255,.14); border-radius:2px; pointer-events:none;
-    clip-path:polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%); }
-  body:has(#panel-garage.on) #menu:not(.hidden) #carPlate{ display:block; }
-  #carPlate b{ display:block; font-size:15px; font-weight:900; font-style:italic; letter-spacing:1.4px; color:#f2edff;
-    text-shadow:0 2px 8px rgba(0,0,0,.6); }
-  #carPlate .cpRow{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:2px; }
-  #carPlate .cpRow em{ font-style:normal; font-size:10px; letter-spacing:1px; color:#ffd76b; }
-  #carPlate .cpRow u{ text-decoration:none; font-size:10px; font-weight:900; letter-spacing:.6px; color:#7fd8ff; }
+  .csOwn{ font-style:normal; font-size:8.5px; margin-left:5px; opacity:.85; }
   /* CLASS TABS above the car strip (owner: no flags on the top bar — class icons + filter instead) */
   #carCats{ display:none; position:fixed; left:6%; right:6%; z-index:6; gap:6px; justify-content:center; flex-wrap:wrap; pointer-events:auto; }
   body:has(#panel-garage.on) #menu:not(.hidden) #carCats{ display:flex; }
@@ -1459,7 +1439,7 @@
      background:linear-gradient(100deg,#ff5423,#ffab34); color:#160c06; font-weight:900; letter-spacing:.5px; font-size:13px; padding:9px 18px; border-radius:6px; box-shadow:0 6px 22px rgba(255,90,40,.5);">⟳ UPDATE READY — TAP TO RELOAD</div>
 <script>
 // ---- stale-tab killer: Chrome restores old tabs WITHOUT reloading, so fixes never arrive. Detect a newer deploy + offer a one-tap reload.
-(function(){ const BUILD='v11.13';
+(function(){ const BUILD='v11.14';
   window.BUILD_TAG=BUILD;   // ABOUT GAME version tag (BUILD is IIFE-scoped — invisible outside)
   const chip=document.getElementById('updateChip');
   chip.addEventListener('click', ()=>{ location.reload(true); });
@@ -5054,11 +5034,36 @@ function loadCarModels(){
       selectedCar=qaCar; if(typeof saveSelCar==='function') saveSelCar();
       selectTrack(qaTrk); if(typeof startGame==='function') startGame();
       const kd=k=>{ const e=new KeyboardEvent('keydown',{key:k,code:k,bubbles:true}); window.dispatchEvent(e); document.dispatchEvent(e); };
-      setTimeout(()=>{ kd('ArrowUp'); if(qaSteer) kd(qaSteer>0?'ArrowRight':'ArrowLeft'); }, 3500);
+      setTimeout(()=>{ setInterval(()=>{ kd('ArrowUp'); if(qaSteer) kd(qaSteer>0?'ArrowRight':'ArrowLeft'); }, 400); }, 3000);   // re-press every 400ms — a single press can be eaten by the countdown
+      // headless/hidden contexts starve rAF, freezing the game loop (countdown stuck, cars parked —
+      // earlier "in-motion" shots were parked cars; headless=new even lies document.hidden=false).
+      // Watchdog: animate() stamps __rafT per real frame; when frames stop arriving for >50ms, the
+      // timer drives the loop itself — timers DO run under virtual-time budgets.
+      setInterval(()=>{ try{ if(performance.now()-(window.__rafT||0)>50) animate(); }catch(e){} }, 16);
       setTimeout(()=>{ try{
-        DEVCAM.set('drone',{side:1, dist:3.6, height:0.62, lead:1.1});
+        const CAMS={ side:{side:1, dist:3.6, height:0.62, lead:1.1},
+          left:{side:-1, dist:2.7, height:0.5, lead:0.3}, right:{side:1, dist:2.7, height:0.5, lead:0.3},
+          front:{side:1, dist:0.1, height:0.5, lead:4.4}, rear:{side:1, dist:0.1, height:0.6, lead:-4.6} };
+        DEVCAM.set('drone', CAMS[P.get('cam')||'side']||CAMS.side);
         ['menu','ctaRow','carSlider','carCats','kbHints','hud','touch','driftMeter','scoreBox'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.visibility='hidden'; });
         document.querySelectorAll('#tabStrip,#coinBox,#dailyCard,#miniMap,#pos,#lapBox').forEach(el=>{ el.style.visibility='hidden'; });
+        const bd=document.createElement('div'); bd.style.cssText='position:fixed;top:6px;left:6px;z-index:99;font:12px monospace;color:#0f0;background:rgba(0,0,0,.72);padding:6px 9px;white-space:pre;pointer-events:none;';
+        document.body.appendChild(bd);
+        setInterval(()=>{ try{ const f0=player.rig.front[0], f1=player.rig.front[1];
+          bd.textContent='spd '+player.vel.length().toFixed(1)
+            +'  steerY '+(f0?f0.rotation.y.toFixed(3):'-')+'/'+(f1?f1.rotation.y.toFixed(3):'-')
+            +'\ncamZ '+player.rig.wheels.map(w=>(w.parent&&w.parent.userData._wheelAlign?w.parent.rotation.z.toFixed(2):'-')).join(' ')
+            +'\nposY '+player.rig.wheels.map(w=>w.position.y.toFixed(2)).join(' '); }catch(e){} }, 120);
+        if(P.get('shots')){ let qn=0;                                  // stream frames + telemetry to the local sink (headed window: real 60fps sim)
+          setInterval(()=>{ try{ if(qn<+(P.get('shots')||8)){ qn++; const id='q'+String(qn).padStart(2,'0'); DEVCAM.shot(id);
+            const f0=player.rig.front[0], f1=player.rig.front[1];
+            const tel='spd '+player.vel.length().toFixed(1)
+              +' steerY '+(f0?f0.rotation.y.toFixed(3):'-')+'/'+(f1?f1.rotation.y.toFixed(3):'-')
+              +' rotX '+player.rig.wheels.map(w=>w.rotation.x.toFixed(1)).join(' ')
+              +' camZ '+player.rig.wheels.map(w=>(w.parent&&w.parent.userData._wheelAlign?w.parent.rotation.z.toFixed(2):'-')).join(' ')
+              +' posY '+player.rig.wheels.map(w=>w.position.y.toFixed(2)).join(' ')
+              +' wq '+player.rig.wheels.map(w=>{const q=w.getWorldQuaternion(new THREE.Quaternion());const x=new THREE.Vector3(1,0,0).applyQuaternion(q);return Math.acos(Math.min(1,Math.abs(x.dot(new THREE.Vector3(Math.cos(player.heading),0,-Math.sin(player.heading)))))).toFixed(2);}).join(' ');
+            fetch('http://127.0.0.1:8098/'+id+'t.txt',{method:'POST',headers:{'Content-Type':'text/plain'},body:tel}).catch(()=>{}); } }catch(e){} }, 900); }
       }catch(e){} }, 6000);
     }catch(e){ console.error('[qa] hook', e); } }, 1200); });
   }
@@ -5449,14 +5454,21 @@ function buildFleetCar(rig, raw, yaw){   // whole-car GLB (no separate wheels) �
     // inside with identity axes = CAR axes: rotation.x always rolls, rotation.y always steers.
     const align=new THREE.Group();
     align.position.copy(wc);
-    align.quaternion.copy(o.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    // align RELATIVE TO THE RIG GROUP (parent⁻¹ ∘ group), NOT to the world: live rigs rebuild while the
+    // car sits at some heading (upgradeCars runs on in-scene cars), and a world-aligned pivot stays glued
+    // to that heading — every wheel then rides YAWED by however much the car turns afterwards. That was
+    // THE "tires point the wrong way while driving" bug; detached-identity audits could never see it.
+    { const pq=o.parent.getWorldQuaternion(new THREE.Quaternion());
+      const gq=rig.group.getWorldQuaternion(new THREE.Quaternion());
+      align.quaternion.copy(pq.invert().multiply(gq)); }
     o.parent.add(align);
     const camG=new THREE.Group(); camG.userData._wheelAlign=true; align.add(camG);   // camber node: identity, safe for euler writes — NEVER touch align.rotation (it would wipe the alignment quaternion)
     const g=new THREE.Group(); g.rotation.order='YXZ'; camG.add(g);
     align.updateWorldMatrix(true,false); g.updateWorldMatrix(true,false); g.attach(o);
     g.userData._wkey=(o.name||'').replace(/^wheel_/,'');
-    { const np=g.getWorldPosition(new THREE.Vector3()), ns=g.getWorldScale(new THREE.Vector3());   // NORMALIZED car-space coords + units-per-local for the suspension math —
-      g.userData._nx=np.x; g.userData._nz=np.z; g.userData._wS=Math.max(1e-4,ns.y); }             // raw-frame sums gave metre-scale models radians of camber = the wheel wobble
+    { const np=g.getWorldPosition(new THREE.Vector3()), ns=g.getWorldScale(new THREE.Vector3());
+      rig.group.updateWorldMatrix(true,false); rig.group.worldToLocal(np);                        // CAR-LOCAL coords (world coords were heading-contaminated on live rebuilds)
+      g.userData._nx=np.x; g.userData._nz=np.z; g.userData._wS=Math.max(1e-4,ns.y); }
     wheels.push(g); if(/front|(^|_)f[lr](_|$)|(^|_)[lr]f(_|$)/i.test(o.name||'')) front.push(g); });
   if(!front.length && wheels.length>=4){                                   // no front NAMES (Wheel1..4 / wheels018 / Cylinder): the pivots ahead of the axle midpoint ARE the fronts (car is nose +Z)
     const zs=wheels.map(g=>{ const p=new THREE.Vector3(); g.getWorldPosition(p); return {g, z:chassis.worldToLocal(p).z}; });
@@ -7642,7 +7654,7 @@ function unvoxelizeCar(car){ const rig=car&&car.rig; if(!rig||!rig._voxelMesh) r
   try{ rig.group.remove(rig._voxelMesh); rig._voxelMesh.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); }catch(e){}   // _voxelMesh is a GROUP (body + finer-wheel instanced meshes)
   rig._voxelMesh=null; if(rig._voxelHidden){ rig._voxelHidden.forEach(m=>{ m.visible=true; }); rig._voxelHidden=null; } }
 function voxelizeAllCars(on){ if(!cars) return; cars.forEach(c=>{ if(on) voxelizeCar(c); else unvoxelizeCar(c); }); }
-function animate(){ requestAnimationFrame(animate);
+function animate(){ requestAnimationFrame(animate); window.__rafT=performance.now();
   if(state==='menu'){ const gm=document.getElementById('globeModal');
     if(gm && gm.classList.contains('show')) return;                 // globe main-menu covers the scene -> skip the wasted game render
     if((window.__mf=(window.__mf||0)+1)&1) return; }                // garage showcase renders at ~30fps (slow orbit -> half the GPU + battery)
@@ -8643,36 +8655,23 @@ const Rewarded=(function(){
       cats.appendChild(b); });
   }
   const visChips=()=>Array.prototype.filter.call(row.children, ch=>ch.style.display!=='none');
-  // NAME PLATE (Nitro Speed reference: centered car plate w/ class badge + stars + power readout)
-  let plate=document.getElementById('carPlate');
-  if(!plate){ plate=document.createElement('div'); plate.id='carPlate'; (menuEl||document.body).appendChild(plate); }
-  function updPlate(){ const c=CARS[selectedCar]||{}, cl=clsOf(selectedCar), n=1+Math.min(4, Math.floor((c.price||0)/2000));
-    plate.innerHTML='<b>'+(c.name||'')+'</b><span class="cpRow"><i class="csCls '+cl[1]+'">'+cl[0]+'</i><em>'+'★'.repeat(n)+'☆'.repeat(5-n)+'</em><u>PWR '+((c.spd||0)+(c.grip||0))+'</u></span>'; }
+  { const old=document.getElementById('carPlate'); if(old&&old.parentNode) old.parentNode.removeChild(old); }   // plate retired — it stacked a 4th band on the top UI (owner: cluttered)
   function applyCat(){ Array.prototype.forEach.call(row.children, ch=>{
     ch.style.display=(!catFilter || carClass(+ch.dataset.i)===catFilter)?'':'none'; }); }
   // stat-card chips (owner ref: Nitro Speed drag-racing UI — class badge + stars + power readouts on
   // every car card). All fields computed from CARS data, so every current AND future model just works.
   function clsOf(i){ const c=CARS[i]||{}, p=(c.spd||70)+(c.grip||70);
     return p>=195?['S','csS']:p>=181?['A','csA']:p>=166?['B','csB']:['C','csC']; }
+  // ONE clean line per car (owner: the stacked stat-cards read as clutter): class icon + name + class
+  // letter + lock. Stars/bars/price live on the spec panel where there's room.
   function build(){
     row.innerHTML='';
     CARS.forEach((c,i)=>{
       const d=document.createElement('div'); d.className='csChip'+(i===selectedCar?' sel':''); d.dataset.i=i;
-      const top=document.createElement('div'); top.className='csTop';
-      const em=document.createElement('em'); em.className='ci'; em.textContent=catIco[carClass(i)]||'🏁'; top.appendChild(em);
-      top.appendChild(document.createTextNode(c.name)); d.appendChild(top);
-      const mid=document.createElement('div'); mid.className='csMid';
-      const cl=clsOf(i); const cb=document.createElement('b'); cb.className='csCls '+cl[1]; cb.textContent=cl[0]; mid.appendChild(cb);
-      const st=document.createElement('span'); st.className='csStars';
-      const n=1+Math.min(4, Math.floor((c.price||0)/2000)); st.textContent='★'.repeat(n)+'☆'.repeat(5-n); mid.appendChild(st);
-      const own=document.createElement('i'); own.className='csOwn';
-      own.textContent=(typeof isOwned==='function'&&isOwned(i))?'':'🔒'; mid.appendChild(own);
-      d.appendChild(mid);
-      const bars=document.createElement('div'); bars.className='csBars';
-      const b1=document.createElement('i'); b1.className='csSpd'; b1.style.width=Math.min(100,(c.spd||70)/1.2)+'%';
-      const b2=document.createElement('i'); b2.className='csGrp'; b2.style.width=Math.min(100,(c.grip||70))+'%';
-      const w1=document.createElement('s'); w1.appendChild(b1); const w2=document.createElement('s'); w2.appendChild(b2);
-      bars.appendChild(w1); bars.appendChild(w2); d.appendChild(bars);
+      const em=document.createElement('em'); em.className='ci'; em.textContent=catIco[carClass(i)]||'🏁'; d.appendChild(em);
+      d.appendChild(document.createTextNode(c.name));
+      const cl=clsOf(i); const cb=document.createElement('b'); cb.className='csCls '+cl[1]; cb.textContent=cl[0]; d.appendChild(cb);
+      if(!(typeof isOwned==='function'&&isOwned(i))){ const own=document.createElement('i'); own.className='csOwn'; own.textContent='🔒'; d.appendChild(own); }
       d.onclick=()=>{ selectedCar=i; sync(); renderShop(); saveSelCar(); upgradeCars(); };
       row.appendChild(d); });
     applyCat();
@@ -8682,7 +8681,6 @@ const Rewarded=(function(){
     let el=null;
     Array.prototype.forEach.call(row.children, ch=>{ const on=+ch.dataset.i===selectedCar; ch.classList.toggle('sel', on); if(on) el=ch; });
     if(el) el.scrollIntoView({behavior:instant?'auto':'smooth', inline:'center', block:'nearest'});
-    updPlate();
   }
   let deb=null;
   row.addEventListener('scroll',()=>{ clearTimeout(deb); deb=setTimeout(()=>{
@@ -8694,8 +8692,7 @@ const Rewarded=(function(){
   function placeCarSlider(){ const tabs=document.getElementById('tabStrip'); if(!tabs) return;
     const tb=tabs.getBoundingClientRect(), y0=Math.max(tb.bottom+4, 26);
     cats.style.top=y0+'px';
-    const rowTop=y0+cats.offsetHeight+6; row.style.top=rowTop+'px';
-    plate.style.top=(rowTop+row.offsetHeight+8)+'px'; }
+    row.style.top=y0+cats.offsetHeight+6+'px'; }
   window.rebuildCarSlider=build; window.syncCarSlider=sync; window.placeCarSlider=placeCarSlider;
   buildCats(); build(); placeCarSlider();
 })();
